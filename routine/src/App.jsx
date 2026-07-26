@@ -24,7 +24,7 @@ export default function App() {
     }
     const oldTemplates = JSON.parse(localStorage.getItem('routine_templates') || '[{"id":"t1","name":"Vanilla Routine","blocks":[]}]');
     const oldActiveTemplateId = localStorage.getItem('routine_activeTemplateId') || 't1';
-    const oldDayMapping = JSON.parse(localStorage.getItem('routine_dayMapping') || '{"Monday":"t1","Tuesday":"t1","Wednesday":"t1","Thursday":"t1","Friday":"","Saturday":"","Sunday":""}');
+    const oldDayMapping = JSON.parse(localStorage.getItem('routine_dayMapping') || '{"Monday":"","Tuesday":"","Wednesday":"","Thursday":"","Friday":"","Saturday":"","Sunday":""}');
 
     return [{
       id: 'v1',
@@ -95,7 +95,7 @@ export default function App() {
       routineGoals: [],
       templates: [{ id: 't1', name: 'Vanilla Routine', blocks: [] }],
       activeTemplateId: 't1',
-      dayMapping: { Monday: 't1', Tuesday: 't1', Wednesday: 't1', Thursday: 't1', Friday: 't1', Saturday: 't1', Sunday: 't1' }
+      dayMapping: { Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: '', Sunday: '' }
     }]);
     setActiveVersionId(newId);
   };
@@ -130,7 +130,7 @@ export default function App() {
             routineGoals: [],
             templates: [{ id: 't1', name: 'Vanilla Routine', blocks: [] }],
             activeTemplateId: 't1',
-            dayMapping: { Monday: 't1', Tuesday: 't1', Wednesday: 't1', Thursday: 't1', Friday: 't1', Saturday: 't1', Sunday: 't1' }
+            dayMapping: { Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: '', Sunday: '' }
           };
           setVersions([vanillaVersion]);
           setActiveVersionId(vanillaId);

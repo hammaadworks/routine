@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock, Info } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import Dropdown from './Dropdown';
 
@@ -127,8 +127,40 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     if (!newTemplateName.trim()) return;
     const newId = Date.now().toString();
     setTemplates([...templates, { id: newId, name: newTemplateName, blocks: [] }]);
+    
+    // Assign unassigned days to the newly created template
+    const updatedMapping = { ...dayMapping };
+    let mappingChanged = false;
+    days.forEach(day => {
+      if (!updatedMapping[day] || updatedMapping[day] === '') {
+        updatedMapping[day] = newId;
+        mappingChanged = true;
+      }
+    });
+    if (mappingChanged) {
+      setDayMapping(updatedMapping);
+    }
+    
     setActiveTemplateId(newId);
     setNewTemplateName('');
+  };
+
+  const handleNewClick = () => {
+    // Check if all days are filled
+    const allDaysFilled = days.every(day => dayMapping[day] && dayMapping[day] !== '');
+    if (allDaysFilled) {
+      setConfirmConfig({
+        title: 'Cannot Create Template',
+        message: 'All days are currently committed to templates. Free a day first to create a new template.',
+        isDanger: true,
+        image: '/filled.png',
+        onConfirm: () => setConfirmConfig(null),
+        onCancel: null,
+        confirmText: "OK"
+      });
+      return;
+    }
+    setShowNewTemplateModal(true);
   };
 
   const saveTemplateName = (e) => {
@@ -143,8 +175,38 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
   const duplicateTemplate = () => {
     if (!activeTemplate) return;
+    
+    // Check if all days are filled
+    const allDaysFilled = days.every(day => dayMapping[day] && dayMapping[day] !== '');
+    if (allDaysFilled) {
+      setConfirmConfig({
+        title: 'Cannot Duplicate Template',
+        message: 'All days are currently committed to templates. Free a day first to duplicate a template.',
+        isDanger: true,
+        image: '/filled.png',
+        onConfirm: () => setConfirmConfig(null),
+        onCancel: null,
+        confirmText: "OK"
+      });
+      return;
+    }
+
     const newId = Date.now().toString();
     setTemplates([...templates, { ...activeTemplate, id: newId, name: `${activeTemplate.name} (Copy)` }]);
+    
+    // Assign unassigned days to the duplicated template
+    const updatedMapping = { ...dayMapping };
+    let mappingChanged = false;
+    days.forEach(day => {
+      if (!updatedMapping[day] || updatedMapping[day] === '') {
+        updatedMapping[day] = newId;
+        mappingChanged = true;
+      }
+    });
+    if (mappingChanged) {
+      setDayMapping(updatedMapping);
+    }
+
     setActiveTemplateId(newId);
   };
 
@@ -302,21 +364,17 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           )}
           
           {/* 3. Actions */}
-          <div className="th-actions">
-            <button className="secondary action-btn" onClick={() => setShowNewTemplateModal(true)}>
-              <Plus size={12} /> New
-            </button>
-            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId}>
+          <div className="th-actions" style={{ width: '100%' }}>
+            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId} style={{ flex: 1 }}>
               <Pencil size={12} /> Rename
             </button>
-            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId}>
+            <button className="secondary action-btn" onClick={handleNewClick} style={{ flex: 1 }}>
+              <Plus size={12} /> New
+            </button>
+            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId} style={{ flex: 1 }}>
               <Copy size={12} /> Duplicate
             </button>
-          </div>
-
-          {/* 4. Delete Button */}
-          <div className="th-delete">
-            <button className="secondary template-delete-btn" onClick={deleteTemplate} disabled={!activeTemplateId}>
+            <button className="secondary template-delete-btn action-btn" onClick={deleteTemplate} disabled={!activeTemplateId} style={{ flex: 1 }}>
               <Trash2 size={12} /> Delete
             </button>
           </div>
@@ -468,7 +526,38 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  <span>- {formatTime(block.startTime + block.duration)}</span>
+                  <span>-</span>
+                  <input 
+                    type="time" 
+                    value={formatTime24((block.startTime + block.duration) % 1440)}
+                    onChange={(e) => {
+                      const newEndMins = parseTime(e.target.value);
+                      if (newEndMins !== null && !isNaN(newEndMins)) {
+                        let newStartTime = newEndMins - block.duration;
+                        if (newStartTime < 0) newStartTime += 1440;
+                        
+                        let updatedTemplates = templates.map(t => {
+                          if (t.id === activeTemplateId) {
+                            return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newStartTime } : b) };
+                          }
+                          return t;
+                        });
+                        setTemplates(updatedTemplates);
+                      }
+                    }}
+                    style={{ 
+                      background: 'transparent', 
+                      border: 'none', 
+                      color: 'inherit', 
+                      fontSize: 'inherit',
+                      fontFamily: 'inherit',
+                      padding: 0,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </div>
                 <button
                   onClick={(e) => {
@@ -592,7 +681,15 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3 style={{ marginBottom: '16px', color: '#fff' }}>New Template</h3>
             <form onSubmit={(e) => { addTemplate(e); setShowNewTemplateModal(false); }}>
-              <input type="text" placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} autoFocus style={{ width: '100%', marginBottom: '16px' }} />
+              <input type="text" placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} autoFocus style={{ width: '100%', marginBottom: '12px' }} />
+              
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginBottom: '16px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: '10px', borderRadius: '8px' }}>
+                <Info size={14} color="var(--accent)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                  If you only have minor changes to make, consider using <strong>Duplicate</strong> on an existing template instead.
+                </span>
+              </div>
+
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="submit" style={{ flex: 1, color: '#000' }}>Create</button>
                 <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)} style={{ flex: 1 }}>Cancel</button>
@@ -608,8 +705,10 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           title={confirmConfig.title}
           message={confirmConfig.message}
           isDanger={confirmConfig.isDanger}
+          image={confirmConfig.image}
           onConfirm={confirmConfig.onConfirm}
           onCancel={confirmConfig.onCancel}
+          confirmText={confirmConfig.confirmText}
         />
       )}
     </div>

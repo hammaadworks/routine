@@ -178,6 +178,8 @@ input, select, textarea {
   height: 16px;
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+  padding: 0;
+  margin: 0;
   vertical-align: middle;
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   appearance: none;

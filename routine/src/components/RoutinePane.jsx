@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy } from 'lucide-react';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import { parseDuration } from '../utils';
@@ -33,7 +33,7 @@ export default function RoutinePane({
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
-    setRoutineGoalForm({ task: '', desc: '', timeValue: '', sprintGoalId: '' });
+    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '' });
     setShowRoutineGoalModal(true);
   };
 
@@ -46,6 +46,16 @@ export default function RoutinePane({
       sprintGoalId: goal.sprintGoalId || '' 
     });
     setShowRoutineGoalModal(true);
+  };
+
+  const duplicateGoal = (goal) => {
+    const newGoal = {
+      ...goal,
+      task: '0_' + goal.task,
+      id: 'rg-' + Date.now(),
+      completed: false
+    };
+    setRoutineGoals([...(routineGoals || []), newGoal]);
   };
 
   const saveRoutineGoal = (e) => {
@@ -105,12 +115,12 @@ export default function RoutinePane({
 
   const handleDragStart = (e, goal) => {
     const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-    const hex = linkedSprintGoal?.color || '#ffffff';
+    const hex = linkedSprintGoal?.color || goal.color || '#eab308';
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
-    e.dataTransfer.setData('desc', goal.desc);
-    e.dataTransfer.setData('time', goal.time);
+    e.dataTransfer.setData('desc', goal.desc || '');
+    e.dataTransfer.setData('time', goal.time || '1:15');
     e.dataTransfer.setData('color', hex);
     e.dataTransfer.setData('routineGoalId', goal.id);
   };
@@ -278,6 +288,9 @@ export default function RoutinePane({
                 </div>
                 
                 <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
+                  <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '4px' }}>
+                    <Copy size={14} />
+                  </button>
                   <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '4px' }}>
                     <Pencil size={14} />
                   </button>
