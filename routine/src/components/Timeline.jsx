@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Plus, Edit2, Copy, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import Dropdown from './Dropdown';
 
@@ -89,7 +89,7 @@ function getLayout(blocks) {
 
 export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping }) {
   const [newTemplateName, setNewTemplateName] = useState('');
-  const [editingBlock, setEditingBlock] = useState(null);
+  // Inline editing for blocks now, no block modal needed
   const [dragHoverMins, setDragHoverMins] = useState(null);
   const [isEditingTemplateName, setIsEditingTemplateName] = useState(false);
   const [editingTemplateName, setEditingTemplateName] = useState('');
@@ -247,20 +247,6 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     setDragHoverMins(null);
   };
 
-  const saveEditedBlock = (e) => {
-    e.preventDefault();
-    let updatedTemplates = templates.map(t => {
-      if (t.id === activeTemplateId) {
-        return {
-          ...t,
-          blocks: t.blocks.map(b => b.id === editingBlock.id ? { ...b, startTime: parseTime(editingBlock.startTimeStr) } : b)
-        };
-      }
-      return t;
-    });
-    setTemplates(updatedTemplates);
-    setEditingBlock(null);
-  };
 
   const deleteBlock = (id) => {
     let updatedTemplates = templates.map(t => {
@@ -270,7 +256,6 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       return t;
     });
     setTemplates(updatedTemplates);
-    setEditingBlock(null);
   };
 
   return (
@@ -322,7 +307,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
               <Plus size={12} /> New
             </button>
             <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId}>
-              <Edit2 size={12} /> Rename
+              <Pencil size={12} /> Rename
             </button>
             <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId}>
               <Copy size={12} /> Duplicate
@@ -426,7 +411,6 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   e.dataTransfer.setData('source', 'timeline');
                   e.dataTransfer.setData('blockId', block.id);
                 }}
-                onClick={() => setEditingBlock({ ...block, startTimeStr: formatTime24(block.startTime), duration: block.duration })}
                 style={{
                   top: `${block.startTime * zoomLevel}px`,
                   height: `${block.duration * zoomLevel}px`,
@@ -436,13 +420,68 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   borderLeftColor: hex,
                   borderLeftWidth: '4px',
                   borderLeftStyle: 'solid',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  position: 'absolute',
+                  padding: '8px',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
                 }}
               >
-                <div className="time-block-title" style={{ color: hex }}>{block.name}</div>
-                <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)` }}>
-                  {formatTime(block.startTime)} - {formatTime(block.startTime + block.duration)}
+                <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: '2px', paddingRight: '16px' }}>{block.name}</div>
+                <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)`, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input 
+                    type="time" 
+                    value={formatTime24(block.startTime)}
+                    onChange={(e) => {
+                      const newMins = parseTime(e.target.value);
+                      if (newMins !== null && !isNaN(newMins)) {
+                        let updatedTemplates = templates.map(t => {
+                          if (t.id === activeTemplateId) {
+                            return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newMins } : b) };
+                          }
+                          return t;
+                        });
+                        setTemplates(updatedTemplates);
+                      }
+                    }}
+                    style={{ 
+                      background: 'transparent', 
+                      border: 'none', 
+                      color: 'inherit', 
+                      fontSize: 'inherit',
+                      fontFamily: 'inherit',
+                      padding: 0,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <span>- {formatTime(block.startTime + block.duration)}</span>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteBlock(block.id);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: hex,
+                    cursor: 'pointer',
+                    opacity: 0.6,
+                    padding: '2px'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                >
+                  <X size={14} />
+                </button>
               </div>
             );
           })}
@@ -517,37 +556,9 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
         >
           <ZoomIn size={16} />
         </button>
-      </div>
 
-      {/* Edit Modal */}
-      {editingBlock && createPortal(
-        <div className="modal-overlay" onClick={() => setEditingBlock(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '16px', color: '#fff' }}>Edit Block</h3>
-            <form onSubmit={saveEditedBlock} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>Task</label>
-                <input type="text" value={editingBlock.name} disabled style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>Start Time</label>
-                  <input type="time" value={editingBlock.startTimeStr} onChange={e => setEditingBlock({...editingBlock, startTimeStr: e.target.value})} style={{ width: '100%' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>Duration</label>
-                  <input type="text" value={editingBlock.duration} disabled style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button type="submit" style={{ flex: 1, color: '#000' }}>Save</button>
-                <button type="button" className="secondary" style={{ color: 'var(--danger)' }} onClick={() => deleteBlock(editingBlock.id)}>Delete</button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+
+      </div>
 
       {/* Rename Modal */}
       {isEditingTemplateName && createPortal(

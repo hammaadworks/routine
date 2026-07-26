@@ -7,7 +7,7 @@ import PlansPane from './components/PlansPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
 import { createPortal } from 'react-dom';
-import { LayoutDashboard, Calendar, FileText, Settings, Plus, Copy, Trash2, Layers, X, Download, Import, DatabaseBackup } from 'lucide-react';
+import { Command, Calendar, BookOpen, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup } from 'lucide-react';
 import './index.css';
 
 export default function App() {
@@ -281,7 +281,7 @@ export default function App() {
       <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', background: 'var(--panel-bg)', borderBottom: '1px solid var(--panel-border)' }}>
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
           <div style={{ background: 'var(--accent)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
-            <LayoutDashboard size={20} color="#000" />
+            <Command size={20} color="#000" />
           </div>
           <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Routine OS</span>
         </h1>
@@ -307,7 +307,7 @@ export default function App() {
             </div>
             
             <button onClick={() => setShowVersionModal(true)} className="icon-btn" style={{ padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', marginLeft: '8px' }} title="Manage Versions">
-              <Settings size={18} color="var(--text-secondary)" />
+              <Layers size={18} color="var(--text-secondary)" />
             </button>
           </div>
         </div>
@@ -335,7 +335,7 @@ export default function App() {
               onClick={() => setActiveCenterTab('plans')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
             >
-              <FileText size={16} /> Plans
+              <BookOpen size={16} /> Plans
             </button>
           </div>
           

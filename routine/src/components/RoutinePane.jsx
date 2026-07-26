@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckSquare, Plus, Trash2, Clock, AlignLeft, GripVertical, CheckCircle2, Target, Edit2, X, Activity } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target } from 'lucide-react';
 import Dropdown from './Dropdown';
+import { parseDuration } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
@@ -62,7 +63,27 @@ export default function RoutinePane({
     };
 
     if (editingRoutineGoalId) {
+      const oldGoal = (routineGoals || []).find(g => g.id === editingRoutineGoalId);
       setRoutineGoals((routineGoals || []).map(g => g.id === editingRoutineGoalId ? { ...g, ...goalData } : g));
+      
+      if (oldGoal && templates && setTemplates) {
+        const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
+        const updatedTemplates = templates.map(t => ({
+          ...t,
+          blocks: t.blocks.map(b => {
+            if (b.routineGoalId === editingRoutineGoalId || b.name.toLowerCase().trim() === oldTaskLower) {
+              return { 
+                ...b, 
+                name: goalData.task, 
+                duration: timeString ? parseDuration(timeString) : b.duration,
+                routineGoalId: editingRoutineGoalId
+              };
+            }
+            return b;
+          })
+        }));
+        setTemplates(updatedTemplates);
+      }
     } else {
       const newGoal = {
         ...goalData,
@@ -140,7 +161,7 @@ export default function RoutinePane({
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', overflow: 'hidden', minHeight: 0 }}>
-        <h2 style={{ marginBottom: '16px' }}><CheckSquare size={18} color="var(--accent)" /> Routine Goals</h2>
+        <h2 style={{ marginBottom: '16px' }}><ListTodo size={18} color="var(--accent)" /> Routine Goals</h2>
         
         <button 
           onClick={openAddRoutineGoal} className="secondary" 
@@ -245,7 +266,7 @@ export default function RoutinePane({
                 
                 <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
                   <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '4px' }}>
-                    <Edit2 size={14} />
+                    <Pencil size={14} />
                   </button>
                 </div>
               </div>
@@ -258,7 +279,7 @@ export default function RoutinePane({
             padding: '40px 20px', color: 'var(--text-secondary)', textAlign: 'center', 
             border: '1px dashed var(--panel-border)', borderRadius: '12px', marginTop: '8px'
           }}>
-            <CheckSquare size={32} style={{ marginBottom: '12px', opacity: 0.5, color: 'var(--accent)' }} />
+            <ListTodo size={32} style={{ marginBottom: '12px', opacity: 0.5, color: 'var(--accent)' }} />
             <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff' }}>No goals yet</div>
             <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Start adding goals and drag them to schedule.</div>
           </div>
@@ -273,7 +294,7 @@ export default function RoutinePane({
           Routine Insights:
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '20px' }}>
-          <CheckSquare size={14} color="var(--text-secondary)" />
+          <Hourglass size={14} color="var(--text-secondary)" />
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Pending:</span>
           <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
             {sprintGoals.filter(g => !g.completed && !checkSprintAddressed(g)).length} Sprint, {openGoalCount} Routine
@@ -289,7 +310,7 @@ export default function RoutinePane({
               <div>
                 <h3 style={{ color: '#fff', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '20px' }}>
                   <div style={{ background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px' }}>
-                    <CheckSquare size={20} color="var(--accent)" /> 
+                    <ListTodo size={20} color="var(--accent)" /> 
                   </div>
                   {editingRoutineGoalId ? `Edit Goal` : `New Goal`}
                 </h3>
@@ -350,18 +371,11 @@ export default function RoutinePane({
                 </div>
               </div>
               
-              <div style={{ display: 'flex', marginTop: '16px', width: '100%', padding: '8px 0' }}>
-                <div style={{ width: '5%' }} />
-                {editingRoutineGoalId ? (
-                  <button type="button" onClick={() => { deleteGoal(editingRoutineGoalId, routineGoalForm.task); setShowRoutineGoalModal(false); }} style={{ width: '20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
-                ) : (
-                  <div style={{ width: '20%' }} />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+                {editingRoutineGoalId && (
+                  <button type="button" onClick={() => { deleteGoal(editingRoutineGoalId, routineGoalForm.task); setShowRoutineGoalModal(false); }} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
                 )}
-                <div style={{ width: '5%' }} />
-                <button type="button" className="secondary" style={{ width: '20%', padding: '12px 0', fontSize: '14px', fontWeight: '500' }} onClick={() => setShowRoutineGoalModal(false)}>Cancel</button>
-                <div style={{ width: '5%' }} />
-                <button type="submit" style={{ width: '40%', padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
-                <div style={{ width: '5%' }} />
+                <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
               </div>
             </form>
           </div>

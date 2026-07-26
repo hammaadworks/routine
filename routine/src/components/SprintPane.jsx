@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Target, CheckCircle2, Plus, Trash2, Edit2, Activity, Clock, Layers, Copy, Settings, X } from 'lucide-react';
+import { Target, CheckCircle2, Plus, Trash2, Pencil, Activity, Clock, X, Rocket } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
@@ -196,7 +196,7 @@ export default function SprintPane({
                   </div>
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
                     <button className="icon-btn" onClick={() => openEditSprintGoal(goal)} style={{ padding: '4px' }}>
-                      <Edit2 size={14} />
+                      <Pencil size={14} />
                     </button>
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export default function SprintPane({
               padding: '40px 20px', color: 'var(--text-secondary)', textAlign: 'center', 
               border: '1px dashed var(--panel-border)', borderRadius: '12px', marginTop: '8px'
             }}>
-              <Target size={32} style={{ marginBottom: '12px', opacity: 0.5, color: 'var(--accent)' }} />
+              <Rocket size={32} style={{ marginBottom: '12px', opacity: 0.5, color: 'var(--accent)' }} />
               <div style={{ fontSize: '14px', fontWeight: '500', color: '#fff' }}>No sprint goals yet</div>
               <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Add major goals you want to achieve during this period.</div>
             </div>
