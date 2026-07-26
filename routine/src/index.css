@@ -223,6 +223,11 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
 }
 
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+
 button {
   background: var(--accent);
   color: #000;

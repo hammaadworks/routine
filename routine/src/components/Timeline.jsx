@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import Dropdown from './Dropdown';
 
@@ -431,6 +431,15 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
               >
                 <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: '2px', paddingRight: '16px' }}>{block.name}</div>
                 <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)`, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Clock 
+                    size={10} 
+                    color="#fff" 
+                    style={{ cursor: 'pointer' }} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.currentTarget.nextElementSibling.showPicker();
+                    }}
+                  />
                   <input 
                     type="time" 
                     value={formatTime24(block.startTime)}

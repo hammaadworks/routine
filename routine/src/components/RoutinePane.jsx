@@ -214,7 +214,7 @@ export default function RoutinePane({
         {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
           const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-          const hex = linkedSprintGoal ? (linkedSprintGoal.color || '#eab308') : '#ffffff';
+          const hex = linkedSprintGoal?.color || goal.color || '#eab308';
           const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
           
           const bgStyle = {
@@ -333,14 +333,6 @@ export default function RoutinePane({
                     style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }} autoFocus
                   />
                 </div>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details / Notes <span style={{ opacity: 0.5, textTransform: 'none' }}>(optional)</span></label>
-                  <input 
-                    type="text" placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
-                    onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
-                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }}
-                  />
-                </div>
               </div>
 
               {/* Execution details */}
@@ -369,6 +361,16 @@ export default function RoutinePane({
                     ]}
                   />
                 </div>
+              </div>
+
+              {/* Details / Notes */}
+              <div style={{ background: 'rgba(0,0,0,0.1)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details / Notes <span style={{ opacity: 0.5, textTransform: 'none' }}>(optional)</span></label>
+                <input 
+                  type="text" placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
+                  onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
+                  style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }}
+                />
               </div>
               
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
