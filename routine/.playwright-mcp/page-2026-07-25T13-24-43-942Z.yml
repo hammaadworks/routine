@@ -1,0 +1,123 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "Routine OS" [level=1] [ref=e5]
+  - main [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - heading "Sprint Period" [level=2] [ref=e15]
+          - generic [ref=e18]:
+            - generic [ref=e19]:
+              - generic [ref=e20]: Start
+              - textbox [ref=e21]
+            - generic [ref=e22]:
+              - generic [ref=e23]: End
+              - textbox [ref=e24]
+        - separator [ref=e25]
+        - heading "Sprint Goals" [level=2] [ref=e26]
+        - generic [ref=e31]:
+          - textbox "Add sprint goal..." [ref=e32]
+          - button [ref=e33] [cursor=pointer]
+        - generic [ref=e35]: No sprint goals set.
+      - generic [ref=e37]:
+        - heading "Insights & Metrics" [level=2] [ref=e38]
+        - generic [ref=e41]:
+          - generic [ref=e47]:
+            - generic [ref=e48]: Time left to schedule (Standard Workday)
+            - generic [ref=e49]: 24h 0m
+          - generic [ref=e55]:
+            - generic [ref=e56]: Open Goals (Unaddressed & Unchecked)
+            - generic [ref=e57]:
+              - generic [ref=e58]: 0Sprint
+              - generic [ref=e60]: 0Daily
+              - generic [ref=e62]: 0Weekly
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - combobox [ref=e69]:
+            - option "Select Template" [disabled]
+            - option "Standard Workday" [selected]
+          - generic [ref=e70]:
+            - textbox "New Template" [ref=e71]
+            - button [ref=e72] [cursor=pointer]
+        - generic [ref=e74]:
+          - generic [ref=e77]: "Map Days:"
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - generic [ref=e80]: Mon
+              - combobox [ref=e81]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e82]:
+              - generic [ref=e83]: Tue
+              - combobox [ref=e84]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e85]:
+              - generic [ref=e86]: Wed
+              - combobox [ref=e87]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e88]:
+              - generic [ref=e89]: Thu
+              - combobox [ref=e90]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e91]:
+              - generic [ref=e92]: Fri
+              - combobox [ref=e93]:
+                - option "-" [selected]
+                - option "Sta"
+            - generic [ref=e94]:
+              - generic [ref=e95]: Sat
+              - combobox [ref=e96]:
+                - option "-" [selected]
+                - option "Sta"
+            - generic [ref=e97]:
+              - generic [ref=e98]: Sun
+              - combobox [ref=e99]:
+                - option "-" [selected]
+                - option "Sta"
+      - generic [ref=e101]:
+        - generic [ref=e102]: 00:00
+        - generic [ref=e105]: 01:00
+        - generic [ref=e108]: 02:00
+        - generic [ref=e111]: 03:00
+        - generic [ref=e114]: 04:00
+        - generic [ref=e117]: 05:00
+        - generic [ref=e120]: 06:00
+        - generic [ref=e123]: 07:00
+        - generic [ref=e126]: 08:00
+        - generic [ref=e129]: 09:00
+        - generic [ref=e132]: 10:00
+        - generic [ref=e135]: 11:00
+        - generic [ref=e138]: 12:00
+        - generic [ref=e141]: 13:00
+        - generic [ref=e144]: 14:00
+        - generic [ref=e147]: 15:00
+        - generic [ref=e150]: 16:00
+        - generic [ref=e153]: 17:00
+        - generic [ref=e156]: 18:00
+        - generic [ref=e159]: 19:00
+        - generic [ref=e162]: 20:00
+        - generic [ref=e165]: 21:00
+        - generic [ref=e168]: 22:00
+        - generic [ref=e171]: 23:00
+    - generic [ref=e174]:
+      - heading "Routine Goals" [level=2] [ref=e175]
+      - generic [ref=e179]:
+        - button "Daily" [ref=e180] [cursor=pointer]
+        - button "Weekly" [ref=e181] [cursor=pointer]
+      - generic [ref=e182]:
+        - textbox "Task name" [ref=e183]
+        - generic [ref=e184]:
+          - textbox "Description" [ref=e185]
+          - generic [ref=e186]:
+            - spinbutton "Time" [ref=e187]
+            - combobox [ref=e188]:
+              - option "min" [selected]
+              - option "hr"
+        - button "Add daily Goal" [ref=e189] [cursor=pointer]
+      - generic [ref=e190]:
+        - paragraph [ref=e191]: Drag tasks to the timeline to schedule them.
+        - generic [ref=e192]: No daily goals set.

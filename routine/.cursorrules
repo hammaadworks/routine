@@ -1,0 +1,5 @@
+# Global Project Rules
+
+1. **No Native JS Alerts/Confirms**: Never use `window.alert()`, `window.confirm()`, or `window.prompt()`. Always use app-style custom modals (e.g., `<ConfirmModal>`) to ensure design consistency.
+2. **No Native Select Dropdowns**: Never use the native HTML `<select>` element. Always use app-style custom dropdown components (e.g., `<Dropdown>`) to match the dark theme and custom UI.
+3. **Design Aesthetics**: Keep the UI clean, dark-themed, and minimal. Utilize `lucide-react` for consistent icons.

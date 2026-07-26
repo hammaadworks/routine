@@ -1,0 +1,80 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - heading "Routine OS" [level=1] [ref=f2e5]
+  - main [ref=f2e11]:
+    - generic [ref=f2e12]:
+      - generic [ref=f2e14]:
+        - generic [ref=f2e15]:
+          - generic [ref=f2e16]: Current Version
+          - generic [ref=f2e21]:
+            - text: Version 1
+            - generic [ref=f2e22]: No Dates Set
+        - button "Manage Versions" [ref=f2e23] [cursor=pointer]
+      - generic [ref=f2e27]:
+        - heading "Sprint Insights" [level=2] [ref=f2e28]
+        - generic [ref=f2e37]:
+          - generic [ref=f2e38]: Time left to schedule
+          - generic [ref=f2e39]: 24h 0m
+    - generic [ref=f2e40]:
+      - generic [ref=f2e41]:
+        - generic [ref=f2e42]:
+          - button "Standard Workday" [ref=f2e44] [cursor=pointer]
+          - button "New Template" [ref=f2e45] [cursor=pointer]
+        - generic [ref=f2e47]:
+          - generic [ref=f2e48]:
+            - generic [ref=f2e49]: "Active on:"
+            - generic [ref=f2e53]:
+              - button "M" [ref=f2e54] [cursor=pointer]
+              - button "T" [ref=f2e55] [cursor=pointer]
+              - button "W" [ref=f2e56] [cursor=pointer]
+              - button "T" [ref=f2e57] [cursor=pointer]
+              - button "F" [ref=f2e58] [cursor=pointer]
+              - button "S" [ref=f2e59] [cursor=pointer]
+              - button "S" [ref=f2e60] [cursor=pointer]
+          - generic [ref=f2e61]:
+            - button "Rename" [ref=f2e62] [cursor=pointer]
+            - button "Duplicate" [ref=f2e65] [cursor=pointer]
+            - button "Delete" [ref=f2e69] [cursor=pointer]
+      - generic [ref=f2e74]:
+        - generic [ref=f2e75]: 12 AM
+        - generic [ref=f2e78]: 1 AM
+        - generic [ref=f2e81]: 2 AM
+        - generic [ref=f2e84]: 3 AM
+        - generic [ref=f2e87]: 4 AM
+        - generic [ref=f2e90]: 5 AM
+        - generic [ref=f2e93]: 6 AM
+        - generic [ref=f2e96]: 7 AM
+        - generic [ref=f2e99]: 8 AM
+        - generic [ref=f2e102]: 9 AM
+        - generic [ref=f2e105]: 10 AM
+        - generic [ref=f2e108]: 11 AM
+        - generic [ref=f2e111]: 12 PM
+        - generic [ref=f2e115]: 1 PM
+        - generic [ref=f2e118]: 2 PM
+        - generic [ref=f2e121]: 3 PM
+        - generic [ref=f2e124]: 4 PM
+        - generic [ref=f2e127]: 5 PM
+        - generic [ref=f2e130]: 6 PM
+        - generic [ref=f2e133]: 7 PM
+        - generic [ref=f2e136]: 8 PM
+        - generic [ref=f2e139]: 9 PM
+        - generic [ref=f2e142]: 10 PM
+        - generic [ref=f2e145]: 11 PM
+    - generic [ref=f2e148]:
+      - heading "Routine Goals" [level=2] [ref=f2e149]
+      - generic [ref=f2e153]:
+        - button "Sprint" [ref=f2e154] [cursor=pointer]
+        - button "Daily" [ref=f2e155] [cursor=pointer]
+        - button "Weekly" [ref=f2e156] [cursor=pointer]
+      - button "Add Sprint Goal" [ref=f2e157] [cursor=pointer]
+      - generic [ref=f2e160]:
+        - generic [ref=f2e165]: No sprint goals yet
+        - generic [ref=f2e166]: Add major goals you want to achieve during this period.
+      - generic [ref=f2e167]:
+        - heading "Goals Insights" [level=2] [ref=f2e168]
+        - generic [ref=f2e177]:
+          - generic [ref=f2e178]: Open Goals Tracker
+          - generic [ref=f2e179]:
+            - generic [ref=f2e180]: 0Sprint
+            - generic [ref=f2e182]: 0Daily
+            - generic [ref=f2e184]: 0Weekly

@@ -1,0 +1,128 @@
+- generic [ref=e1]:
+  - generic [ref=e263]:
+    - banner [ref=e264]:
+      - heading "Routine OS" [level=1] [ref=e265]
+      - generic [ref=e273]:
+        - generic [ref=e274]:
+          - generic [ref=e275]: Active Period
+          - generic [ref=e276]: No Dates Set
+        - generic [ref=e278]:
+          - generic [ref=e279]: Version 2
+          - button "Manage Versions" [active] [ref=e486] [cursor=pointer]
+    - main [ref=e297]:
+      - generic [ref=e298]:
+        - generic [ref=e299]:
+          - heading "Sprint Goals" [level=2] [ref=e300]
+          - button "Add Sprint Goal" [ref=e305] [cursor=pointer]
+          - generic [ref=e308]:
+            - generic [ref=e313]: No sprint goals yet
+            - generic [ref=e314]: Add major goals you want to achieve during this period.
+        - generic [ref=e315]:
+          - generic [ref=e316]: "Sprint Insights:"
+          - generic [ref=e319]:
+            - generic [ref=e323]: "Time left:"
+            - generic [ref=e324]: 168h 0m
+      - generic [ref=e325]:
+        - generic [ref=e326]:
+          - button "Calendar" [ref=e327] [cursor=pointer]
+          - button "Plans" [ref=e330] [cursor=pointer]
+        - generic [ref=e335]:
+          - generic [ref=e336]:
+            - generic [ref=e337]:
+              - button "Standard Workday" [ref=e339] [cursor=pointer]
+              - button "New Template" [ref=e340] [cursor=pointer]
+            - generic [ref=e342]:
+              - generic [ref=e343]:
+                - generic [ref=e344]: "Active on:"
+                - generic [ref=e348]:
+                  - button "M" [ref=e349] [cursor=pointer]
+                  - button "T" [ref=e350] [cursor=pointer]
+                  - button "W" [ref=e351] [cursor=pointer]
+                  - button "T" [ref=e352] [cursor=pointer]
+                  - button "F" [ref=e353] [cursor=pointer]
+                  - button "S" [ref=e354] [cursor=pointer]
+                  - button "S" [ref=e355] [cursor=pointer]
+              - generic [ref=e356]:
+                - button "Rename" [ref=e357] [cursor=pointer]
+                - button "Duplicate" [ref=e360] [cursor=pointer]
+                - button "Delete" [ref=e364] [cursor=pointer]
+          - generic [ref=e369]:
+            - generic [ref=e370]: 12 AM
+            - generic [ref=e373]: 1 AM
+            - generic [ref=e376]: 2 AM
+            - generic [ref=e379]: 3 AM
+            - generic [ref=e382]: 4 AM
+            - generic [ref=e385]: 5 AM
+            - generic [ref=e388]: 6 AM
+            - generic [ref=e391]: 7 AM
+            - generic [ref=e394]: 8 AM
+            - generic [ref=e397]: 9 AM
+            - generic [ref=e400]: 10 AM
+            - generic [ref=e403]: 11 AM
+            - generic [ref=e406]: 12 PM
+            - generic [ref=e410]: 1 PM
+            - generic [ref=e413]: 2 PM
+            - generic [ref=e416]: 3 PM
+            - generic [ref=e419]: 4 PM
+            - generic [ref=e422]: 5 PM
+            - generic [ref=e425]: 6 PM
+            - generic [ref=e428]: 7 PM
+            - generic [ref=e431]: 8 PM
+            - generic [ref=e434]: 9 PM
+            - generic [ref=e437]: 10 PM
+            - generic [ref=e440]: 11 PM
+          - generic [ref=e443]:
+            - button "Zoom Out" [ref=e444] [cursor=pointer]
+            - generic: 100%
+            - button "Zoom In" [ref=e448] [cursor=pointer]
+      - generic [ref=e452]:
+        - heading "Routine Goals" [level=2] [ref=e453]
+        - generic [ref=e457]:
+          - button "Daily" [ref=e458] [cursor=pointer]
+          - button "Weekly" [ref=e459] [cursor=pointer]
+        - button "Add Daily Goal" [ref=e460] [cursor=pointer]
+        - generic [ref=e462]:
+          - paragraph [ref=e463]: Drag tasks to the timeline to schedule them.
+          - generic [ref=e464]:
+            - generic [ref=e468]: No daily goals yet
+            - generic [ref=e469]: Start adding goals and drag them to schedule.
+        - generic [ref=e470]:
+          - generic [ref=e471]: "Open Goals:"
+          - generic [ref=e474]:
+            - generic [ref=e475]:
+              - generic [ref=e476]: "0"
+              - generic [ref=e477]: Sprint
+            - generic [ref=e479]:
+              - generic [ref=e480]: "0"
+              - generic [ref=e481]: Daily
+            - generic [ref=e483]:
+              - generic [ref=e484]: "0"
+              - generic [ref=e485]: Weekly
+  - generic [ref=e491]:
+    - generic [ref=e492]:
+      - heading "Version Manager" [level=3] [ref=e493]
+      - button [ref=e498] [cursor=pointer]
+    - generic [ref=e502]:
+      - generic [ref=e503]: Select Version
+      - generic [ref=e504]: Version 2
+    - generic [ref=e509]:
+      - button "New Version" [ref=e510] [cursor=pointer]
+      - button "Duplicate Version" [ref=e512] [cursor=pointer]
+      - button "Import Backup" [ref=e516] [cursor=pointer]
+      - button "Export Backup" [ref=e520] [cursor=pointer]
+      - button "Delete Version" [ref=e524] [cursor=pointer]
+    - generic [ref=e528]:
+      - generic [ref=e529]:
+        - generic [ref=e530]: Version Name
+        - textbox [ref=e531]: Version 2
+      - generic [ref=e532]:
+        - generic [ref=e533]: Description (optional)
+        - textbox [ref=e534]
+      - generic [ref=e535]:
+        - generic [ref=e536]:
+          - generic [ref=e537]: Start Date
+          - textbox [ref=e538] [cursor=pointer]
+        - generic [ref=e539]:
+          - generic [ref=e540]: End Date
+          - textbox [ref=e541] [cursor=pointer]
+    - button "Done" [ref=e543] [cursor=pointer]

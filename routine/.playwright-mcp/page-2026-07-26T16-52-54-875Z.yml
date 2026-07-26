@@ -1,0 +1,86 @@
+- generic [ref=f1e3]:
+  - banner [ref=f1e4]:
+    - heading "Routine OS" [level=1] [ref=f1e5]
+    - generic [ref=f1e13]:
+      - generic [ref=f1e14]:
+        - generic [ref=f1e15]: Active Period
+        - generic [ref=f1e16]: No Dates Set
+      - generic [ref=f1e18]:
+        - generic [ref=f1e19]: Version 2
+        - button "Manage Versions" [ref=f1e25] [cursor=pointer]
+  - main [ref=f1e29]:
+    - generic [ref=f1e30]:
+      - generic [ref=f1e31]:
+        - heading "Sprint Goals" [level=2] [ref=f1e32]
+        - button "Add Sprint Goal" [ref=f1e37] [cursor=pointer]
+        - generic [ref=f1e40]:
+          - generic [ref=f1e45]: No sprint goals yet
+          - generic [ref=f1e46]: Add major goals you want to achieve during this period.
+      - generic [ref=f1e47]:
+        - generic [ref=f1e48]: "Sprint Insights:"
+        - generic [ref=f1e51]:
+          - generic [ref=f1e55]: "Time left:"
+          - generic [ref=f1e56]: 24h 0m
+    - generic [ref=f1e57]:
+      - generic [ref=f1e58]:
+        - button "Calendar" [ref=f1e59] [cursor=pointer]
+        - button "Plans" [ref=f1e62] [cursor=pointer]
+      - generic [ref=f1e67]:
+        - generic [ref=f1e69]:
+          - generic [ref=f1e70]: Standard Workday
+          - generic [ref=f1e76]:
+            - generic [ref=f1e77]: "Active on:"
+            - generic [ref=f1e81]:
+              - button "M" [ref=f1e82] [cursor=pointer]
+              - button "T" [ref=f1e83] [cursor=pointer]
+              - button "W" [ref=f1e84] [cursor=pointer]
+              - button "T" [ref=f1e85] [cursor=pointer]
+              - button "F" [ref=f1e86] [cursor=pointer]
+              - button "S" [ref=f1e87] [cursor=pointer]
+              - button "S" [ref=f1e88] [cursor=pointer]
+          - generic [ref=f1e89]:
+            - button "New" [ref=f1e90] [cursor=pointer]
+            - button "Rename" [ref=f1e92] [cursor=pointer]
+            - button "Duplicate" [ref=f1e95] [cursor=pointer]
+          - button "Delete" [ref=f1e100] [cursor=pointer]
+        - generic [ref=f1e105]:
+          - generic [ref=f1e106]: 12 AM
+          - generic [ref=f1e109]: 1 AM
+          - generic [ref=f1e112]: 2 AM
+          - generic [ref=f1e115]: 3 AM
+          - generic [ref=f1e119]: 4 AM
+          - generic [ref=f1e122]: 5 AM
+          - generic [ref=f1e125]: 6 AM
+          - generic [ref=f1e128]: 7 AM
+          - generic [ref=f1e131]: 8 AM
+          - generic [ref=f1e134]: 9 AM
+          - generic [ref=f1e137]: 10 AM
+          - generic [ref=f1e140]: 11 AM
+          - generic [ref=f1e143]: 12 PM
+          - generic [ref=f1e147]: 1 PM
+          - generic [ref=f1e150]: 2 PM
+          - generic [ref=f1e153]: 3 PM
+          - generic [ref=f1e156]: 4 PM
+          - generic [ref=f1e159]: 5 PM
+          - generic [ref=f1e162]: 6 PM
+          - generic [ref=f1e165]: 7 PM
+          - generic [ref=f1e168]: 8 PM
+          - generic [ref=f1e171]: 9 PM
+          - generic [ref=f1e175]: 10 PM
+          - generic [ref=f1e178]: 11 PM
+        - generic [ref=f1e181]:
+          - button "Zoom Out" [ref=f1e182] [cursor=pointer]
+          - generic: 100%
+          - button "Zoom In" [ref=f1e186] [cursor=pointer]
+    - generic [ref=f1e190]:
+      - generic [ref=f1e191]:
+        - heading "Routine Goals" [level=2] [ref=f1e192]
+        - button "Add Goal" [ref=f1e196] [cursor=pointer]
+        - generic [ref=f1e199]:
+          - generic [ref=f1e203]: No goals yet
+          - generic [ref=f1e204]: Start adding goals and drag them to schedule.
+      - generic [ref=f1e205]:
+        - generic [ref=f1e206]: "Open Goals:"
+        - generic [ref=f1e209]:
+          - generic [ref=f1e213]: "Pending:"
+          - generic [ref=f1e214]: 0 Sprint, 0 Routine

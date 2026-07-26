@@ -1,0 +1,130 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "Routine OS" [level=1] [ref=e5]
+  - main [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - heading "Routine Version" [level=2] [ref=e16]
+            - generic [ref=e21]:
+              - button "New Version" [ref=e22] [cursor=pointer]
+              - button "Duplicate Version" [ref=e24] [cursor=pointer]
+              - button "Delete Version" [disabled] [ref=e28] [cursor=pointer]
+          - combobox [ref=e32]:
+            - option "Version 1" [selected]
+          - generic [ref=e33]:
+            - textbox "Version Name *" [ref=e34]: Version 1
+            - textbox "Description (optional)" [ref=e35]: Migrated version
+            - generic [ref=e36]:
+              - generic [ref=e37]:
+                - generic [ref=e38]: Start
+                - textbox [ref=e39]
+              - generic [ref=e40]:
+                - generic [ref=e41]: End
+                - textbox [ref=e42]
+        - separator [ref=e43]
+        - heading "Sprint Goals" [level=2] [ref=e44]
+        - button "Add Sprint Goal" [ref=e49] [cursor=pointer]
+        - generic [ref=e52]:
+          - generic [ref=e57]: No sprint goals yet
+          - generic [ref=e58]: Add major goals you want to achieve during this period.
+      - generic [ref=e59]:
+        - heading "Insights & Metrics" [level=2] [ref=e60]
+        - generic [ref=e63]:
+          - generic [ref=e69]:
+            - generic [ref=e70]: Time left to schedule (Standard Workday)
+            - generic [ref=e71]: 24h 0m
+          - generic [ref=e77]:
+            - generic [ref=e78]: Open Goals (Unaddressed & Unchecked)
+            - generic [ref=e79]:
+              - generic [ref=e80]: 0Sprint
+              - generic [ref=e82]: 0Daily
+              - generic [ref=e84]: 0Weekly
+    - generic [ref=e85]:
+      - generic [ref=e86]:
+        - generic [ref=e88]:
+          - combobox [ref=e92]:
+            - option "Select Template" [disabled]
+            - option "Standard Workday" [selected]
+          - generic [ref=e93]:
+            - button "Rename" [ref=e94] [cursor=pointer]
+            - button "Duplicate" [ref=e97] [cursor=pointer]
+            - button "Delete" [disabled] [ref=e101] [cursor=pointer]
+          - generic [ref=e105]:
+            - textbox "New Template" [ref=e106]
+            - button [ref=e107] [cursor=pointer]
+        - generic [ref=e109]:
+          - generic [ref=e112]: "Map Days:"
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]: Mon
+              - combobox [ref=e116]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e117]:
+              - generic [ref=e118]: Tue
+              - combobox [ref=e119]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e120]:
+              - generic [ref=e121]: Wed
+              - combobox [ref=e122]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e123]:
+              - generic [ref=e124]: Thu
+              - combobox [ref=e125]:
+                - option "-"
+                - option "Sta" [selected]
+            - generic [ref=e126]:
+              - generic [ref=e127]: Fri
+              - combobox [ref=e128]:
+                - option "-" [selected]
+                - option "Sta"
+            - generic [ref=e129]:
+              - generic [ref=e130]: Sat
+              - combobox [ref=e131]:
+                - option "-" [selected]
+                - option "Sta"
+            - generic [ref=e132]:
+              - generic [ref=e133]: Sun
+              - combobox [ref=e134]:
+                - option "-" [selected]
+                - option "Sta"
+      - generic [ref=e136]:
+        - generic [ref=e137]: 12 AM
+        - generic [ref=e140]: 1 AM
+        - generic [ref=e143]: 2 AM
+        - generic [ref=e146]: 3 AM
+        - generic [ref=e149]: 4 AM
+        - generic [ref=e152]: 5 AM
+        - generic [ref=e155]: 6 AM
+        - generic [ref=e158]: 7 AM
+        - generic [ref=e161]: 8 AM
+        - generic [ref=e164]: 9 AM
+        - generic [ref=e167]: 10 AM
+        - generic [ref=e170]: 11 AM
+        - generic [ref=e173]: 12 PM
+        - generic [ref=e177]: 1 PM
+        - generic [ref=e180]: 2 PM
+        - generic [ref=e183]: 3 PM
+        - generic [ref=e186]: 4 PM
+        - generic [ref=e189]: 5 PM
+        - generic [ref=e192]: 6 PM
+        - generic [ref=e195]: 7 PM
+        - generic [ref=e198]: 8 PM
+        - generic [ref=e201]: 9 PM
+        - generic [ref=e204]: 10 PM
+        - generic [ref=e207]: 11 PM
+    - generic [ref=e210]:
+      - heading "Routine Goals" [level=2] [ref=e211]
+      - generic [ref=e215]:
+        - button "Daily" [ref=e216] [cursor=pointer]
+        - button "Weekly" [ref=e217] [cursor=pointer]
+      - button "Add Daily Goal" [ref=e218] [cursor=pointer]
+      - generic [ref=e220]:
+        - paragraph [ref=e221]: Drag tasks to the timeline to schedule them.
+        - generic [ref=e222]:
+          - generic [ref=e226]: No daily goals yet
+          - generic [ref=e227]: Start adding goals and drag them to schedule.
