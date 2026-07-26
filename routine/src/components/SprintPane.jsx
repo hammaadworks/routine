@@ -70,11 +70,12 @@ export default function SprintPane({
   const [sortByName, setSortByName] = useState(false);
 
   const getLinkedCount = (goal) => {
-    const txt = goal.text.toLowerCase();
+    const txt = goal.text.toLowerCase().trim();
+    if (!txt) return 0;
     const linkedGoals = (routineGoals || []).filter(g => 
       g.sprintGoalId === goal.id || 
-      g.task.toLowerCase().includes(txt) || 
-      (g.desc && g.desc.toLowerCase().includes(txt))
+      g.task.toLowerCase().trim() === txt || 
+      (g.desc && g.desc.toLowerCase().trim() === txt)
     );
     return linkedGoals.length;
   };
@@ -83,8 +84,30 @@ export default function SprintPane({
   let unallocatedMins = 24 * 60;
   if (activeTemplateId) {
     const t = templates.find(temp => temp.id === activeTemplateId);
-    if (t) {
-      const allocated = t.blocks.reduce((acc, b) => acc + (b.duration || 0), 0);
+    if (t && t.blocks) {
+      const intervals = t.blocks.map(b => [b.startTime, b.startTime + (b.duration || 0)]);
+      intervals.sort((a, b) => a[0] - b[0]);
+      
+      let allocated = 0;
+      let currentStart = -1;
+      let currentEnd = -1;
+      
+      for (const [start, end] of intervals) {
+        if (currentEnd < start) {
+          if (currentStart !== -1) {
+            allocated += currentEnd - currentStart;
+          }
+          currentStart = start;
+          currentEnd = end;
+        } else {
+          currentEnd = Math.max(currentEnd, end);
+        }
+      }
+      
+      if (currentStart !== -1) {
+        allocated += currentEnd - currentStart;
+      }
+      
       unallocatedMins -= allocated;
     }
   }
@@ -130,12 +153,18 @@ export default function SprintPane({
             />
           </div>
           <button 
-            className="secondary" 
+            className={`secondary ${sortByName ? 'sort-active-glow' : ''}`}
             onClick={() => setSortByName(!sortByName)}
-            style={{ padding: '8px 12px', background: sortByName ? 'rgba(255,255,255,0.1)' : '' }}
+            style={{ 
+              padding: '8px 12px', 
+              background: sortByName ? 'var(--accent)' : '',
+              boxShadow: sortByName ? '0 0 12px var(--accent)' : 'none',
+              color: sortByName ? '#000' : 'currentColor',
+              borderColor: sortByName ? 'var(--accent)' : ''
+            }}
             title="Sort by Name"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sortByName ? 'var(--accent)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
           </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '8px 12px 8px 4px', marginTop: '-8px' }}>
@@ -157,7 +186,7 @@ export default function SprintPane({
                       className="checkbox-square" 
                       checked={goal.completed || false} 
                       onChange={() => toggleSprint(goal.id)} 
-                      style={{ borderColor: hex, '--accent': hex, flexShrink: 0 }}
+                      style={{ '--accent': hex, flexShrink: 0 }}
                     />
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
                       <span className="item-title" style={{ color: hex, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px', fontWeight: '500' }} title={goal.text}>
@@ -172,7 +201,7 @@ export default function SprintPane({
                   </div>
                 </div>
                 
-                <div 
+                  <div 
                   onClick={() => onSprintBadgeClick && onSprintBadgeClick(goal.id)}
                   title="Filter Routine Goals"
                   style={{
@@ -180,10 +209,10 @@ export default function SprintPane({
                   top: '-8px',
                   right: '-8px',
                   cursor: 'pointer',
-                  background: linkedCount > 0 ? hex : 'rgba(255,255,255,0.1)',
-                  color: linkedCount > 0 ? '#000' : 'var(--text-secondary)',
+                  background: linkedCount > 0 ? hex : '#fff',
+                  color: '#000',
                   fontSize: '11px',
-                  fontWeight: '800',
+                  fontWeight: '900',
                   minWidth: '22px',
                   height: '22px',
                   padding: '0 6px',
@@ -191,7 +220,7 @@ export default function SprintPane({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: linkedCount > 0 ? `0 4px 8px rgba(${r},${g},${b},0.3)` : 'none',
+                  boxShadow: linkedCount > 0 ? `0 4px 8px rgba(${r},${g},${b},0.3)` : '0 2px 8px rgba(255,255,255,0.4)',
                   border: '2px solid var(--panel-bg)',
                   zIndex: 10
                 }}>
@@ -268,12 +297,18 @@ export default function SprintPane({
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ flex: 1 }}>Cancel</button>
-                {editingSprintGoalId && (
-                  <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+              <div style={{ display: 'flex', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+                <div style={{ width: '5%' }} />
+                {editingSprintGoalId ? (
+                  <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ width: '20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0' }}>Delete</button>
+                ) : (
+                  <div style={{ width: '20%' }} />
                 )}
-                <button type="submit" className="primary" style={{ flex: 1 }}>{editingSprintGoalId ? 'Update Goal' : 'Add Goal'}</button>
+                <div style={{ width: '5%' }} />
+                <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ width: '20%', padding: '10px 0' }}>Cancel</button>
+                <div style={{ width: '5%' }} />
+                <button type="submit" className="primary" style={{ width: '40%', padding: '10px 0' }}>{editingSprintGoalId ? 'Update' : 'Save'}</button>
+                <div style={{ width: '5%' }} />
               </div>
             </form>
           </div>

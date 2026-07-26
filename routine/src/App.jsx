@@ -7,7 +7,7 @@ import PlansPane from './components/PlansPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
 import { createPortal } from 'react-dom';
-import { LayoutDashboard, Calendar, FileText, Settings, Plus, Copy, Trash2, Layers, X, Download, Upload } from 'lucide-react';
+import { LayoutDashboard, Calendar, FileText, Settings, Plus, Copy, Trash2, Layers, X, Download, Upload, DatabaseBackup } from 'lucide-react';
 import './index.css';
 
 export default function App() {
@@ -45,6 +45,7 @@ export default function App() {
   });
 
   const [activeCenterTab, setActiveCenterTab] = useState('calendar');
+  const [routineFilterSprintId, setRoutineFilterSprintId] = useState(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
   const fileInputRef = useRef(null);
@@ -145,15 +146,41 @@ export default function App() {
 
   const exportVersion = () => {
     const plans = JSON.parse(localStorage.getItem(`routine_plans_${activeVersion.id}`) || '[]');
+    const plansFolders = JSON.parse(localStorage.getItem(`routine_plans_folders_${activeVersion.id}`) || '[]');
     const backupData = {
       version: activeVersion,
-      plans: plans
+      plans: plans,
+      plansFolders: plansFolders
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     const safeName = activeVersion.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     downloadAnchorNode.setAttribute("download", `routine_os_backup_${safeName}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const exportAllData = () => {
+    const allPlans = {};
+    const allFolders = {};
+    versions.forEach(v => {
+      allPlans[v.id] = JSON.parse(localStorage.getItem(`routine_plans_${v.id}`) || '[]');
+      allFolders[v.id] = JSON.parse(localStorage.getItem(`routine_plans_folders_${v.id}`) || '[]');
+    });
+    
+    const backupData = {
+      isFullBackup: true,
+      versions: versions,
+      activeVersionId: activeVersionId,
+      allPlans,
+      allFolders
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `routine_os_full_backup_${Date.now()}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -166,7 +193,29 @@ export default function App() {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target.result);
-        if (data && data.version && data.version.id) {
+        
+        if (data.isFullBackup) {
+          setConfirmConfig({
+            title: 'Import Full Backup',
+            message: 'This will REPLACE all your existing versions and plans with the imported data. Are you absolutely sure?',
+            isDanger: true,
+            onConfirm: () => {
+              data.versions.forEach(v => {
+                if (data.allPlans && data.allPlans[v.id]) {
+                  localStorage.setItem(`routine_plans_${v.id}`, JSON.stringify(data.allPlans[v.id]));
+                }
+                if (data.allFolders && data.allFolders[v.id]) {
+                  localStorage.setItem(`routine_plans_folders_${v.id}`, JSON.stringify(data.allFolders[v.id]));
+                }
+              });
+              setVersions(data.versions);
+              setActiveVersionId(data.activeVersionId || data.versions[0].id);
+              setShowVersionModal(false);
+              setConfirmConfig(null);
+            },
+            onCancel: () => setConfirmConfig(null)
+          });
+        } else if (data && data.version && data.version.id) {
           const newId = Date.now().toString();
           const newVersion = {
             ...data.version,
@@ -176,6 +225,9 @@ export default function App() {
           setVersions(prev => [...prev, newVersion]);
           if (data.plans) {
             localStorage.setItem(`routine_plans_${newId}`, JSON.stringify(data.plans));
+          }
+          if (data.plansFolders) {
+            localStorage.setItem(`routine_plans_folders_${newId}`, JSON.stringify(data.plansFolders));
           }
           setActiveVersionId(newId);
           setShowVersionModal(false);
@@ -335,20 +387,26 @@ export default function App() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
               <button onClick={addVersion} className="secondary" title="New Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Plus size={16} /></button>
               <button onClick={duplicateVersion} className="secondary" title="Duplicate Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Copy size={16} /></button>
               
-              <button onClick={() => fileInputRef.current?.click()} className="secondary" title="Import Backup" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => fileInputRef.current?.click()} className="secondary" title="Import Backup (Single or Full)" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
                 <Upload size={16} />
               </button>
               <input type="file" ref={fileInputRef} accept=".json" style={{ display: 'none' }} onChange={importVersion} />
               
-              <button onClick={exportVersion} className="secondary" title="Export Backup" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={exportVersion} className="secondary" title="Export Current Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
                 <Download size={16} />
               </button>
 
               <button onClick={deleteVersion} className="secondary" style={{ color: 'var(--danger)', flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }} title="Delete Version"><Trash2 size={16} /></button>
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <button onClick={exportAllData} className="secondary" style={{ width: '100%', padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                <DatabaseBackup size={16} color="var(--accent)" /> Export Full Data (All Versions)
+              </button>
             </div>
 
             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>

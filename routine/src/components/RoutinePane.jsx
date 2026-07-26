@@ -161,7 +161,7 @@ export default function RoutinePane({
             />
           </div>
           <button 
-            className="secondary" 
+            className={`secondary ${(routineFilterSprintId || sortByName) ? 'sort-active-glow' : ''}`}
             onClick={() => {
               if (routineFilterSprintId && setRoutineFilterSprintId) {
                 setRoutineFilterSprintId(null);
@@ -169,13 +169,19 @@ export default function RoutinePane({
                 setSortByName(!sortByName);
               }
             }}
-            style={{ padding: '8px 12px', background: (routineFilterSprintId || sortByName) ? 'rgba(255,255,255,0.1)' : '' }}
+            style={{ 
+              padding: '8px 12px', 
+              background: (routineFilterSprintId || sortByName) ? 'var(--accent)' : '',
+              boxShadow: (routineFilterSprintId || sortByName) ? '0 0 12px var(--accent)' : 'none',
+              color: (routineFilterSprintId || sortByName) ? '#000' : 'currentColor',
+              borderColor: (routineFilterSprintId || sortByName) ? 'var(--accent)' : ''
+            }}
             title={routineFilterSprintId ? "Clear Filter" : "Sort by Name"}
           >
             {routineFilterSprintId ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sortByName ? 'var(--accent)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
             )}
           </button>
         </div>
@@ -185,7 +191,7 @@ export default function RoutinePane({
         {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
           const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-          const hex = linkedSprintGoal ? (linkedSprintGoal.color || '#eab308') : '#94a3b8';
+          const hex = linkedSprintGoal ? (linkedSprintGoal.color || '#eab308') : '#ffffff';
           const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
           
           const bgStyle = {
@@ -211,7 +217,7 @@ export default function RoutinePane({
                   <input 
                     type="checkbox" 
                     className="checkbox-square" 
-                    style={{ flexShrink: 0, borderColor: hex, '--accent': hex }}
+                    style={{ flexShrink: 0, '--accent': hex }}
                     checked={goal.completed || false} 
                     onChange={() => toggleGoal(goal.id)} 
                   />
@@ -342,12 +348,18 @@ export default function RoutinePane({
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                <button type="button" className="secondary" style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: '500' }} onClick={() => setShowRoutineGoalModal(false)}>Cancel</button>
-                {editingRoutineGoalId && (
-                  <button type="button" onClick={() => { deleteGoal(editingRoutineGoalId, routineGoalForm.task); setShowRoutineGoalModal(false); }} style={{ flex: 1, padding: '12px', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+              <div style={{ display: 'flex', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+                <div style={{ width: '5%' }} />
+                {editingRoutineGoalId ? (
+                  <button type="button" onClick={() => { deleteGoal(editingRoutineGoalId, routineGoalForm.task); setShowRoutineGoalModal(false); }} style={{ width: '20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+                ) : (
+                  <div style={{ width: '20%' }} />
                 )}
-                <button type="submit" style={{ flex: 2, padding: '12px', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Save Changes' : 'Create Goal'}</button>
+                <div style={{ width: '5%' }} />
+                <button type="button" className="secondary" style={{ width: '20%', padding: '12px 0', fontSize: '14px', fontWeight: '500' }} onClick={() => setShowRoutineGoalModal(false)}>Cancel</button>
+                <div style={{ width: '5%' }} />
+                <button type="submit" style={{ width: '40%', padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
+                <div style={{ width: '5%' }} />
               </div>
             </form>
           </div>
