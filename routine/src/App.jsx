@@ -316,7 +316,8 @@ export default function App() {
       <main className="main-content">
         <SprintPane 
           sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
-          routineGoals={routineGoals} templates={templates} setTemplates={setTemplates}
+          routineGoals={routineGoals} setRoutineGoals={setRoutineGoals} 
+          templates={templates} setTemplates={setTemplates}
           activeTemplateId={activeTemplateId} dayMapping={dayMapping}
           onSprintBadgeClick={(id) => setRoutineFilterSprintId(id)}
         />

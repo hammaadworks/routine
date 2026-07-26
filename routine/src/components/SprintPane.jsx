@@ -7,7 +7,7 @@ const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4'
 
 export default function SprintPane({ 
   sprintGoals, setSprintGoals, 
-  routineGoals, templates, setTemplates, 
+  routineGoals, setRoutineGoals, templates, setTemplates, 
   activeTemplateId, dayMapping,
   onSprintBadgeClick
 }) {
@@ -35,6 +35,20 @@ export default function SprintPane({
     if (!sprintGoalForm.text.trim()) return;
     if (editingSprintGoalId) {
       setSprintGoals(prev => prev.map(g => g.id === editingSprintGoalId ? { ...g, text: sprintGoalForm.text, color: sprintGoalForm.color } : g));
+      
+      if (templates && setTemplates && routineGoals) {
+        const linkedRoutineGoalIds = routineGoals.filter(g => g.sprintGoalId === editingSprintGoalId).map(g => g.id);
+        const updatedTemplates = templates.map(t => ({
+          ...t,
+          blocks: t.blocks.map(b => {
+            if (linkedRoutineGoalIds.includes(b.routineGoalId)) {
+              return { ...b, color: sprintGoalForm.color };
+            }
+            return b;
+          })
+        }));
+        setTemplates(updatedTemplates);
+      }
     } else {
       setSprintGoals([...sprintGoals, { id: 'sg-' + Date.now(), text: sprintGoalForm.text, color: sprintGoalForm.color, completed: false }]);
     }
@@ -48,15 +62,27 @@ export default function SprintPane({
   const deleteSprint = (id, text) => {
     setConfirmConfig({
       title: 'Delete Sprint Goal',
-      message: `Are you sure you want to delete the sprint goal: "${text}"?`,
+      message: `Are you sure you want to delete the sprint goal: "${text}"? Routine goals and calendar blocks linked to it will be unlinked (turned white).`,
       isDanger: true,
       onConfirm: () => {
         setSprintGoals(sprintGoals.filter(g => g.id !== id));
-        if (templates && setTemplates) {
-          const lowerText = text.toLowerCase();
+        
+        // 1. Unlink routine goals
+        if (routineGoals && setRoutineGoals) {
+          setRoutineGoals(routineGoals.map(g => g.sprintGoalId === id ? { ...g, sprintGoalId: '' } : g));
+        }
+
+        // 2. Unlink (turn white) calendar blocks linked to those routine goals
+        if (templates && setTemplates && routineGoals) {
+          const linkedRoutineGoalIds = routineGoals.filter(g => g.sprintGoalId === id).map(g => g.id);
           const updatedTemplates = templates.map(t => ({
             ...t,
-            blocks: t.blocks.filter(b => b.sprintGoalId !== id && !b.name.toLowerCase().includes(lowerText))
+            blocks: t.blocks.map(b => {
+              if (linkedRoutineGoalIds.includes(b.routineGoalId)) {
+                return { ...b, color: '#ffffff' };
+              }
+              return b;
+            })
           }));
           setTemplates(updatedTemplates);
         }
@@ -297,18 +323,12 @@ export default function SprintPane({
                 </div>
               </div>
 
-              <div style={{ display: 'flex', marginTop: '16px', width: '100%', padding: '8px 0' }}>
-                <div style={{ width: '5%' }} />
-                {editingSprintGoalId ? (
-                  <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ width: '20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0' }}>Delete</button>
-                ) : (
-                  <div style={{ width: '20%' }} />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+                {editingSprintGoalId && (
+                  <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ flex: '0 0 20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Delete</button>
                 )}
-                <div style={{ width: '5%' }} />
-                <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ width: '20%', padding: '10px 0' }}>Cancel</button>
-                <div style={{ width: '5%' }} />
-                <button type="submit" className="primary" style={{ width: '40%', padding: '10px 0' }}>{editingSprintGoalId ? 'Update' : 'Save'}</button>
-                <div style={{ width: '5%' }} />
+                <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ flex: editingSprintGoalId ? '0 0 25%' : '0 0 30%', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Cancel</button>
+                <button type="submit" className="primary" style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}>{editingSprintGoalId ? 'Update' : 'Save'}</button>
               </div>
             </form>
           </div>

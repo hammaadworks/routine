@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target } from 'lucide-react';
 import Dropdown from './Dropdown';
+import ConfirmModal from './ConfirmModal';
 import { parseDuration } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
@@ -18,6 +19,7 @@ export default function RoutinePane({
   const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState(null);
 
   const checkSprintAddressed = (goal) => {
     const explicitlyReferenced = (routineGoals || []).some(g => g.sprintGoalId === goal.id);
@@ -68,6 +70,7 @@ export default function RoutinePane({
       
       if (oldGoal && templates && setTemplates) {
         const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
+        const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goalData.sprintGoalId);
         const updatedTemplates = templates.map(t => ({
           ...t,
           blocks: t.blocks.map(b => {
@@ -76,7 +79,8 @@ export default function RoutinePane({
                 ...b, 
                 name: goalData.task, 
                 duration: timeString ? parseDuration(timeString) : b.duration,
-                routineGoalId: editingRoutineGoalId
+                routineGoalId: editingRoutineGoalId,
+                color: linkedSprintGoal?.color || '#ffffff'
               };
             }
             return b;
@@ -88,8 +92,7 @@ export default function RoutinePane({
       const newGoal = {
         ...goalData,
         id: 'rg-' + Date.now(),
-        completed: false,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)]
+        completed: false
       };
       setRoutineGoals([...(routineGoals || []), newGoal]);
     }
@@ -102,7 +105,7 @@ export default function RoutinePane({
 
   const handleDragStart = (e, goal) => {
     const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-    const hex = linkedSprintGoal?.color || goal.color || '#eab308';
+    const hex = linkedSprintGoal?.color || '#ffffff';
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
@@ -127,19 +130,29 @@ export default function RoutinePane({
 
   const openGoalCount = (routineGoals || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
 
-  const deleteGoal = (id, taskName) => {
-    // 1. Delete the goal from the pane
-    setRoutineGoals((routineGoals || []).filter(g => g.id !== id));
+  const confirmDeleteGoal = (id, taskName) => {
+    setConfirmConfig({
+      title: 'Delete Routine Goal',
+      message: `Are you sure you want to delete "${taskName}"? This will also remove any calendar blocks linked to it.`,
+      isDanger: true,
+      onConfirm: () => {
+        // 1. Delete the goal from the pane
+        setRoutineGoals((routineGoals || []).filter(g => g.id !== id));
 
-    // 2. Cascade delete blocks with matching names from the timeline
-    if (templates && setTemplates) {
-      const lowerTask = taskName.toLowerCase();
-      const updatedTemplates = templates.map(t => ({
-        ...t,
-        blocks: t.blocks.filter(b => b.name.toLowerCase() !== lowerTask)
-      }));
-      setTemplates(updatedTemplates);
-    }
+        // 2. Cascade delete blocks from the timeline
+        if (templates && setTemplates) {
+          const updatedTemplates = templates.map(t => ({
+            ...t,
+            blocks: t.blocks.filter(b => b.routineGoalId !== id)
+          }));
+          setTemplates(updatedTemplates);
+        }
+        
+        setShowRoutineGoalModal(false);
+        setConfirmConfig(null);
+      },
+      onCancel: () => setConfirmConfig(null)
+    });
   };
 
   let displayedRoutineGoals = (routineGoals || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -214,7 +227,7 @@ export default function RoutinePane({
         {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
           const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-          const hex = linkedSprintGoal?.color || goal.color || '#eab308';
+          const hex = linkedSprintGoal?.color || '#ffffff';
           const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
           
           const bgStyle = {
@@ -375,7 +388,7 @@ export default function RoutinePane({
               
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
                 {editingRoutineGoalId && (
-                  <button type="button" onClick={() => { deleteGoal(editingRoutineGoalId, routineGoalForm.task); setShowRoutineGoalModal(false); }} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+                  <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
                 )}
                 <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
               </div>
@@ -385,6 +398,16 @@ export default function RoutinePane({
         document.body
       )}
 
+      {/* Confirm Modal */}
+      {confirmConfig && (
+        <ConfirmModal 
+          title={confirmConfig.title}
+          message={confirmConfig.message}
+          isDanger={confirmConfig.isDanger}
+          onConfirm={confirmConfig.onConfirm}
+          onCancel={confirmConfig.onCancel}
+        />
+      )}
     </div>
   );
 }
