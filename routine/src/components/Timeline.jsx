@@ -253,7 +253,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       if (t.id === activeTemplateId) {
         return {
           ...t,
-          blocks: t.blocks.map(b => b.id === editingBlock.id ? { ...b, name: editingBlock.name, startTime: parseTime(editingBlock.startTimeStr), duration: parseDuration(editingBlock.duration) } : b)
+          blocks: t.blocks.map(b => b.id === editingBlock.id ? { ...b, startTime: parseTime(editingBlock.startTimeStr) } : b)
         };
       }
       return t;
@@ -527,7 +527,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
             <form onSubmit={saveEditedBlock} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>Task</label>
-                <input type="text" value={editingBlock.name} onChange={e => setEditingBlock({...editingBlock, name: e.target.value})} style={{ width: '100%' }} />
+                <input type="text" value={editingBlock.name} disabled style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} />
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
@@ -536,7 +536,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>Duration</label>
-                  <input type="text" value={editingBlock.duration} onChange={e => setEditingBlock({...editingBlock, duration: e.target.value})} style={{ width: '100%' }} />
+                  <input type="text" value={editingBlock.duration} disabled style={{ width: '100%', opacity: 0.5, cursor: 'not-allowed' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>

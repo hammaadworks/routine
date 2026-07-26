@@ -21,9 +21,10 @@ export default function RoutinePane({
   const checkSprintAddressed = (goal) => {
     const explicitlyReferenced = (routineGoals || []).some(g => g.sprintGoalId === goal.id);
     if (explicitlyReferenced) return true;
-    const txt = goal.text.toLowerCase();
-    const inGoals = (routineGoals || []).some(g => g.task.toLowerCase().includes(txt) || (g.desc && g.desc.toLowerCase().includes(txt)));
-    const inTimeline = templates?.some(t => t.blocks.some(b => b.name.toLowerCase().includes(txt)));
+    const txt = goal.text.toLowerCase().trim();
+    if (!txt) return false;
+    const inGoals = (routineGoals || []).some(g => g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
+    const inTimeline = templates?.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
     return inGoals || inTimeline;
   };
 
@@ -98,8 +99,9 @@ export default function RoutinePane({
     if (explicitlyReferenced) return true;
 
     // 2. Fallback to text matching
-    const txt = goal.task.toLowerCase();
-    return templates.some(t => t.blocks.some(b => b.name.toLowerCase().includes(txt)));
+    const txt = goal.task.toLowerCase().trim();
+    if (!txt) return false;
+    return templates.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
   };
 
   const openGoalCount = (routineGoals || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
@@ -123,11 +125,11 @@ export default function RoutinePane({
   if (routineFilterSprintId) {
     const sprintGoal = sprintGoals?.find(sg => sg.id === routineFilterSprintId);
     if (sprintGoal) {
-      const txt = sprintGoal.text.toLowerCase();
+      const txt = sprintGoal.text.toLowerCase().trim();
       displayedRoutineGoals = displayedRoutineGoals.filter(g => 
         g.sprintGoalId === routineFilterSprintId || 
-        g.task.toLowerCase().includes(txt) || 
-        (g.desc && g.desc.toLowerCase().includes(txt))
+        (txt && g.task.toLowerCase().trim() === txt) || 
+        (txt && g.desc && g.desc.toLowerCase().trim() === txt)
       );
     }
   }

@@ -7,7 +7,7 @@ import PlansPane from './components/PlansPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
 import { createPortal } from 'react-dom';
-import { LayoutDashboard, Calendar, FileText, Settings, Plus, Copy, Trash2, Layers, X, Download, Upload, DatabaseBackup } from 'lucide-react';
+import { LayoutDashboard, Calendar, FileText, Settings, Plus, Copy, Trash2, Layers, X, Download, Import, DatabaseBackup } from 'lucide-react';
 import './index.css';
 
 export default function App() {
@@ -392,20 +392,19 @@ export default function App() {
               <button onClick={duplicateVersion} className="secondary" title="Duplicate Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Copy size={16} /></button>
               
               <button onClick={() => fileInputRef.current?.click()} className="secondary" title="Import Backup (Single or Full)" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
-                <Upload size={16} />
+                <Import size={16} />
               </button>
               <input type="file" ref={fileInputRef} accept=".json" style={{ display: 'none' }} onChange={importVersion} />
-              
-              <button onClick={exportVersion} className="secondary" title="Export Current Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
-                <Download size={16} />
-              </button>
 
               <button onClick={deleteVersion} className="secondary" style={{ color: 'var(--danger)', flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }} title="Delete Version"><Trash2 size={16} /></button>
             </div>
             
-            <div style={{ marginBottom: '24px' }}>
-              <button onClick={exportAllData} className="secondary" style={{ width: '100%', padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                <DatabaseBackup size={16} color="var(--accent)" /> Export Full Data (All Versions)
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+              <button onClick={exportVersion} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                <Download size={16} /> Export Version
+              </button>
+              <button onClick={exportAllData} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                <DatabaseBackup size={16} color="var(--accent)" /> Export All Data
               </button>
             </div>
 
