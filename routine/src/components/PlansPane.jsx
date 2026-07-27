@@ -264,6 +264,30 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
     }
   }, [activeBlockIdx]);
 
+  const customMarkdownComponents = {
+    strong: ({ node, children, ...props }) => {
+      const text = String(children).trim();
+      if (text.startsWith('@')) {
+        const goalName = text.slice(1);
+        const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
+        if (goal && goal.color) {
+          return (
+            <strong {...props} style={{ color: goal.color, background: `${goal.color}20`, padding: '0 4px', borderRadius: '4px' }}>
+              {children}
+            </strong>
+          );
+        } else if (goal) {
+          return (
+            <strong {...props} style={{ color: 'var(--accent)', background: 'rgba(234, 179, 8, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
+              {children}
+            </strong>
+          );
+        }
+      }
+      return <strong {...props}>{children}</strong>;
+    }
+  };
+
   const filteredNotes = notes.filter(n => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
@@ -483,7 +507,9 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
                         />
                       ) : (
                         <div className="markdown-preview" style={{ minHeight: '24px' }}>
-                          <ReactMarkdown>{block === '' ? '\u00A0' : block}</ReactMarkdown>
+                          <ReactMarkdown components={customMarkdownComponents}>
+                            {block === '' ? '\u00A0' : block}
+                          </ReactMarkdown>
                         </div>
                       )}
                     </div>

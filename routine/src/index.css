@@ -104,17 +104,33 @@ body {
   .layout {
     height: auto;
     overflow: visible;
+    padding: 16px;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
   }
   .main-content {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     overflow-y: visible;
   }
-  .main-content > :nth-child(1) { order: 1; } /* SprintPane */
-  .main-content > :nth-child(3) { order: 2; } /* RoutinePane */
-  .main-content > :nth-child(2) { order: 3; } /* timeline-area */
-  
+  .main-content > :nth-child(2) { order: 1; } /* timeline-area */
+  .main-content > :nth-child(3) { order: 2; } /* RoutinePane (relevant when Calendar is active) */
+  .main-content > :nth-child(1) { order: 3; } /* SprintPane */
+
   .panel, .timeline-area {
-    min-height: 600px;
+    min-height: 400px;
+    padding: 16px;
+  }
+  .pane.right-pane {
+    width: 100% !important;
   }
 }
 

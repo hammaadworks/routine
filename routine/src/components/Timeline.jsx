@@ -500,7 +500,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
           {/* Overlapping GCal-style Blocks */}
           {laidOutBlocks.map(block => {
-            const hex = block.color || '#eab308';
+            const hex = block.color || '#ffffff';
             return (
               <div 
                 key={block.id} 

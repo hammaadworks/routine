@@ -445,6 +445,7 @@ export default function App() {
           routineFilterSprintId={routineFilterSprintId}
           setRoutineFilterSprintId={setRoutineFilterSprintId}
           selectedTargetDate={activeCenterTab === 'target' ? selectedTargetDate : null}
+          setSelectedTargetDate={setSelectedTargetDate}
           dailyLogs={activeVersion.dailyLogs || {}}
           toggleDailyGoal={toggleDailyGoal}
           dayMapping={dayMapping}

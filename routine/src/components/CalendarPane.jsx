@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Flag, Plus, Trash2, X } from 'lucide-react';
 import Dropdown from './Dropdown';
 
@@ -8,6 +8,17 @@ const TargetPane = ({
   routineGoals, templates, dayMapping,
   setCalendarSubTab
 }) => {
+
+  useEffect(() => {
+    if (selectedTargetDate) {
+      setTimeout(() => {
+        const el = document.getElementById(`calendar-day-${selectedTargetDate}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [selectedTargetDate]);
 
   if (!activeVersion.start || !activeVersion.end) {
     return (
@@ -159,7 +170,25 @@ const TargetPane = ({
                 const isToday = dateStr === formatDate(new Date());
                 const isSelected = selectedTargetDate === dateStr;
                 const completed = isDateComplete(dateStr);
-                const hasMilestone = !!milestones[dateStr];
+                const dayMilestonesText = milestones[dateStr] || '';
+                const hasMilestone = dayMilestonesText.trim().length > 0;
+                
+                let tags = [];
+                const tagRegex = /\*\*@([^*]+)\*\*/g;
+                let match;
+                while ((match = tagRegex.exec(dayMilestonesText)) !== null) {
+                  tags.push(match[1]);
+                }
+                tags = [...new Set(tags)];
+                const tagColors = tags.map(tag => {
+                  const goal = sprintGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
+                            || routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
+                  return goal?.color || 'var(--accent)';
+                });
+                
+                if (hasMilestone && tagColors.length === 0) {
+                  tagColors.push('var(--accent)');
+                }
                 
                 let bg = 'transparent';
                 let borderColor = 'transparent';
@@ -199,6 +228,7 @@ const TargetPane = ({
                 return (
                   <div 
                     key={`day-${d.getDate()}`}
+                    id={`calendar-day-${dateStr}`}
                     onClick={() => {
                       if (inRange) {
                         setSelectedTargetDate(isSelected ? null : dateStr);
@@ -206,7 +236,7 @@ const TargetPane = ({
                       }
                     }}
                     style={{
-                      padding: '12px 8px',
+                      padding: '8px 4px',
                       borderRadius: '8px',
                       background: bg,
                       border: `1px solid ${borderColor}`,
@@ -227,7 +257,7 @@ const TargetPane = ({
                     }}
                   >
                     {d.getDate()}
-                    {hasMilestone && (
+                    {tagColors.length > 0 && (
                       <div 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -238,18 +268,23 @@ const TargetPane = ({
                         }}
                         style={{
                           position: 'absolute',
-                          top: -1,
-                          right: -1,
-                          width: '0',
-                          height: '0',
-                          borderTop: `18px solid ${completed ? '#000' : 'var(--accent)'}`,
-                          borderLeft: '18px solid transparent',
-                          borderTopRightRadius: '8px',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '6px',
+                          display: 'flex',
+                          borderTopLeftRadius: '7px',
+                          borderTopRightRadius: '7px',
+                          overflow: 'hidden',
                           cursor: 'pointer',
-                          opacity: 0.9
+                          opacity: completed ? 1 : 0.8
                         }}
                         title="View Milestones"
-                      />
+                      >
+                        {tagColors.map((c, i) => (
+                          <div key={i} style={{ flex: 1, background: c }} />
+                        ))}
+                      </div>
                     )}
                   </div>
                 );

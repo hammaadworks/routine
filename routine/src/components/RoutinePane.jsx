@@ -15,7 +15,7 @@ export default function RoutinePane({
   sprintGoals, setSprintGoals, 
   activeTemplateId,
   routineFilterSprintId, setRoutineFilterSprintId,
-  selectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
+  selectedTargetDate, setSelectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
   isCalendarTab, activeVersion, updateActiveVersion, calendarSubTab, setCalendarSubTab
 }) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
@@ -24,14 +24,120 @@ export default function RoutinePane({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [milestoneForm, setMilestoneForm] = useState({ date: '', title: '', desc: '' });
 
   
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [activeModalField, setActiveModalField] = useState(null);
   const [activeBlockIdx, setActiveBlockIdx] = useState(null);
+  
+    const handleModalInput = (e, field) => {
+    const val = e.target.value;
+    setMilestoneForm(prev => ({ ...prev, [field]: val }));
+    
+    const cursor = e.target.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const lastWord = textBefore.split(/\s/).pop();
+    
+    if (lastWord.startsWith('@')) {
+      const q = lastWord.slice(1).toLowerCase();
+      setMentionQuery(q);
+      setShowMentionMenu(true);
+      setActiveModalField(field);
+      setMentionIndex(0);
+      
+      const coords = getCaretCoordinates(e.target, cursor);
+      const rect = e.target.getBoundingClientRect();
+      const containerRect = e.target.parentElement.getBoundingClientRect();
+      
+      setMentionCoords({
+        top: coords.top + 24 + (rect.top - containerRect.top),
+        left: coords.left
+      });
+    } else {
+      setShowMentionMenu(false);
+      setActiveModalField(null);
+    }
+  };
+
+  const insertModalMention = (goal, field) => {
+    const val = milestoneForm[field];
+    const el = modalInputRefs.current[field];
+    if (!el) return;
+    
+    const cursor = el.selectionStart;
+    const textBefore = val.slice(0, cursor);
+    const textAfter = val.slice(cursor);
+    const words = textBefore.split(/\s/);
+    words.pop();
+    
+    const goalText = (goal.task || goal.text).replace(/\s+/g, '-');
+    const newBefore = words.join(' ') + (words.length > 0 ? ' ' : '') + '@' + goalText + ' ';
+    const newVal = newBefore + textAfter;
+    
+    setMilestoneForm(prev => ({ ...prev, [field]: newVal }));
+    setShowMentionMenu(false);
+    setActiveModalField(null);
+    
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(newBefore.length, newBefore.length);
+    }, 0);
+  };
+
+  const handleModalKeyDown = (e, field) => {
+    if (showMentionMenu && activeModalField === field) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(i => Math.min(i + 1, filteredGoals.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(i => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (filteredGoals[mentionIndex]) {
+          insertModalMention(filteredGoals[mentionIndex], field);
+        }
+      } else if (e.key === 'Escape') {
+        setShowMentionMenu(false);
+        setActiveModalField(null);
+      }
+    }
+  };
+
+  const saveMilestone = (e) => {
+    e.preventDefault();
+    if (!milestoneForm.date || !milestoneForm.title) return;
+    
+    const dateStr = milestoneForm.date;
+    const title = milestoneForm.title.trim();
+    const desc = milestoneForm.desc.trim();
+    
+    let newBlock = `**${title}**`;
+    if (desc) newBlock += `\n${desc}`;
+    
+    const current = (activeVersion.milestones || {})[dateStr] || '';
+    const updated = current ? current + '\n\n' + newBlock : newBlock;
+    
+    updateActiveVersion({
+      ...activeVersion,
+      milestones: {
+        ...(activeVersion.milestones || {}),
+        [dateStr]: updated
+      }
+    });
+    
+    setShowMilestoneModal(false);
+    setMilestoneForm({ date: '', title: '', desc: '' });
+    setCalendarSubTab('milestones');
+    if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
+  };
   const textareaRefs = useRef({});
+  const modalInputRefs = useRef({});
 
   const allGoals = [
     ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
@@ -43,22 +149,22 @@ export default function RoutinePane({
   );
 
   const getMilestonesContent = () => {
-    if (!selectedTargetDate) return '';
-    return (activeVersion?.milestones || {})[selectedTargetDate] || '';
+    if (!effectiveDate) return '';
+    return (activeVersion?.milestones || {})[effectiveDate] || '';
   };
 
   const updateMilestonesContent = (newContent) => {
-    if (!selectedTargetDate) return;
+    if (!effectiveDate) return;
     const currentMilestones = activeVersion?.milestones || {};
     updateActiveVersion({
       milestones: {
         ...currentMilestones,
-        [selectedTargetDate]: newContent
+        [effectiveDate]: newContent
       }
     });
   };
 
-  const handleKeyDown = (e, idx) => {
+  const handleKeyDown = (e, dateStr, idx) => {
     if (showMentionMenu) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -69,7 +175,7 @@ export default function RoutinePane({
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (filteredGoals.length > 0) {
-          insertMention(filteredGoals[mentionIndex], idx);
+          insertMention(filteredGoals[mentionIndex], dateStr, idx);
         }
       } else if (e.key === 'Escape') {
         setShowMentionMenu(false);
@@ -77,7 +183,7 @@ export default function RoutinePane({
       return;
     }
 
-    const blocks = getMilestonesContent().split('\n\n');
+    const blocks = getMilestonesContent(dateStr).split('\n\n');
     
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -89,33 +195,33 @@ export default function RoutinePane({
       const newBlocks = [...blocks];
       newBlocks[idx] = before;
       newBlocks.splice(idx + 1, 0, after);
-      updateMilestonesContent(newBlocks.join('\n\n'));
-      setActiveBlockIdx(idx + 1);
+      updateMilestonesContent(dateStr, newBlocks.join('\n\n'));
+      setActiveBlockIdx({ dateStr, idx: idx + 1 });
     } else if (e.key === 'Backspace' && e.target.selectionStart === 0 && idx > 0) {
       e.preventDefault();
       const prevBlock = blocks[idx - 1];
       const newBlocks = [...blocks];
       newBlocks[idx - 1] = prevBlock + (newBlocks[idx] ? '\n\n' + newBlocks[idx] : '');
       newBlocks.splice(idx, 1);
-      updateMilestonesContent(newBlocks.join('\n\n'));
-      setActiveBlockIdx(idx - 1);
+      updateMilestonesContent(dateStr, newBlocks.join('\n\n'));
+      setActiveBlockIdx({ dateStr, idx: idx - 1 });
       setTimeout(() => {
-        const ref = textareaRefs.current[idx - 1];
+        const ref = textareaRefs.current[`${dateStr}-${idx - 1}`];
         if (ref) {
           ref.focus();
           ref.selectionStart = ref.selectionEnd = prevBlock.length;
         }
       }, 0);
     } else if (e.key === 'ArrowUp' && e.target.selectionStart === 0 && idx > 0) {
-      setActiveBlockIdx(idx - 1);
+      setActiveBlockIdx({ dateStr, idx: idx - 1 });
     } else if (e.key === 'ArrowDown' && e.target.selectionStart === e.target.value.length && idx < blocks.length - 1) {
-      setActiveBlockIdx(idx + 1);
+      setActiveBlockIdx({ dateStr, idx: idx + 1 });
     }
   };
 
-  const handleInput = (e, idx) => {
+  const handleInput = (e, dateStr, idx) => {
     const val = e.target.value;
-    const blocks = getMilestonesContent().split('\n\n');
+    const blocks = getMilestonesContent(dateStr).split('\n\n');
     blocks[idx] = val;
     updateMilestonesContent(blocks.join('\n\n'));
     
@@ -145,12 +251,12 @@ export default function RoutinePane({
     }
   };
 
-  const insertMention = (goal, idx) => {
+  const insertMention = (goal, dateStr, idx) => {
     const goalText = goal.task || goal.text;
-    const ref = textareaRefs.current[idx];
+    const ref = textareaRefs.current[`${dateStr}-${idx}`];
     const cursor = ref.selectionStart;
     
-    const blocks = getMilestonesContent().split('\n\n');
+    const blocks = getMilestonesContent(dateStr).split('\n\n');
     const blockContent = blocks[idx];
     const textBeforeCursor = blockContent.slice(0, cursor);
     const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
@@ -160,13 +266,13 @@ export default function RoutinePane({
       const newText = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
       
       blocks[idx] = newText;
-      updateMilestonesContent(blocks.join('\n\n'));
+      updateMilestonesContent(dateStr, blocks.join('\n\n'));
       
       setTimeout(() => {
-        if (textareaRefs.current[idx]) {
+        if (textareaRefs.current[`${dateStr}-${idx}`]) {
           const newCursorPos = startIdx + goalText.length + 4;
-          textareaRefs.current[idx].selectionStart = textareaRefs.current[idx].selectionEnd = newCursorPos;
-          textareaRefs.current[idx].focus();
+          textareaRefs.current[`${dateStr}-${idx}`].selectionStart = textareaRefs.current[`${dateStr}-${idx}`].selectionEnd = newCursorPos;
+          textareaRefs.current[`${dateStr}-${idx}`].focus();
         }
       }, 0);
     }
@@ -174,11 +280,14 @@ export default function RoutinePane({
   };
 
   useEffect(() => {
-    if (activeBlockIdx !== null && textareaRefs.current[activeBlockIdx]) {
-      const ref = textareaRefs.current[activeBlockIdx];
-      ref.focus();
-      ref.style.height = 'auto';
-      ref.style.height = (ref.scrollHeight) + 'px';
+    if (activeBlockIdx !== null) {
+      const refKey = `${activeBlockIdx.dateStr}-${activeBlockIdx.idx}`;
+      if (textareaRefs.current[refKey]) {
+        const ref = textareaRefs.current[refKey];
+        ref.focus();
+        ref.style.height = 'auto';
+        ref.style.height = (ref.scrollHeight) + 'px';
+      }
     }
   }, [activeBlockIdx]);
 
@@ -245,12 +354,12 @@ export default function RoutinePane({
         const updatedTemplates = templates.map(t => ({
           ...t,
           blocks: t.blocks.map(b => {
-            if (b.routineGoalId === editingRoutineGoalId || b.name.toLowerCase().trim() === oldTaskLower) {
+            if (String(b.routineGoalId) === String(editingRoutineGoalId) || b.name.toLowerCase().trim() === oldTaskLower) {
               return { 
                 ...b, 
                 name: goalData.task, 
                 duration: timeString ? parseDuration(timeString) : b.duration,
-                routineGoalId: editingRoutineGoalId,
+                routineGoalId: String(editingRoutineGoalId),
                 color: linkedSprintGoal?.color || '#ffffff'
               };
             }
@@ -276,7 +385,7 @@ export default function RoutinePane({
 
   const handleDragStart = (e, goal) => {
     const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-    const hex = linkedSprintGoal?.color || goal.color || '#eab308';
+    const hex = linkedSprintGoal?.color || '#ffffff';
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
@@ -290,7 +399,7 @@ export default function RoutinePane({
     if (!templates) return false;
     
     // 1. Check explicit linking
-    const explicitlyReferenced = templates.some(t => t.blocks.some(b => b.routineGoalId === goal.id));
+    const explicitlyReferenced = templates.some(t => t.blocks.some(b => String(b.routineGoalId) === String(goal.id)));
     if (explicitlyReferenced) return true;
 
     // 2. Fallback to text matching
@@ -347,10 +456,29 @@ export default function RoutinePane({
     return routineGoals;
   };
 
+  const getTodayStr = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  
+  const formatHeaderDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'long' });
+    const getOrdinalNum = (n) => n + (n > 0 ? ['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] : '');
+    return `${getOrdinalNum(day)} ${month}`;
+  };
+  
+  const effectiveDate = (isCalendarTab && !selectedTargetDate) ? getTodayStr() : selectedTargetDate;
+
   let displayedRoutineGoals = [];
   
-  if (selectedTargetDate) {
-    displayedRoutineGoals = getScheduledGoalsForDate(selectedTargetDate);
+  if (effectiveDate) {
+    displayedRoutineGoals = getScheduledGoalsForDate(effectiveDate);
   } else {
     displayedRoutineGoals = (routineGoals || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
     if (routineFilterSprintId) {
@@ -369,8 +497,50 @@ export default function RoutinePane({
     }
   }
 
+  const milestoneDates = Object.keys(activeVersion.milestones || {}).filter(d => (activeVersion.milestones[d] || '').trim() !== '');
+  if (selectedTargetDate && !milestoneDates.includes(selectedTargetDate)) {
+    milestoneDates.push(selectedTargetDate);
+  }
+  milestoneDates.sort((a, b) => new Date(a) - new Date(b));
+
+  useEffect(() => {
+    if (isCalendarTab && calendarSubTab === 'milestones' && effectiveDate) {
+      setTimeout(() => {
+        const el = document.getElementById(`milestone-block-${effectiveDate}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [effectiveDate, isCalendarTab, calendarSubTab]);
+
+  // Parse markdown to render colored tags
+  const customMarkdownComponents = {
+    strong: ({ node, children, ...props }) => {
+      const text = String(children).trim();
+      if (text.startsWith('@')) {
+        const goalName = text.slice(1);
+        const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
+        if (goal && goal.color) {
+          return (
+            <strong {...props} style={{ color: goal.color, background: `${goal.color}20`, padding: '0 4px', borderRadius: '4px' }}>
+              {children}
+            </strong>
+          );
+        } else if (goal) {
+          return (
+            <strong {...props} style={{ color: 'var(--accent)', background: 'rgba(234, 179, 8, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
+              {children}
+            </strong>
+          );
+        }
+      }
+      return <strong {...props}>{children}</strong>;
+    }
+  };
+
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+    <div className="pane right-pane" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', overflow: 'hidden', minHeight: 0 }}>
         {isCalendarTab && (
           <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
@@ -391,9 +561,9 @@ export default function RoutinePane({
 
         {(!isCalendarTab || calendarSubTab === 'mark_goals') && (
           <>
-            {selectedTargetDate ? (
+            {effectiveDate ? (
               <h2 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Target size={18} color="var(--accent)" /> Goals for {selectedTargetDate}
+                <Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}
               </h2>
             ) : (
               <>
@@ -463,7 +633,7 @@ export default function RoutinePane({
             borderRadius: '12px',
           };
 
-          const isCompletedForView = selectedTargetDate ? (dailyLogs?.[selectedTargetDate]?.[goal.id] || false) : (goal.completed || false);
+          const isCompletedForView = effectiveDate ? (dailyLogs?.[effectiveDate]?.[goal.id] || false) : (goal.completed || false);
           return (
             <div 
               key={goal.id} 
@@ -480,10 +650,10 @@ export default function RoutinePane({
                     type="checkbox" 
                     className="checkbox-square" 
                     style={{ flexShrink: 0, '--accent': hex }}
-                    checked={selectedTargetDate ? (dailyLogs?.[selectedTargetDate]?.[goal.id] || false) : (goal.completed || false)} 
+                    checked={effectiveDate ? (dailyLogs?.[effectiveDate]?.[goal.id] || false) : (goal.completed || false)} 
                     onChange={() => {
-                      if (selectedTargetDate) {
-                        toggleDailyGoal(selectedTargetDate, goal.id);
+                      if (effectiveDate) {
+                        toggleDailyGoal(effectiveDate, goal.id);
                       } else {
                         toggleGoal(goal.id);
                       }
@@ -509,7 +679,7 @@ export default function RoutinePane({
                   </div>
                 </div>
                 
-                {!selectedTargetDate && (
+                {!effectiveDate && (
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
                     <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '4px' }}>
                       <Copy size={14} />
@@ -540,63 +710,123 @@ export default function RoutinePane({
 
         {isCalendarTab && calendarSubTab === 'milestones' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto' }}>
-            {!selectedTargetDate ? (
+            <button 
+              onClick={() => setShowMilestoneModal(true)} className="secondary" 
+              style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
+            >
+              <Plus size={16} /> Add Milestone
+            </button>
+            {milestoneDates.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 Select a date in the calendar to write milestones.
               </div>
             ) : (
-              <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative' }}>
-                {(getMilestonesContent() || '').split('\n\n').map((block, idx) => {
-                  const isActive = activeBlockIdx === idx;
-                  
-                  return (
-                    <div 
-                      key={idx} 
-                      onClick={() => setActiveBlockIdx(idx)}
-                      style={{ 
-                        minHeight: '28px', 
-                        cursor: isActive ? 'text' : 'pointer',
-                        padding: '4px 0',
-                        marginBottom: '8px'
-                      }}
-                    >
-                      {isActive ? (
-                        <textarea
-                          ref={el => textareaRefs.current[idx] = el}
-                          value={block}
-                          onChange={e => handleInput(e, idx)}
-                          onKeyDown={e => handleKeyDown(e, idx)}
-                          onBlur={() => setActiveBlockIdx(null)}
-                          placeholder={idx === 0 && !block ? "Write your milestones for this day... (Use @ to tag goals)" : ""}
-                          style={{
-                            width: '100%', resize: 'none', background: 'transparent', 
-                            border: 'none', color: 'var(--text-primary)', padding: 0,
-                            fontSize: '14px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
-                            fontFamily: 'inherit', overflow: 'hidden'
+              <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px' }}>
+                <div style={{ borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px' }}>
+                  {milestoneDates.map((dateStr) => {
+                    const contentStr = getMilestonesContent(dateStr);
+                    const blocks = (contentStr || '').split('\n\n');
+                    const isActiveDate = effectiveDate === dateStr;
+                    
+                    const todayDate = new Date();
+                    todayDate.setHours(0, 0, 0, 0);
+                    const blockDate = new Date(dateStr);
+                    blockDate.setHours(0, 0, 0, 0);
+                    const isPast = blockDate < todayDate;
+                    let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
+                    let multiColors = [];
+                    const tagsMatch = contentStr.match(/@([^\s*]+)/g);
+                    if (tagsMatch) {
+                      const uniqueTags = [...new Set(tagsMatch.map(t => t.slice(1).toLowerCase()))];
+                      uniqueTags.forEach(tag => {
+                        const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === tag);
+                        if (goal && goal.color) {
+                          multiColors.push(goal.color);
+                        }
+                      });
+                    }
+                    
+                    let backgroundStyle = nodeColor;
+                    if (multiColors.length > 1) {
+                      const sliceSize = 100 / multiColors.length;
+                      let gradientStops = [];
+                      multiColors.forEach((color, i) => {
+                        gradientStops.push(`${color} ${i * sliceSize}% ${(i + 1) * sliceSize}%`);
+                      });
+                      backgroundStyle = `conic-gradient(${gradientStops.join(', ')})`;
+                    } else if (multiColors.length === 1) {
+                      backgroundStyle = multiColors[0];
+                      nodeColor = multiColors[0];
+                    }
+                    
+                    return (
+                      <div key={dateStr} id={`milestone-block-${dateStr}`} style={{ position: 'relative', marginBottom: '40px', paddingLeft: '24px' }}>
+                        <div style={{ position: 'absolute', left: '-7px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', background: backgroundStyle, border: '2px solid var(--panel-bg)', boxShadow: isActiveDate ? `0 0 10px ${nodeColor}80` : 'none', opacity: isActiveDate ? 1 : 0.6 }} />
+                        <div 
+                          onClick={() => {
+                            if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
+                          }}
+                          style={{ fontSize: '16px', fontWeight: 'bold', color: isActiveDate ? '#fff' : 'var(--text-secondary)', marginBottom: '16px', cursor: 'pointer', display: 'inline-block' }}
+                        >
+                          {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                        
+                        {blocks.map((block, idx) => {
+                          const isActive = activeBlockIdx && activeBlockIdx.dateStr === dateStr && activeBlockIdx.idx === idx;
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => setActiveBlockIdx({ dateStr, idx })}
+                              style={{ 
+                                minHeight: '28px', 
+                                cursor: isActive ? 'text' : 'pointer',
+                                padding: '4px 0',
+                                marginBottom: '8px'
+                              }}
+                            >
+                              {isActive ? (
+                                <textarea
+                                  ref={el => textareaRefs.current[`${dateStr}-${idx}`] = el}
+                                  value={block}
+                                  onChange={e => handleInput(e, dateStr, idx)}
+                                  onKeyDown={e => handleKeyDown(e, dateStr, idx)}
+                                  onBlur={() => setActiveBlockIdx(null)}
+                                  placeholder={idx === 0 && !block ? "Write your milestones for this day... (Use @ to tag goals)" : ""}
+                                  style={{
+                                    width: '100%', resize: 'none', background: 'transparent', 
+                                    border: 'none', color: 'var(--text-primary)', padding: 0,
+                                    fontSize: '14px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
+                                    fontFamily: 'inherit', overflow: 'hidden'
+                                  }}
+                                />
+                              ) : (
+                                <div className="markdown-preview" style={{ minHeight: '24px' }}>
+                                  <ReactMarkdown components={customMarkdownComponents}>
+                                    {block === '' ? '\u00A0' : block}
+                                  </ReactMarkdown>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        <div 
+                          style={{ height: '24px', cursor: 'text' }} 
+                          onClick={() => {
+                            if (blocks[blocks.length - 1] !== '') {
+                              updateMilestonesContent(dateStr, contentStr + '\n\n');
+                            }
+                            setActiveBlockIdx({ dateStr, idx: blocks.length });
                           }}
                         />
-                      ) : (
-                        <div className="markdown-preview" style={{ minHeight: '24px' }}>
-                          <ReactMarkdown>{block === '' ? '\u00A0' : block}</ReactMarkdown>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                <div 
-                  style={{ height: '30vh', cursor: 'text' }} 
-                  onClick={() => {
-                    const contentStr = getMilestonesContent();
-                    const blocks = (contentStr || '').split('\n\n');
-                    if (blocks[blocks.length - 1] !== '') {
-                      updateMilestonesContent(contentStr + '\n\n');
-                    }
-                    setActiveBlockIdx(blocks.length);
-                  }}
-                />
+                      </div>
+                    );
+                  })}
+                </div>
                 
-                {showMentionMenu && filteredGoals.length > 0 && (
+                <div style={{ height: '20vh' }} />
+
+                {showMentionMenu && filteredGoals.length > 0 && activeBlockIdx && (
                   <div 
                     style={{
                       position: 'absolute',
@@ -617,7 +847,7 @@ export default function RoutinePane({
                         key={g.id}
                         onMouseDown={(e) => {
                           e.preventDefault(); 
-                          insertMention(g, activeBlockIdx);
+                          insertMention(g, activeBlockIdx.dateStr, activeBlockIdx.idx);
                         }}
                         onMouseEnter={() => setMentionIndex(i)}
                         style={{
@@ -734,6 +964,156 @@ export default function RoutinePane({
                   <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
                 )}
                 <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      
+      {/* Add Milestone Modal */}
+      {showMilestoneModal && createPortal(
+        <div className="modal-overlay" onClick={() => setShowMilestoneModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '460px', padding: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+              <div>
+                <h3 style={{ color: '#fff', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '20px' }}>
+                  <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '8px' }}>
+                    <Plus size={20} color="#a855f7" /> 
+                  </div>
+                  Add Milestone
+                </h3>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Mark an important event or deadline on your calendar.
+                </p>
+              </div>
+              <button onClick={() => setShowMilestoneModal(false)} className="icon-btn" style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}><X size={16} /></button>
+            </div>
+            
+            <form onSubmit={saveMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</label>
+                  <input 
+                    type="date" value={milestoneForm.date}
+                    onChange={(e) => setMilestoneForm({ ...milestoneForm, date: e.target.value })} required
+                    onKeyDown={(e) => e.preventDefault()} onClick={(e) => e.target.showPicker()}
+                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px', colorScheme: 'dark', cursor: 'pointer' }}
+                  />
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Milestone Title</label>
+                  <input 
+                    type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.title}
+                    ref={el => modalInputRefs.current['title'] = el}
+                    onChange={(e) => handleModalInput(e, 'title')}
+                    onKeyDown={(e) => handleModalKeyDown(e, 'title')} required
+                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }}
+                  />
+
+                {showMentionMenu && activeModalField === 'title' && filteredGoals.length > 0 && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: mentionCoords.top + 'px',
+                      left: mentionCoords.left + 'px', 
+                      background: 'var(--bg)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      zIndex: 100,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      minWidth: '250px'
+                    }}
+                  >
+                    {filteredGoals.map((g, i) => (
+                      <div 
+                        key={g.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); 
+                          insertModalMention(g, 'title');
+                        }}
+                        onMouseEnter={() => setMentionIndex(i)}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                          display: 'flex', flexDirection: 'column'
+                        }}
+                      >
+                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
+                          {g.task || g.text}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                          {g.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Description (Optional)</label>
+                  <textarea 
+                    placeholder="Any extra details..." value={milestoneForm.desc}
+                    ref={el => modalInputRefs.current['desc'] = el}
+                    onChange={(e) => handleModalInput(e, 'desc')}
+                    onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
+                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+
+                {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: mentionCoords.top + 'px',
+                      left: mentionCoords.left + 'px', 
+                      background: 'var(--bg)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      zIndex: 100,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      minWidth: '250px'
+                    }}
+                  >
+                    {filteredGoals.map((g, i) => (
+                      <div 
+                        key={g.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); 
+                          insertModalMention(g, 'desc');
+                        }}
+                        onMouseEnter={() => setMentionIndex(i)}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                          display: 'flex', flexDirection: 'column'
+                        }}
+                      >
+                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
+                          {g.task || g.text}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                          {g.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary" style={{ padding: '10px 20px' }}>Cancel</button>
+                <button type="submit" className="primary" style={{ padding: '10px 20px' }}>Save Milestone</button>
               </div>
             </form>
           </div>
