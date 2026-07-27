@@ -390,7 +390,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
   };
 
   return (
-    <div className="timeline-area" style={{ display: 'flex', flexDirection: 'row' }}>
+    <div className="plans-pane-container" style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%' }}>
       <style>{`
         .tree-item-actions { opacity: 0; transition: opacity 0.2s; }
         .tree-item:hover .tree-item-actions { opacity: 1; }
@@ -398,7 +398,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
       `}</style>
       {/* Sidebar for Notes */}
       {!isDocBarCollapsed && (
-        <div style={{ width: '280px', borderRight: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div className="plans-sidebar" style={{ borderRight: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--accent)' }}>Plans</h3>
@@ -434,7 +434,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
               />
             </div>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+          <div className="plans-sidebar-content" style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
             {notes.length === 0 && folders.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
                 No plans yet. Click + to create one.
@@ -452,7 +452,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
       )}
 
       {/* Editor Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {activeNote ? (
           <>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -472,7 +472,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
                 placeholder="Note Title"
               />
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', padding: '24px', overflowY: 'auto' }}>
+            <div className="plans-editor-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', padding: '24px', overflowY: 'auto' }}>
               
               {/* Single Pane Obsidian-style Blocks */}
               <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative' }}>
@@ -501,7 +501,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
                           style={{
                             width: '100%', resize: 'none', background: 'transparent', 
                             border: 'none', color: 'var(--text-primary)', padding: 0,
-                            fontSize: '14px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
+                            fontSize: '16px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
                             fontFamily: 'inherit', overflow: 'hidden'
                           }}
                         />

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock, Info } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import BaseModal from './BaseModal';
 import Dropdown from './Dropdown';
 
 import { parseDuration } from '../utils';
@@ -125,9 +126,10 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
   const addTemplate = (e) => {
     e.preventDefault();
     if (!newTemplateName.trim()) return;
+    const cleanName = newTemplateName.trim();
     const newId = Date.now().toString();
     const updates = {};
-    updates.templates = [...templates, { id: newId, name: newTemplateName, blocks: [] }];
+    updates.templates = [...templates, { id: newId, name: cleanName, blocks: [] }];
     
     // Assign unassigned days to the newly created template
     const updatedMapping = { ...dayMapping };
@@ -179,7 +181,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       setIsEditingTemplateName(false);
       return;
     }
-    setTemplates(templates.map(t => t.id === activeTemplateId ? { ...t, name: editingTemplateName } : t));
+    const cleanName = editingTemplateName.trim();
+    setTemplates(templates.map(t => t.id === activeTemplateId ? { ...t, name: cleanName } : t));
     setIsEditingTemplateName(false);
   };
 
@@ -707,46 +710,42 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       </div>
 
       {/* Rename Modal */}
-      {isEditingTemplateName && createPortal(
-        <div className="modal-overlay" onClick={() => setIsEditingTemplateName(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '16px', color: '#fff' }}>Rename Template</h3>
-            <form onSubmit={saveTemplateName}>
-              <input type="text" value={editingTemplateName} onChange={e => setEditingTemplateName(e.target.value)} autoFocus style={{ width: '100%', marginBottom: '16px' }} />
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="submit" style={{ flex: 1, color: '#000' }}>Save</button>
-                <button type="button" className="secondary" onClick={() => setIsEditingTemplateName(false)} style={{ flex: 1 }}>Cancel</button>
-              </div>
-            </form>
+      <BaseModal
+        isOpen={isEditingTemplateName}
+        onClose={() => setIsEditingTemplateName(false)}
+        title="Rename Template"
+      >
+        <form onSubmit={saveTemplateName}>
+          <input type="text" value={editingTemplateName} onChange={e => setEditingTemplateName(e.target.value)} style={{ width: '100%', marginBottom: '16px' }} />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="submit" style={{ flex: 1, color: '#000' }}>Save</button>
+            <button type="button" className="secondary" onClick={() => setIsEditingTemplateName(false)} style={{ flex: 1 }}>Cancel</button>
           </div>
-        </div>,
-        document.body
-      )}
+        </form>
+      </BaseModal>
 
       {/* New Template Modal */}
-      {showNewTemplateModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowNewTemplateModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginBottom: '16px', color: '#fff' }}>New Template</h3>
-            <form onSubmit={(e) => { addTemplate(e); setShowNewTemplateModal(false); }}>
-              <input type="text" placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} autoFocus style={{ width: '100%', marginBottom: '12px' }} />
-              
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginBottom: '16px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: '10px', borderRadius: '8px' }}>
-                <Info size={14} color="var(--accent)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  If you only have minor changes to make, consider using <strong>Duplicate</strong> on an existing template instead.
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="submit" style={{ flex: 1, color: '#000' }}>Create</button>
-                <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)} style={{ flex: 1 }}>Cancel</button>
-              </div>
-            </form>
+      <BaseModal
+        isOpen={showNewTemplateModal}
+        onClose={() => setShowNewTemplateModal(false)}
+        title="New Template"
+      >
+        <form onSubmit={(e) => { addTemplate(e); setShowNewTemplateModal(false); }}>
+          <input type="text" placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} style={{ width: '100%', marginBottom: '12px' }} />
+          
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginBottom: '16px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: '10px', borderRadius: '8px' }}>
+            <Info size={14} color="var(--accent)" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              If you only have minor changes to make, consider using <strong>Duplicate</strong> on an existing template instead.
+            </span>
           </div>
-        </div>,
-        document.body
-      )}
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="submit" style={{ flex: 1, color: '#000' }}>Create</button>
+            <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)} style={{ flex: 1 }}>Cancel</button>
+          </div>
+        </form>
+      </BaseModal>
       {/* Confirm Modal */}
       {confirmConfig && (
         <ConfirmModal 

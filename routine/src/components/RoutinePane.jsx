@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
+import BaseModal from './BaseModal';
 import { parseDuration } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
@@ -25,7 +26,9 @@ export default function RoutinePane({
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
-  const [milestoneForm, setMilestoneForm] = useState({ date: '', title: '', desc: '' });
+  const [editingMilestoneIdx, setEditingMilestoneIdx] = useState(null);
+  const [milestoneForm, setMilestoneForm] = useState({ date: '', tag: '', title: '', desc: '' });
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
   
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -33,7 +36,60 @@ export default function RoutinePane({
   const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
   const [activeModalField, setActiveModalField] = useState(null);
-  const [activeBlockIdx, setActiveBlockIdx] = useState(null);
+  
+  const openEditMilestone = (dateStr, idx, block) => {
+    let tag = '';
+    let title = '';
+    let desc = '';
+    const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+    const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+    
+    if (matchWithTag) {
+      tag = matchWithTag[1];
+      title = matchWithTag[2];
+      desc = (matchWithTag[3] || '').trim().replace(/  \n/g, '\n');
+    } else if (matchWithoutTag) {
+      title = matchWithoutTag[1];
+      desc = (matchWithoutTag[2] || '').trim().replace(/  \n/g, '\n');
+    } else {
+      title = block; 
+    }
+    
+    setEditingMilestoneIdx({ dateStr, idx });
+    setMilestoneForm({ date: dateStr, tag, title, desc });
+    setShowMilestoneModal(true);
+  };
+
+  const confirmDeleteMilestone = () => {
+    if (!editingMilestoneIdx) return;
+    
+    setConfirmConfig({
+      title: 'Delete Milestone',
+      message: 'Are you sure you want to delete this milestone?',
+      isDanger: true,
+      onConfirm: () => {
+        const { dateStr, idx } = editingMilestoneIdx;
+        const newMilestones = { ...(activeVersion.milestones || {}) };
+        const blocks = (newMilestones[dateStr] || '').split('\n\n');
+        blocks.splice(idx, 1);
+        newMilestones[dateStr] = blocks.join('\n\n');
+        
+        if (!newMilestones[dateStr].trim()) {
+          delete newMilestones[dateStr];
+        }
+        
+        updateActiveVersion({
+          ...activeVersion,
+          milestones: newMilestones
+        });
+        
+        setShowMilestoneModal(false);
+        setConfirmConfig(null);
+        setEditingMilestoneIdx(null);
+      },
+      onCancel: () => setConfirmConfig(null)
+    });
+  };
   
     const handleModalInput = (e, field) => {
     const val = e.target.value;
@@ -115,28 +171,49 @@ export default function RoutinePane({
     
     const dateStr = milestoneForm.date;
     const title = milestoneForm.title.trim();
-    const desc = milestoneForm.desc.trim();
+    const desc = milestoneForm.desc.trim().replace(/\n+/g, '  \n');
+    const tag = (milestoneForm.tag || '').trim();
     
-    let newBlock = `**${title}**`;
-    if (desc) newBlock += `\n${desc}`;
+    let newBlock = '';
+    if (tag) {
+      newBlock += `**@${tag}** - `;
+    }
+    newBlock += `**${title}**`;
+    if (desc) newBlock += `  \n${desc}`;
     
-    const current = (activeVersion.milestones || {})[dateStr] || '';
-    const updated = current ? current + '\n\n' + newBlock : newBlock;
+    const newMilestones = { ...(activeVersion.milestones || {}) };
     
-    updateActiveVersion({
-      ...activeVersion,
-      milestones: {
-        ...(activeVersion.milestones || {}),
-        [dateStr]: updated
+    if (editingMilestoneIdx) {
+      const { dateStr: oldDate, idx } = editingMilestoneIdx;
+      
+      const oldBlocks = (newMilestones[oldDate] || '').split('\n\n');
+      oldBlocks.splice(idx, 1);
+      newMilestones[oldDate] = oldBlocks.join('\n\n');
+      
+      const currentNewDate = newMilestones[dateStr] || '';
+      newMilestones[dateStr] = currentNewDate ? currentNewDate + '\n\n' + newBlock : newBlock;
+    } else {
+      const current = newMilestones[dateStr] || '';
+      newMilestones[dateStr] = current ? current + '\n\n' + newBlock : newBlock;
+    }
+    
+    Object.keys(newMilestones).forEach(k => {
+      if (!newMilestones[k].trim()) {
+        delete newMilestones[k];
       }
     });
     
+    updateActiveVersion({
+      ...activeVersion,
+      milestones: newMilestones
+    });
+    
     setShowMilestoneModal(false);
-    setMilestoneForm({ date: '', title: '', desc: '' });
+    setMilestoneForm({ date: '', tag: '', title: '', desc: '' });
+    setEditingMilestoneIdx(null);
     setCalendarSubTab('milestones');
     if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
   };
-  const textareaRefs = useRef({});
   const modalInputRefs = useRef({});
 
   const allGoals = [
@@ -164,132 +241,7 @@ export default function RoutinePane({
     });
   };
 
-  const handleKeyDown = (e, dateStr, idx) => {
-    if (showMentionMenu) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setMentionIndex(prev => (prev + 1) % filteredGoals.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setMentionIndex(prev => (prev - 1 + filteredGoals.length) % filteredGoals.length);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (filteredGoals.length > 0) {
-          insertMention(filteredGoals[mentionIndex], dateStr, idx);
-        }
-      } else if (e.key === 'Escape') {
-        setShowMentionMenu(false);
-      }
-      return;
-    }
-
-    const blocks = getMilestonesContent(dateStr).split('\n\n');
-    
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const cursor = e.target.selectionStart;
-      const val = blocks[idx];
-      const before = val.slice(0, cursor);
-      const after = val.slice(cursor);
-      
-      const newBlocks = [...blocks];
-      newBlocks[idx] = before;
-      newBlocks.splice(idx + 1, 0, after);
-      updateMilestonesContent(dateStr, newBlocks.join('\n\n'));
-      setActiveBlockIdx({ dateStr, idx: idx + 1 });
-    } else if (e.key === 'Backspace' && e.target.selectionStart === 0 && idx > 0) {
-      e.preventDefault();
-      const prevBlock = blocks[idx - 1];
-      const newBlocks = [...blocks];
-      newBlocks[idx - 1] = prevBlock + (newBlocks[idx] ? '\n\n' + newBlocks[idx] : '');
-      newBlocks.splice(idx, 1);
-      updateMilestonesContent(dateStr, newBlocks.join('\n\n'));
-      setActiveBlockIdx({ dateStr, idx: idx - 1 });
-      setTimeout(() => {
-        const ref = textareaRefs.current[`${dateStr}-${idx - 1}`];
-        if (ref) {
-          ref.focus();
-          ref.selectionStart = ref.selectionEnd = prevBlock.length;
-        }
-      }, 0);
-    } else if (e.key === 'ArrowUp' && e.target.selectionStart === 0 && idx > 0) {
-      setActiveBlockIdx({ dateStr, idx: idx - 1 });
-    } else if (e.key === 'ArrowDown' && e.target.selectionStart === e.target.value.length && idx < blocks.length - 1) {
-      setActiveBlockIdx({ dateStr, idx: idx + 1 });
-    }
-  };
-
-  const handleInput = (e, dateStr, idx) => {
-    const val = e.target.value;
-    const blocks = getMilestonesContent(dateStr).split('\n\n');
-    blocks[idx] = val;
-    updateMilestonesContent(blocks.join('\n\n'));
-    
-    e.target.style.height = 'auto';
-    e.target.style.height = (e.target.scrollHeight) + 'px';
-    
-    const cursor = e.target.selectionStart;
-    const textBeforeCursor = val.slice(0, cursor);
-    
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
-    if (match) {
-      const query = match[1];
-      setMentionQuery(query);
-      setShowMentionMenu(true);
-      setMentionIndex(0);
-      
-      const coords = getCaretCoordinates(e.target, cursor);
-      const rect = e.target.getBoundingClientRect();
-      const containerRect = e.target.parentElement.getBoundingClientRect();
-      
-      setMentionCoords({
-        top: coords.top + 24 + (rect.top - containerRect.top),
-        left: coords.left
-      });
-    } else {
-      setShowMentionMenu(false);
-    }
-  };
-
-  const insertMention = (goal, dateStr, idx) => {
-    const goalText = goal.task || goal.text;
-    const ref = textareaRefs.current[`${dateStr}-${idx}`];
-    const cursor = ref.selectionStart;
-    
-    const blocks = getMilestonesContent(dateStr).split('\n\n');
-    const blockContent = blocks[idx];
-    const textBeforeCursor = blockContent.slice(0, cursor);
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
-    
-    if (match) {
-      const startIdx = cursor - match[1].length - 1; 
-      const newText = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
-      
-      blocks[idx] = newText;
-      updateMilestonesContent(dateStr, blocks.join('\n\n'));
-      
-      setTimeout(() => {
-        if (textareaRefs.current[`${dateStr}-${idx}`]) {
-          const newCursorPos = startIdx + goalText.length + 4;
-          textareaRefs.current[`${dateStr}-${idx}`].selectionStart = textareaRefs.current[`${dateStr}-${idx}`].selectionEnd = newCursorPos;
-          textareaRefs.current[`${dateStr}-${idx}`].focus();
-        }
-      }, 0);
-    }
-    setShowMentionMenu(false);
-  };
-
-  useEffect(() => {
-    if (activeBlockIdx !== null) {
-      const refKey = `${activeBlockIdx.dateStr}-${activeBlockIdx.idx}`;
-      if (textareaRefs.current[refKey]) {
-        const ref = textareaRefs.current[refKey];
-        ref.focus();
-        ref.style.height = 'auto';
-        ref.style.height = (ref.scrollHeight) + 'px';
-      }
-    }
-  }, [activeBlockIdx]);
+  // Removed inline editing handlers
 
   const checkSprintAddressed = (goal) => {
     const explicitlyReferenced = (routineGoals || []).some(g => g.sprintGoalId === goal.id);
@@ -338,8 +290,8 @@ export default function RoutinePane({
     }
 
     const goalData = {
-      task: routineGoalForm.task,
-      desc: routineGoalForm.desc,
+      task: routineGoalForm.task.trim(),
+      desc: (routineGoalForm.desc || '').trim(),
       time: timeString,
       sprintGoalId: routineGoalForm.sprintGoalId
     };
@@ -498,9 +450,6 @@ export default function RoutinePane({
   }
 
   const milestoneDates = Object.keys(activeVersion.milestones || {}).filter(d => (activeVersion.milestones[d] || '').trim() !== '');
-  if (selectedTargetDate && !milestoneDates.includes(selectedTargetDate)) {
-    milestoneDates.push(selectedTargetDate);
-  }
   milestoneDates.sort((a, b) => new Date(a) - new Date(b));
 
   useEffect(() => {
@@ -540,8 +489,29 @@ export default function RoutinePane({
   };
 
   return (
-    <div className="pane right-pane" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', overflow: 'hidden', minHeight: 0 }}>
+    <div className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+      <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+           {effectiveDate ? <><Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18} color="var(--accent)" /> Routine Goals</>}
+        </h2>
+        <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
+          <ChevronDown size={16} style={{ transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
+        {effectiveDate && (
+          <button 
+            onClick={() => {
+              setEditingMilestoneIdx(null);
+              setMilestoneForm({ date: effectiveDate, tag: '', title: '', desc: '' });
+              setShowMilestoneModal(true);
+            }} 
+            className="secondary"  
+            style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
+          >
+            <Plus size={16} /> Add Milestone
+          </button>
+        )}
         {isCalendarTab && (
           <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
             <button 
@@ -562,12 +532,9 @@ export default function RoutinePane({
         {(!isCalendarTab || calendarSubTab === 'mark_goals') && (
           <>
             {effectiveDate ? (
-              <h2 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}
-              </h2>
+              null
             ) : (
               <>
-                <h2 style={{ marginBottom: '16px' }}><ListTodo size={18} color="var(--accent)" /> Routine Goals</h2>
                 
                 <button 
                   onClick={openAddRoutineGoal} className="secondary" 
@@ -710,15 +677,9 @@ export default function RoutinePane({
 
         {isCalendarTab && calendarSubTab === 'milestones' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto' }}>
-            <button 
-              onClick={() => setShowMilestoneModal(true)} className="secondary" 
-              style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
-            >
-              <Plus size={16} /> Add Milestone
-            </button>
             {milestoneDates.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                Select a date in the calendar to write milestones.
+                No milestones found. Click 'Add Milestone' to create one.
               </div>
             ) : (
               <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px' }}>
@@ -772,101 +733,32 @@ export default function RoutinePane({
                         </div>
                         
                         {blocks.map((block, idx) => {
-                          const isActive = activeBlockIdx && activeBlockIdx.dateStr === dateStr && activeBlockIdx.idx === idx;
+                          if (!block.trim()) return null;
                           return (
                             <div 
                               key={idx} 
-                              onClick={() => setActiveBlockIdx({ dateStr, idx })}
+                              onClick={() => openEditMilestone(dateStr, idx, block)}
                               style={{ 
                                 minHeight: '28px', 
-                                cursor: isActive ? 'text' : 'pointer',
+                                cursor: 'pointer',
                                 padding: '4px 0',
                                 marginBottom: '8px'
                               }}
                             >
-                              {isActive ? (
-                                <textarea
-                                  ref={el => textareaRefs.current[`${dateStr}-${idx}`] = el}
-                                  value={block}
-                                  onChange={e => handleInput(e, dateStr, idx)}
-                                  onKeyDown={e => handleKeyDown(e, dateStr, idx)}
-                                  onBlur={() => setActiveBlockIdx(null)}
-                                  placeholder={idx === 0 && !block ? "Write your milestones for this day... (Use @ to tag goals)" : ""}
-                                  style={{
-                                    width: '100%', resize: 'none', background: 'transparent', 
-                                    border: 'none', color: 'var(--text-primary)', padding: 0,
-                                    fontSize: '14px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
-                                    fontFamily: 'inherit', overflow: 'hidden'
-                                  }}
-                                />
-                              ) : (
-                                <div className="markdown-preview" style={{ minHeight: '24px' }}>
-                                  <ReactMarkdown components={customMarkdownComponents}>
-                                    {block === '' ? '\u00A0' : block}
-                                  </ReactMarkdown>
-                                </div>
-                              )}
+                              <div className="markdown-preview" style={{ minHeight: '24px' }}>
+                                <ReactMarkdown components={customMarkdownComponents}>
+                                  {block === '' ? '\u00A0' : block}
+                                </ReactMarkdown>
+                              </div>
                             </div>
                           );
                         })}
-                        
-                        <div 
-                          style={{ height: '24px', cursor: 'text' }} 
-                          onClick={() => {
-                            if (blocks[blocks.length - 1] !== '') {
-                              updateMilestonesContent(dateStr, contentStr + '\n\n');
-                            }
-                            setActiveBlockIdx({ dateStr, idx: blocks.length });
-                          }}
-                        />
                       </div>
                     );
                   })}
                 </div>
                 
                 <div style={{ height: '20vh' }} />
-
-                {showMentionMenu && filteredGoals.length > 0 && activeBlockIdx && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      top: mentionCoords.top + 'px',
-                      left: mentionCoords.left + 'px', 
-                      background: 'var(--bg)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '8px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                      zIndex: 100,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      minWidth: '250px'
-                    }}
-                  >
-                    {filteredGoals.map((g, i) => (
-                      <div 
-                        key={g.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault(); 
-                          insertMention(g, activeBlockIdx.dateStr, activeBlockIdx.idx);
-                        }}
-                        onMouseEnter={() => setMentionIndex(i)}
-                        style={{
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                          display: 'flex', flexDirection: 'column'
-                        }}
-                      >
-                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
-                          {g.task || g.text}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
-                          {g.type}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -889,237 +781,247 @@ export default function RoutinePane({
       </div>
 
       {/* Routine Goal Modal */}
-      {showRoutineGoalModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowRoutineGoalModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '460px', padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-              <div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '20px' }}>
-                  <div style={{ background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px' }}>
-                    <ListTodo size={20} color="var(--accent)" /> 
-                  </div>
-                  {editingRoutineGoalId ? `Edit Goal` : `New Goal`}
-                </h3>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Define your objective and connect it to the bigger picture.
-                </p>
+      <BaseModal
+        isOpen={showRoutineGoalModal}
+        onClose={() => setShowRoutineGoalModal(false)}
+        maxWidth="460px"
+        title={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px' }}>
+                <ListTodo size={20} color="var(--accent)" /> 
               </div>
-              <button onClick={() => setShowRoutineGoalModal(false)} className="icon-btn" style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}><X size={16} /></button>
+              {editingRoutineGoalId ? `Edit Goal` : `New Goal`}
+            </div>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+              Define your objective and connect it to the bigger picture.
+            </p>
+          </div>
+        }
+      >
+        <form onSubmit={saveRoutineGoal} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          {/* Task Core Info */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objective Name</label>
+              <input 
+                type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
+                onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, task: e.target.value })} required
+                style={{ width: '100%', fontSize: '16px', padding: '12px 14px' }}
+              />
+            </div>
+          </div>
+
+          {/* Execution details */}
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <div style={{ flex: '0 0 100px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Clock size={14} color="var(--accent)" /> Duration
+              </label>
+              <input 
+                type="text" placeholder="1:20" value={routineGoalForm.timeValue}
+                onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, timeValue: e.target.value })} 
+                style={{ width: '100%', padding: '12px 14px', fontSize: '16px', textAlign: 'center' }}
+              />
             </div>
             
-            <form onSubmit={saveRoutineGoal} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* Task Core Info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objective Name</label>
-                  <input 
-                    type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
-                    onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, task: e.target.value })} required
-                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }} autoFocus
-                  />
-                </div>
-              </div>
-
-              {/* Execution details */}
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <div style={{ flex: '0 0 100px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <Clock size={14} color="var(--accent)" /> Duration
-                  </label>
-                  <input 
-                    type="text" placeholder="1:20" value={routineGoalForm.timeValue}
-                    onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, timeValue: e.target.value })} 
-                    style={{ width: '100%', padding: '12px 14px', fontSize: '14px', textAlign: 'center' }}
-                  />
-                </div>
-                
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <Target size={14} color="#3b82f6" /> Sprint Link
-                  </label>
-                  <Dropdown
-                    value={routineGoalForm.sprintGoalId}
-                    onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, sprintGoalId: val })}
-                    options={[
-                      { value: '', label: 'No Sprint Goal Linked' },
-                      ...(sprintGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
-                    ]}
-                  />
-                </div>
-              </div>
-
-              {/* Details / Notes */}
-              <div style={{ background: 'rgba(0,0,0,0.1)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-                <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details / Notes <span style={{ opacity: 0.5, textTransform: 'none' }}>(optional)</span></label>
-                <input 
-                  type="text" placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
-                  onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
-                  style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }}
-                />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
-                {editingRoutineGoalId && (
-                  <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
-                )}
-                <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
-              </div>
-            </form>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Target size={14} color="#3b82f6" /> Sprint Link
+              </label>
+              <Dropdown
+                value={routineGoalForm.sprintGoalId}
+                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, sprintGoalId: val })}
+                options={[
+                  { value: '', label: 'No Sprint Goal Linked' },
+                  ...(sprintGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
+                ]}
+              />
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
+
+          {/* Details / Notes */}
+          <div style={{ background: 'rgba(0,0,0,0.1)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details / Notes <span style={{ opacity: 0.5, textTransform: 'none' }}>(optional)</span></label>
+            <input 
+              type="text" placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
+              onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
+              style={{ width: '100%', fontSize: '16px', padding: '12px 14px' }}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+            {editingRoutineGoalId && (
+              <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+            )}
+            <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
+          </div>
+        </form>
+      </BaseModal>
 
       
       {/* Add Milestone Modal */}
-      {showMilestoneModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowMilestoneModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '460px', padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-              <div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '20px' }}>
-                  <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '8px' }}>
-                    <Plus size={20} color="#a855f7" /> 
-                  </div>
-                  Add Milestone
-                </h3>
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Mark an important event or deadline on your calendar.
-                </p>
+      <BaseModal
+        isOpen={showMilestoneModal}
+        onClose={() => setShowMilestoneModal(false)}
+        maxWidth="460px"
+        title={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '8px' }}>
+                <Plus size={20} color="#a855f7" /> 
               </div>
-              <button onClick={() => setShowMilestoneModal(false)} className="icon-btn" style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }}><X size={16} /></button>
+              {editingMilestoneIdx !== null ? 'Edit Milestone' : 'Add Milestone'}
             </div>
-            
-            <form onSubmit={saveMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</label>
-                  <input 
-                    type="date" value={milestoneForm.date}
-                    onChange={(e) => setMilestoneForm({ ...milestoneForm, date: e.target.value })} required
-                    onKeyDown={(e) => e.preventDefault()} onClick={(e) => e.target.showPicker()}
-                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px', colorScheme: 'dark', cursor: 'pointer' }}
-                  />
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Milestone Title</label>
-                  <input 
-                    type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.title}
-                    ref={el => modalInputRefs.current['title'] = el}
-                    onChange={(e) => handleModalInput(e, 'title')}
-                    onKeyDown={(e) => handleModalKeyDown(e, 'title')} required
-                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px' }}
-                  />
-
-                {showMentionMenu && activeModalField === 'title' && filteredGoals.length > 0 && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      top: mentionCoords.top + 'px',
-                      left: mentionCoords.left + 'px', 
-                      background: 'var(--bg)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '8px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                      zIndex: 100,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      minWidth: '250px'
-                    }}
-                  >
-                    {filteredGoals.map((g, i) => (
-                      <div 
-                        key={g.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault(); 
-                          insertModalMention(g, 'title');
-                        }}
-                        onMouseEnter={() => setMentionIndex(i)}
-                        style={{
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                          display: 'flex', flexDirection: 'column'
-                        }}
-                      >
-                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
-                          {g.task || g.text}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
-                          {g.type}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Description (Optional)</label>
-                  <textarea 
-                    placeholder="Any extra details..." value={milestoneForm.desc}
-                    ref={el => modalInputRefs.current['desc'] = el}
-                    onChange={(e) => handleModalInput(e, 'desc')}
-                    onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
-                    style={{ width: '100%', fontSize: '14px', padding: '12px 14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
-                  />
-
-                {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (
-                  <div 
-                    style={{
-                      position: 'absolute',
-                      top: mentionCoords.top + 'px',
-                      left: mentionCoords.left + 'px', 
-                      background: 'var(--bg)',
-                      border: '1px solid var(--panel-border)',
-                      borderRadius: '8px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                      zIndex: 100,
-                      maxHeight: '200px',
-                      overflowY: 'auto',
-                      minWidth: '250px'
-                    }}
-                  >
-                    {filteredGoals.map((g, i) => (
-                      <div 
-                        key={g.id}
-                        onMouseDown={(e) => {
-                          e.preventDefault(); 
-                          insertModalMention(g, 'desc');
-                        }}
-                        onMouseEnter={() => setMentionIndex(i)}
-                        style={{
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                          display: 'flex', flexDirection: 'column'
-                        }}
-                      >
-                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
-                          {g.task || g.text}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
-                          {g.type}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary" style={{ padding: '10px 20px' }}>Cancel</button>
-                <button type="submit" className="primary" style={{ padding: '10px 20px' }}>Save Milestone</button>
-              </div>
-            </form>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+              {editingMilestoneIdx !== null ? 'Update or move your milestone.' : 'Mark an important event or deadline on your calendar.'}
+            </p>
           </div>
-        </div>,
-        document.body
-      )}
+        }
+      >
+        <form onSubmit={saveMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</label>
+                <input 
+                  type="date" value={milestoneForm.date}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, date: e.target.value })} required
+                  onKeyDown={(e) => e.preventDefault()} onClick={(e) => e.target.showPicker()}
+                  style={{ width: '100%', fontSize: '14px', padding: '12px 14px', colorScheme: 'dark', cursor: 'pointer' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tag (Optional)</label>
+                <Dropdown
+                  value={milestoneForm.tag}
+                  onChange={(val) => setMilestoneForm({ ...milestoneForm, tag: val })}
+                  options={[
+                    { value: '', label: 'No Tag' },
+                    ...allGoals.map(g => ({ value: g.task || g.text, label: `[${g.type}] ${g.task || g.text}` }))
+                  ]}
+                />
+              </div>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Milestone Title</label>
+              <input 
+                type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.title}
+                ref={el => modalInputRefs.current['title'] = el}
+                onChange={(e) => handleModalInput(e, 'title')}
+                onKeyDown={(e) => handleModalKeyDown(e, 'title')} required
+                style={{ width: '100%', fontSize: '16px', padding: '12px 14px' }}
+              />
+
+            {showMentionMenu && activeModalField === 'title' && filteredGoals.length > 0 && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: mentionCoords.top + 'px',
+                  left: mentionCoords.left + 'px', 
+                  background: 'var(--bg)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  zIndex: 100,
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  minWidth: '250px'
+                }}
+              >
+                {filteredGoals.map((g, i) => (
+                  <div 
+                    key={g.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); 
+                      insertModalMention(g, 'title');
+                    }}
+                    onMouseEnter={() => setMentionIndex(i)}
+                    style={{
+                      padding: '10px 14px',
+                      cursor: 'pointer',
+                      background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                      display: 'flex', flexDirection: 'column'
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
+                      {g.task || g.text}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                      {g.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            </div>
+            <div style={{ position: 'relative' }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Description (Optional)</label>
+              <textarea 
+                placeholder="Any extra details..." value={milestoneForm.desc}
+                ref={el => modalInputRefs.current['desc'] = el}
+                onChange={(e) => handleModalInput(e, 'desc')}
+                onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
+                style={{ width: '100%', fontSize: '16px', padding: '12px 14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+              />
+
+            {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: mentionCoords.top + 'px',
+                  left: mentionCoords.left + 'px', 
+                  background: 'var(--bg)',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '8px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  zIndex: 100,
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  minWidth: '250px'
+                }}
+              >
+                {filteredGoals.map((g, i) => (
+                  <div 
+                    key={g.id}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); 
+                      insertModalMention(g, 'desc');
+                    }}
+                    onMouseEnter={() => setMentionIndex(i)}
+                    style={{
+                      padding: '10px 14px',
+                      cursor: 'pointer',
+                      background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                      display: 'flex', flexDirection: 'column'
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
+                      {g.task || g.text}
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                      {g.type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+            {editingMilestoneIdx !== null && (
+              <button type="button" onClick={confirmDeleteMilestone} style={{ padding: '10px 20px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', marginRight: 'auto' }}>Delete</button>
+            )}
+            <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary" style={{ padding: '10px 20px' }}>Cancel</button>
+            <button type="submit" className="primary" style={{ padding: '10px 20px' }}>{editingMilestoneIdx !== null ? 'Update Milestone' : 'Save Milestone'}</button>
+          </div>
+        </form>
+      </BaseModal>
 
       {/* Confirm Modal */}
       {confirmConfig && (

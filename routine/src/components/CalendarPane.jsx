@@ -183,11 +183,11 @@ const TargetPane = ({
                 const tagColors = tags.map(tag => {
                   const goal = sprintGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
                             || routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
-                  return goal?.color || 'var(--accent)';
+                  return goal?.color || '#fff';
                 });
                 
                 if (hasMilestone && tagColors.length === 0) {
-                  tagColors.push('var(--accent)');
+                  tagColors.push('#fff');
                 }
                 
                 let bg = 'transparent';

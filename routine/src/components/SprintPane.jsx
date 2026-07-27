@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Target, CheckCircle2, Plus, Trash2, Pencil, Activity, Clock, X, Rocket, Palette } from 'lucide-react';
+import { Target, CheckCircle2, Plus, Trash2, Pencil, Activity, Clock, X, Rocket, Palette, ChevronDown } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import BaseModal from './BaseModal';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -16,6 +17,7 @@ export default function SprintPane({
   const [sprintGoalForm, setSprintGoalForm] = useState({ text: '', color: '' });
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [colorError, setColorError] = useState('');
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
   const openAddSprintGoal = () => {
     setEditingSprintGoalId(null);
@@ -54,8 +56,9 @@ export default function SprintPane({
   const saveSprintGoal = (e) => {
     e.preventDefault();
     if (!sprintGoalForm.text.trim()) return;
+    const cleanText = sprintGoalForm.text.trim();
     if (editingSprintGoalId) {
-      setSprintGoals(prev => prev.map(g => g.id === editingSprintGoalId ? { ...g, text: sprintGoalForm.text, color: sprintGoalForm.color } : g));
+      setSprintGoals(prev => prev.map(g => g.id === editingSprintGoalId ? { ...g, text: cleanText, color: sprintGoalForm.color } : g));
       
       if (templates && setTemplates && routineGoals) {
         const linkedRoutineGoalIds = routineGoals.filter(g => g.sprintGoalId === editingSprintGoalId).map(g => g.id);
@@ -71,7 +74,7 @@ export default function SprintPane({
         setTemplates(updatedTemplates);
       }
     } else {
-      setSprintGoals([...sprintGoals, { id: 'sg-' + Date.now(), text: sprintGoalForm.text, color: sprintGoalForm.color, completed: false }]);
+      setSprintGoals([...sprintGoals, { id: 'sg-' + Date.now(), text: cleanText, color: sprintGoalForm.color, completed: false }]);
     }
     setShowSprintGoalModal(false);
   };
@@ -173,13 +176,14 @@ export default function SprintPane({
   const isCustomColor = sprintGoalForm.color && !PRESET_COLORS.some(c => c.toLowerCase() === sprintGoalForm.color.toLowerCase());
 
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-      
-      {/* Top Section: Sprint Goals (Flex grows to take available space) */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', overflow: 'hidden', minHeight: 0 }}>
-        
-        {/* Sprint Goals */}
-        <h2 style={{ marginBottom: '16px' }}><Target size={18} color="var(--accent)" /> Sprint Goals</h2>
+    <div className={`panel ${isMobileExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+      <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
+        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><Target size={18} color="var(--accent)" /> Sprint Goals</h2>
+        <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
+          <ChevronDown size={16} style={{ transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
         
         <button 
           onClick={openAddSprintGoal} className="secondary" 
@@ -306,88 +310,84 @@ export default function SprintPane({
       </div>
 
       {/* Sprint Goal Modal */}
-      {showSprintGoalModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowSprintGoalModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '400px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Target size={18} color="var(--accent)" /> 
-                {editingSprintGoalId ? 'Edit Sprint Goal' : 'New Sprint Goal'}
-              </h3>
-              <button onClick={() => setShowSprintGoalModal(false)} className="icon-btn" style={{ padding: '4px' }}><X size={18} /></button>
-            </div>
-            
-            <form onSubmit={saveSprintGoal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description</label>
+      <BaseModal 
+        isOpen={showSprintGoalModal} 
+        onClose={() => setShowSprintGoalModal(false)}
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Target size={18} color="var(--accent)" /> 
+            {editingSprintGoalId ? 'Edit Sprint Goal' : 'New Sprint Goal'}
+          </span>
+        }
+      >
+        <form onSubmit={saveSprintGoal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description</label>
+            <input 
+              type="text" placeholder="e.g. Launch v2.0" value={sprintGoalForm.text}
+              onChange={(e) => setSprintGoalForm({ ...sprintGoalForm, text: e.target.value })} 
+              style={{ width: '100%' }}
+            />
+          </div>
+          
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+              Theme Color
+              {colorError && <span style={{ color: '#ef4444', marginLeft: '8px' }}>{colorError}</span>}
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {PRESET_COLORS.map(c => {
+                const isSelected = sprintGoalForm.color && sprintGoalForm.color.toLowerCase() === c.toLowerCase();
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { setColorError(''); setSprintGoalForm({...sprintGoalForm, color: c}); }}
+                    style={{
+                      width: '24px', height: '24px', borderRadius: '50%', padding: 0,
+                      background: c, border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
+                      cursor: 'pointer', transition: 'transform 0.1s',
+                      transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                    }}
+                  />
+                );
+              })}
+              
+              {/* Custom Color Picker */}
+              <div style={{
+                position: 'relative',
+                width: '24px', height: '24px', borderRadius: '50%',
+                background: isCustomColor ? sprintGoalForm.color : 'rgba(255, 255, 255, 0.1)',
+                border: `2px solid ${isCustomColor ? '#fff' : 'transparent'}`,
+                cursor: 'pointer', transition: 'all 0.1s',
+                transform: isCustomColor ? 'scale(1.1)' : 'scale(1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: isCustomColor ? '#fff' : 'var(--text-secondary)'
+              }}>
+                {!isCustomColor && <Palette size={12} />}
                 <input 
-                  type="text" placeholder="e.g. Launch v2.0" value={sprintGoalForm.text}
-                  onChange={(e) => setSprintGoalForm({ ...sprintGoalForm, text: e.target.value })} 
-                  style={{ width: '100%' }} autoFocus
+                  type="color"
+                  value={sprintGoalForm.color ? sprintGoalForm.color.toLowerCase() : '#ffffff'}
+                  onChange={handleColorChange}
+                  style={{
+                    position: 'absolute', top: '-10px', left: '-10px', width: '44px', height: '44px',
+                    cursor: 'pointer', opacity: 0
+                  }}
+                  title="Custom Color"
                 />
               </div>
-              
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                  Theme Color
-                  {colorError && <span style={{ color: '#ef4444', marginLeft: '8px' }}>{colorError}</span>}
-                </label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {PRESET_COLORS.map(c => {
-                    const isSelected = sprintGoalForm.color && sprintGoalForm.color.toLowerCase() === c.toLowerCase();
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => { setColorError(''); setSprintGoalForm({...sprintGoalForm, color: c}); }}
-                        style={{
-                          width: '24px', height: '24px', borderRadius: '50%', padding: 0,
-                          background: c, border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
-                          cursor: 'pointer', transition: 'transform 0.1s',
-                          transform: isSelected ? 'scale(1.1)' : 'scale(1)'
-                        }}
-                      />
-                    );
-                  })}
-                  
-                  {/* Custom Color Picker */}
-                  <div style={{
-                    position: 'relative',
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    background: isCustomColor ? sprintGoalForm.color : 'rgba(255, 255, 255, 0.1)',
-                    border: `2px solid ${isCustomColor ? '#fff' : 'transparent'}`,
-                    cursor: 'pointer', transition: 'all 0.1s',
-                    transform: isCustomColor ? 'scale(1.1)' : 'scale(1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: isCustomColor ? '#fff' : 'var(--text-secondary)'
-                  }}>
-                    {!isCustomColor && <Palette size={12} />}
-                    <input 
-                      type="color"
-                      value={sprintGoalForm.color ? sprintGoalForm.color.toLowerCase() : '#ffffff'}
-                      onChange={handleColorChange}
-                      style={{
-                        position: 'absolute', top: '-10px', left: '-10px', width: '44px', height: '44px',
-                        cursor: 'pointer', opacity: 0
-                      }}
-                      title="Custom Color"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
-                {editingSprintGoalId && (
-                  <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ flex: '0 0 20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Delete</button>
-                )}
-                <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ flex: editingSprintGoalId ? '0 0 25%' : '0 0 30%', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Cancel</button>
-                <button type="submit" className="primary" style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}>{editingSprintGoalId ? 'Update' : 'Save'}</button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
+
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
+            {editingSprintGoalId && (
+              <button type="button" onClick={() => { deleteSprint(editingSprintGoalId, sprintGoalForm.text); setShowSprintGoalModal(false); }} style={{ flex: '0 0 20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Delete</button>
+            )}
+            <button type="button" onClick={() => setShowSprintGoalModal(false)} className="secondary" style={{ flex: editingSprintGoalId ? '0 0 25%' : '0 0 30%', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Cancel</button>
+            <button type="submit" className="primary" style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}>{editingSprintGoalId ? 'Update' : 'Save'}</button>
+          </div>
+        </form>
+      </BaseModal>
 
       {/* Confirm Modal */}
       {confirmConfig && (

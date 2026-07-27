@@ -7,8 +7,9 @@ import PlansPane from './components/PlansPane';
 import TargetPane from './components/CalendarPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
+import BaseModal from './components/BaseModal';
 import { createPortal } from 'react-dom';
-import { Command, Calendar, Clock, BookOpen, Target, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup } from 'lucide-react';
+import { Command, Calendar, Clock, BookOpen, Target, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup, ChevronDown } from 'lucide-react';
 import './index.css';
 
 export default function App() {
@@ -61,6 +62,7 @@ export default function App() {
   const [routineFilterSprintId, setRoutineFilterSprintId] = useState(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
+  const [isMidPaneExpanded, setIsMidPaneExpanded] = useState(true);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -343,18 +345,18 @@ export default function App() {
           <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Routine OS</span>
         </h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+        <div className="header-controls">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Active Period</span>
             <span style={{ fontSize: '12px', color: '#fff', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
               {activeVersion.start && activeVersion.end ? `${activeVersion.start} to ${activeVersion.end}` : 'No Dates Set'}
             </span>
           </div>
           
-          <div style={{ width: '1px', height: '32px', background: 'var(--panel-border)' }} />
+          <div className="header-divider" />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '220px' }}>
+          <div className="version-selector">
+            <div className="version-dropdown">
               <Dropdown 
                 value={activeVersionId}
                 onChange={(val) => setActiveVersionId(val)}
@@ -363,7 +365,7 @@ export default function App() {
               />
             </div>
             
-            <button onClick={() => setShowVersionModal(true)} className="icon-btn" style={{ padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', marginLeft: '8px' }} title="Manage Versions">
+            <button onClick={() => setShowVersionModal(true)} className="icon-btn" style={{ padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', flexShrink: 0 }} title="Manage Versions">
               <Layers size={18} color="var(--text-secondary)" />
             </button>
           </div>
@@ -379,8 +381,8 @@ export default function App() {
           onSprintBadgeClick={(id) => setRoutineFilterSprintId(id)}
         />
         
-        <div className="timeline-area" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0 }}>
-          <div className="tabs" style={{ marginBottom: '0', borderBottom: '1px solid var(--panel-border)', background: 'var(--panel-bg)' }}>
+        <div className={`timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0 }}>
+          <div className="tabs" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{ cursor: 'pointer', marginBottom: '0', borderBottom: '1px solid var(--panel-border)', background: 'var(--panel-bg)' }}>
             <button 
               className={`tab ${activeCenterTab === 'calendar' ? 'active' : ''}`} 
               onClick={() => setActiveCenterTab('calendar')}
@@ -402,9 +404,12 @@ export default function App() {
             >
               <BookOpen size={16} /> Plans
             </button>
+            <button className="accordion-icon icon-btn" style={{ marginLeft: 'auto', padding: '4px' }}>
+              <ChevronDown size={16} style={{ transform: isMidPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+            </button>
           </div>
           
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <div className="mid-pane-content" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             {activeCenterTab === 'calendar' ? (
               <Timeline 
                 templates={templates} 
@@ -458,86 +463,86 @@ export default function App() {
       </main>
 
       {/* Version Modal */}
-      {showVersionModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowVersionModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ color: '#fff', margin: 0 }}><Layers size={18} style={{ verticalAlign: 'middle', marginRight: '8px', color: 'var(--accent)' }} /> Version Manager</h3>
-              <button onClick={() => setShowVersionModal(false)} className="icon-btn" style={{ padding: '4px' }}><X size={18} /></button>
-            </div>
+      <BaseModal
+        isOpen={showVersionModal}
+        onClose={() => setShowVersionModal(false)}
+        maxWidth="480px"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Layers size={18} style={{ verticalAlign: 'middle', marginRight: '8px', color: 'var(--accent)' }} /> 
+            Version Manager
+          </div>
+        }
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Select Version</label>
+          <Dropdown 
+            value={activeVersion.id} 
+            onChange={(val) => setActiveVersionId(val)}
+            options={versions.map(v => ({ value: v.id, label: v.name }))}
+          />
+        </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Select Version</label>
-              <Dropdown 
-                value={activeVersion.id} 
-                onChange={(val) => setActiveVersionId(val)}
-                options={versions.map(v => ({ value: v.id, label: v.name }))}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+          <button onClick={addVersion} className="secondary" title="New Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Plus size={16} /></button>
+          <button onClick={duplicateVersion} className="secondary" title="Duplicate Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Copy size={16} /></button>
+          
+          <button onClick={() => fileInputRef.current?.click()} className="secondary" title="Import Backup (Single or Full)" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
+            <Import size={16} />
+          </button>
+          <input type="file" ref={fileInputRef} accept=".json" style={{ display: 'none' }} onChange={importVersion} />
+
+          <button onClick={deleteVersion} className="secondary" style={{ color: 'var(--danger)', flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }} title="Delete Version"><Trash2 size={16} /></button>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          <button onClick={exportVersion} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            <Download size={16} /> Export Version
+          </button>
+          <button onClick={exportAllData} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            <DatabaseBackup size={16} color="var(--accent)" /> Export All Data
+          </button>
+        </div>
+
+        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Version Name</label>
+            <input type="text" value={activeVersion.name} onChange={(e) => updateActiveVersion({ name: e.target.value })} onBlur={(e) => updateActiveVersion({ name: e.target.value.trim() })} style={{ width: '100%' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description (optional)</label>
+            <input type="text" value={activeVersion.desc || ''} onChange={(e) => updateActiveVersion({ desc: e.target.value })} onBlur={(e) => updateActiveVersion({ desc: e.target.value.trim() })} style={{ width: '100%' }} />
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Start Date</label>
+              <input 
+                type="date" 
+                value={activeVersion.start || ''} 
+                onChange={(e) => handleDateChange('start', e.target.value)} 
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
+                style={{ width: '100%', cursor: 'pointer' }} 
               />
             </div>
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
-              <button onClick={addVersion} className="secondary" title="New Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Plus size={16} /></button>
-              <button onClick={duplicateVersion} className="secondary" title="Duplicate Version" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}><Copy size={16} /></button>
-              
-              <button onClick={() => fileInputRef.current?.click()} className="secondary" title="Import Backup (Single or Full)" style={{ flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }}>
-                <Import size={16} />
-              </button>
-              <input type="file" ref={fileInputRef} accept=".json" style={{ display: 'none' }} onChange={importVersion} />
-
-              <button onClick={deleteVersion} className="secondary" style={{ color: 'var(--danger)', flex: 1, padding: '8px', display: 'flex', justifyContent: 'center' }} title="Delete Version"><Trash2 size={16} /></button>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-              <button onClick={exportVersion} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                <Download size={16} /> Export Version
-              </button>
-              <button onClick={exportAllData} className="secondary" style={{ flex: 1, padding: '12px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                <DatabaseBackup size={16} color="var(--accent)" /> Export All Data
-              </button>
-            </div>
-
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Version Name</label>
-                <input type="text" value={activeVersion.name} onChange={(e) => updateActiveVersion({ name: e.target.value })} style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Description (optional)</label>
-                <input type="text" value={activeVersion.desc || ''} onChange={(e) => updateActiveVersion({ desc: e.target.value })} style={{ width: '100%' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Start Date</label>
-                  <input 
-                    type="date" 
-                    value={activeVersion.start || ''} 
-                    onChange={(e) => handleDateChange('start', e.target.value)} 
-                    onKeyDown={(e) => e.preventDefault()}
-                    onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
-                    style={{ width: '100%', cursor: 'pointer' }} 
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End Date</label>
-                  <input 
-                    type="date" 
-                    value={activeVersion.end || ''} 
-                    onChange={(e) => handleDateChange('end', e.target.value)} 
-                    onKeyDown={(e) => e.preventDefault()}
-                    onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
-                    style={{ width: '100%', cursor: 'pointer' }} 
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowVersionModal(false)} style={{ padding: '8px 24px', color: '#000' }}>Done</button>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>End Date</label>
+              <input 
+                type="date" 
+                value={activeVersion.end || ''} 
+                onChange={(e) => handleDateChange('end', e.target.value)} 
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
+                style={{ width: '100%', cursor: 'pointer' }} 
+              />
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+        
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button onClick={() => setShowVersionModal(false)} className="primary" style={{ padding: '8px 24px', color: '#000' }}>Done</button>
+        </div>
+      </BaseModal>
 
       {/* Confirm Modal */}
       {confirmConfig && (
