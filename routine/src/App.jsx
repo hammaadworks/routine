@@ -4,16 +4,27 @@ import SprintPane from './components/SprintPane';
 import RoutinePane from './components/RoutinePane';
 import Timeline from './components/Timeline';
 import PlansPane from './components/PlansPane';
+import TargetPane from './components/CalendarPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
 import { createPortal } from 'react-dom';
-import { Command, Calendar, BookOpen, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup } from 'lucide-react';
+import { Command, Calendar, Clock, BookOpen, Target, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup } from 'lucide-react';
 import './index.css';
 
 export default function App() {
   const [versions, setVersions] = useState(() => {
     const saved = localStorage.getItem('routine_versions');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      let parsed = JSON.parse(saved);
+      // Migrate old array milestones to empty object as requested by user
+      parsed = parsed.map(v => {
+        if (Array.isArray(v.milestones)) {
+          return { ...v, milestones: {} };
+        }
+        return v;
+      });
+      return parsed;
+    }
     
     // Migration
     const oldPeriod = JSON.parse(localStorage.getItem('routine_period') || '{"start":"","end":""}');
@@ -45,6 +56,8 @@ export default function App() {
   });
 
   const [activeCenterTab, setActiveCenterTab] = useState('calendar');
+  const [calendarSubTab, setCalendarSubTab] = useState('mark_goals');
+  const [selectedTargetDate, setSelectedTargetDate] = useState(null);
   const [routineFilterSprintId, setRoutineFilterSprintId] = useState(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
@@ -82,6 +95,50 @@ export default function App() {
   const setTemplates = (templates) => updateActiveVersion({ templates: templates });
   const setActiveTemplateId = (id) => updateActiveVersion({ activeTemplateId: id });
   const setDayMapping = (mapping) => updateActiveVersion({ dayMapping: mapping });
+
+  const toggleDailyGoal = (dateStr, goalId) => {
+    const currentLogs = activeVersion.dailyLogs || {};
+    const dayLog = currentLogs[dateStr] || {};
+    const isCompleted = dayLog[goalId] || false;
+    
+    updateActiveVersion({
+      dailyLogs: {
+        ...currentLogs,
+        [dateStr]: {
+          ...dayLog,
+          [goalId]: !isCompleted
+        }
+      }
+    });
+  };
+
+  const handleDateChange = (type, value) => {
+    const newStart = type === 'start' ? value : activeVersion.start;
+    const newEnd = type === 'end' ? value : activeVersion.end;
+
+    if (newStart && newEnd) {
+      const parseDate = (dateStr) => {
+        const [y, m, d] = dateStr.split('-');
+        return new Date(y, m - 1, d);
+      };
+      
+      const d1 = parseDate(newStart);
+      const d2 = parseDate(newEnd);
+      
+      if (d2 < d1) {
+        alert("End date cannot be before start date.");
+        return;
+      }
+      
+      const monthDiff = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+      if (monthDiff > 6) {
+        alert("Target period cannot exceed 6 months. Please adjust the version dates.");
+        return;
+      }
+    }
+    
+    updateActiveVersion({ [type]: value });
+  };
 
   const addVersion = () => {
     const newId = Date.now().toString();
@@ -329,6 +386,13 @@ export default function App() {
               onClick={() => setActiveCenterTab('calendar')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
             >
+              <Clock size={16} /> Routine
+            </button>
+            <button 
+              className={`tab ${activeCenterTab === 'target' ? 'active' : ''}`} 
+              onClick={() => setActiveCenterTab('target')}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+            >
               <Calendar size={16} /> Calendar
             </button>
             <button 
@@ -349,12 +413,25 @@ export default function App() {
                 setActiveTemplateId={setActiveTemplateId}
                 dayMapping={dayMapping}
                 setDayMapping={setDayMapping}
+                updateActiveVersion={updateActiveVersion}
               />
-            ) : (
+            ) : activeCenterTab === 'plans' ? (
               <PlansPane 
                 sprintGoals={sprintGoals}
                 routineGoals={routineGoals}
                 activeVersionId={activeVersionId}
+              />
+            ) : (
+              <TargetPane 
+                activeVersion={activeVersion}
+                setCalendarSubTab={setCalendarSubTab}
+                updateActiveVersion={updateActiveVersion}
+                sprintGoals={sprintGoals}
+                selectedTargetDate={selectedTargetDate}
+                setSelectedTargetDate={setSelectedTargetDate}
+                routineGoals={routineGoals}
+                templates={templates}
+                dayMapping={dayMapping}
               />
             )}
           </div>
@@ -367,6 +444,15 @@ export default function App() {
           activeTemplateId={activeTemplateId}
           routineFilterSprintId={routineFilterSprintId}
           setRoutineFilterSprintId={setRoutineFilterSprintId}
+          selectedTargetDate={activeCenterTab === 'target' ? selectedTargetDate : null}
+          dailyLogs={activeVersion.dailyLogs || {}}
+          toggleDailyGoal={toggleDailyGoal}
+          dayMapping={dayMapping}
+          isCalendarTab={activeCenterTab === 'target'}
+          activeVersion={activeVersion}
+          calendarSubTab={calendarSubTab}
+          setCalendarSubTab={setCalendarSubTab}
+          updateActiveVersion={updateActiveVersion}
         />
       </main>
 
@@ -424,7 +510,7 @@ export default function App() {
                   <input 
                     type="date" 
                     value={activeVersion.start || ''} 
-                    onChange={(e) => updateActiveVersion({ start: e.target.value })} 
+                    onChange={(e) => handleDateChange('start', e.target.value)} 
                     onKeyDown={(e) => e.preventDefault()}
                     onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
                     style={{ width: '100%', cursor: 'pointer' }} 
@@ -435,7 +521,7 @@ export default function App() {
                   <input 
                     type="date" 
                     value={activeVersion.end || ''} 
-                    onChange={(e) => updateActiveVersion({ end: e.target.value })} 
+                    onChange={(e) => handleDateChange('end', e.target.value)} 
                     onKeyDown={(e) => e.preventDefault()}
                     onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
                     style={{ width: '100%', cursor: 'pointer' }} 

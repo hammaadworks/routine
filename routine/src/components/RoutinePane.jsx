@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import { parseDuration } from '../utils';
@@ -12,7 +14,9 @@ export default function RoutinePane({
   templates, setTemplates, 
   sprintGoals, setSprintGoals, 
   activeTemplateId,
-  routineFilterSprintId, setRoutineFilterSprintId
+  routineFilterSprintId, setRoutineFilterSprintId,
+  selectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
+  isCalendarTab, activeVersion, updateActiveVersion, calendarSubTab, setCalendarSubTab
 }) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
   const [editingRoutineGoalId, setEditingRoutineGoalId] = useState(null);
@@ -20,6 +24,163 @@ export default function RoutinePane({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
+
+  
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [activeBlockIdx, setActiveBlockIdx] = useState(null);
+  const textareaRefs = useRef({});
+
+  const allGoals = [
+    ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
+    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' }))
+  ];
+  
+  const filteredGoals = allGoals.filter(g => 
+    (g.task || g.text || '').toLowerCase().includes(mentionQuery.toLowerCase())
+  );
+
+  const getMilestonesContent = () => {
+    if (!selectedTargetDate) return '';
+    return (activeVersion?.milestones || {})[selectedTargetDate] || '';
+  };
+
+  const updateMilestonesContent = (newContent) => {
+    if (!selectedTargetDate) return;
+    const currentMilestones = activeVersion?.milestones || {};
+    updateActiveVersion({
+      milestones: {
+        ...currentMilestones,
+        [selectedTargetDate]: newContent
+      }
+    });
+  };
+
+  const handleKeyDown = (e, idx) => {
+    if (showMentionMenu) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % filteredGoals.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + filteredGoals.length) % filteredGoals.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredGoals.length > 0) {
+          insertMention(filteredGoals[mentionIndex], idx);
+        }
+      } else if (e.key === 'Escape') {
+        setShowMentionMenu(false);
+      }
+      return;
+    }
+
+    const blocks = getMilestonesContent().split('\n\n');
+    
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const cursor = e.target.selectionStart;
+      const val = blocks[idx];
+      const before = val.slice(0, cursor);
+      const after = val.slice(cursor);
+      
+      const newBlocks = [...blocks];
+      newBlocks[idx] = before;
+      newBlocks.splice(idx + 1, 0, after);
+      updateMilestonesContent(newBlocks.join('\n\n'));
+      setActiveBlockIdx(idx + 1);
+    } else if (e.key === 'Backspace' && e.target.selectionStart === 0 && idx > 0) {
+      e.preventDefault();
+      const prevBlock = blocks[idx - 1];
+      const newBlocks = [...blocks];
+      newBlocks[idx - 1] = prevBlock + (newBlocks[idx] ? '\n\n' + newBlocks[idx] : '');
+      newBlocks.splice(idx, 1);
+      updateMilestonesContent(newBlocks.join('\n\n'));
+      setActiveBlockIdx(idx - 1);
+      setTimeout(() => {
+        const ref = textareaRefs.current[idx - 1];
+        if (ref) {
+          ref.focus();
+          ref.selectionStart = ref.selectionEnd = prevBlock.length;
+        }
+      }, 0);
+    } else if (e.key === 'ArrowUp' && e.target.selectionStart === 0 && idx > 0) {
+      setActiveBlockIdx(idx - 1);
+    } else if (e.key === 'ArrowDown' && e.target.selectionStart === e.target.value.length && idx < blocks.length - 1) {
+      setActiveBlockIdx(idx + 1);
+    }
+  };
+
+  const handleInput = (e, idx) => {
+    const val = e.target.value;
+    const blocks = getMilestonesContent().split('\n\n');
+    blocks[idx] = val;
+    updateMilestonesContent(blocks.join('\n\n'));
+    
+    e.target.style.height = 'auto';
+    e.target.style.height = (e.target.scrollHeight) + 'px';
+    
+    const cursor = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursor);
+    
+    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    if (match) {
+      const query = match[1];
+      setMentionQuery(query);
+      setShowMentionMenu(true);
+      setMentionIndex(0);
+      
+      const coords = getCaretCoordinates(e.target, cursor);
+      const rect = e.target.getBoundingClientRect();
+      const containerRect = e.target.parentElement.getBoundingClientRect();
+      
+      setMentionCoords({
+        top: coords.top + 24 + (rect.top - containerRect.top),
+        left: coords.left
+      });
+    } else {
+      setShowMentionMenu(false);
+    }
+  };
+
+  const insertMention = (goal, idx) => {
+    const goalText = goal.task || goal.text;
+    const ref = textareaRefs.current[idx];
+    const cursor = ref.selectionStart;
+    
+    const blocks = getMilestonesContent().split('\n\n');
+    const blockContent = blocks[idx];
+    const textBeforeCursor = blockContent.slice(0, cursor);
+    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    
+    if (match) {
+      const startIdx = cursor - match[1].length - 1; 
+      const newText = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
+      
+      blocks[idx] = newText;
+      updateMilestonesContent(blocks.join('\n\n'));
+      
+      setTimeout(() => {
+        if (textareaRefs.current[idx]) {
+          const newCursorPos = startIdx + goalText.length + 4;
+          textareaRefs.current[idx].selectionStart = textareaRefs.current[idx].selectionEnd = newCursorPos;
+          textareaRefs.current[idx].focus();
+        }
+      }, 0);
+    }
+    setShowMentionMenu(false);
+  };
+
+  useEffect(() => {
+    if (activeBlockIdx !== null && textareaRefs.current[activeBlockIdx]) {
+      const ref = textareaRefs.current[activeBlockIdx];
+      ref.focus();
+      ref.style.height = 'auto';
+      ref.style.height = (ref.scrollHeight) + 'px';
+    }
+  }, [activeBlockIdx]);
 
   const checkSprintAddressed = (goal) => {
     const explicitlyReferenced = (routineGoals || []).some(g => g.sprintGoalId === goal.id);
@@ -165,76 +326,130 @@ export default function RoutinePane({
     });
   };
 
-  let displayedRoutineGoals = (routineGoals || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
-  if (routineFilterSprintId) {
-    const sprintGoal = sprintGoals?.find(sg => sg.id === routineFilterSprintId);
-    if (sprintGoal) {
-      const txt = sprintGoal.text.toLowerCase().trim();
-      displayedRoutineGoals = displayedRoutineGoals.filter(g => 
-        g.sprintGoalId === routineFilterSprintId || 
-        (txt && g.task.toLowerCase().trim() === txt) || 
-        (txt && g.desc && g.desc.toLowerCase().trim() === txt)
-      );
+  const getScheduledGoalsForDate = (dateStr) => {
+    if (!routineGoals || routineGoals.length === 0) return [];
+    
+    const [y, m, d] = dateStr.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    const templateId = dayMapping ? dayMapping[dayName] : null;
+    
+    if (templateId && templates) {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        const blockGoalIds = template.blocks.map(b => b.routineGoalId).filter(Boolean);
+        const scheduledGoals = routineGoals.filter(g => blockGoalIds.includes(g.id));
+        if (scheduledGoals.length > 0) {
+          return scheduledGoals;
+        }
+      }
     }
-  }
-  if (sortByName) {
-    displayedRoutineGoals.sort((a, b) => a.task.localeCompare(b.task));
+    return routineGoals;
+  };
+
+  let displayedRoutineGoals = [];
+  
+  if (selectedTargetDate) {
+    displayedRoutineGoals = getScheduledGoalsForDate(selectedTargetDate);
+  } else {
+    displayedRoutineGoals = (routineGoals || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (routineFilterSprintId) {
+      const sprintGoal = sprintGoals?.find(sg => sg.id === routineFilterSprintId);
+      if (sprintGoal) {
+        const txt = sprintGoal.text.toLowerCase().trim();
+        displayedRoutineGoals = displayedRoutineGoals.filter(g => 
+          g.sprintGoalId === routineFilterSprintId || 
+          (txt && g.task.toLowerCase().trim() === txt) || 
+          (txt && g.desc && g.desc.toLowerCase().trim() === txt)
+        );
+      }
+    }
+    if (sortByName) {
+      displayedRoutineGoals.sort((a, b) => a.task.localeCompare(b.task));
+    }
   }
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', overflow: 'hidden', minHeight: 0 }}>
-        <h2 style={{ marginBottom: '16px' }}><ListTodo size={18} color="var(--accent)" /> Routine Goals</h2>
-        
-        <button 
-          onClick={openAddRoutineGoal} className="secondary" 
-          style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
-        >
-          <Plus size={16} /> Add Goal
-        </button>
-
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--text-secondary)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            </div>
-            <input 
-              type="text" 
-              placeholder="Find by name..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
-            />
+        {isCalendarTab && (
+          <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
+            <button 
+              className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`} 
+              onClick={() => setCalendarSubTab('mark_goals')}
+            >
+              Mark Goals
+            </button>
+            <button 
+              className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`} 
+              onClick={() => setCalendarSubTab('milestones')}
+            >
+              Milestones
+            </button>
           </div>
-          <button 
-            className={`secondary ${(routineFilterSprintId || sortByName) ? 'sort-active-glow' : ''}`}
-            onClick={() => {
-              if (routineFilterSprintId && setRoutineFilterSprintId) {
-                setRoutineFilterSprintId(null);
-              } else {
-                setSortByName(!sortByName);
-              }
-            }}
-            style={{ 
-              padding: '8px 12px', 
-              background: (routineFilterSprintId || sortByName) ? 'var(--accent)' : '',
-              boxShadow: (routineFilterSprintId || sortByName) ? '0 0 12px var(--accent)' : 'none',
-              color: (routineFilterSprintId || sortByName) ? '#000' : 'currentColor',
-              borderColor: (routineFilterSprintId || sortByName) ? 'var(--accent)' : ''
-            }}
-            title={routineFilterSprintId ? "Clear Filter" : "Sort by Name"}
-          >
-            {routineFilterSprintId ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
+        )}
+
+        {(!isCalendarTab || calendarSubTab === 'mark_goals') && (
+          <>
+            {selectedTargetDate ? (
+              <h2 style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Target size={18} color="var(--accent)" /> Goals for {selectedTargetDate}
+              </h2>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+              <>
+                <h2 style={{ marginBottom: '16px' }}><ListTodo size={18} color="var(--accent)" /> Routine Goals</h2>
+                
+                <button 
+                  onClick={openAddRoutineGoal} className="secondary" 
+                  style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
+                >
+                  <Plus size={16} /> Add Goal
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--text-secondary)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Find by name..." 
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
+                    />
+                  </div>
+                  <button 
+                    className={`secondary ${(routineFilterSprintId || sortByName) ? 'sort-active-glow' : ''}`}
+                    onClick={() => {
+                      if (routineFilterSprintId && setRoutineFilterSprintId) {
+                        setRoutineFilterSprintId(null);
+                      } else {
+                        setSortByName(!sortByName);
+                      }
+                    }}
+                    style={{ 
+                      padding: '8px 12px', 
+                      background: (routineFilterSprintId || sortByName) ? 'var(--accent)' : '',
+                      boxShadow: (routineFilterSprintId || sortByName) ? '0 0 12px var(--accent)' : 'none',
+                      color: (routineFilterSprintId || sortByName) ? '#000' : 'currentColor',
+                      borderColor: (routineFilterSprintId || sortByName) ? 'var(--accent)' : ''
+                    }}
+                    title={routineFilterSprintId ? "Clear Filter" : "Sort by Name"}
+                  >
+                    {routineFilterSprintId ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
+                    )}
+                  </button>
+                </div>
+              </>
             )}
-          </button>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
 
-        {displayedRoutineGoals.map((goal) => {
+            {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
           const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
           const hex = linkedSprintGoal?.color || '#ffffff';
@@ -248,10 +463,11 @@ export default function RoutinePane({
             borderRadius: '12px',
           };
 
+          const isCompletedForView = selectedTargetDate ? (dailyLogs?.[selectedTargetDate]?.[goal.id] || false) : (goal.completed || false);
           return (
             <div 
               key={goal.id} 
-              className={`item-card ${goal.completed ? 'scratched' : ''}`}
+              className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
               draggable={true}
               onDragStart={(e) => handleDragStart(e, goal)}
               style={{ display: 'flex', alignItems: 'center', height: '52px', padding: '0 12px', ...bgStyle }}
@@ -264,8 +480,14 @@ export default function RoutinePane({
                     type="checkbox" 
                     className="checkbox-square" 
                     style={{ flexShrink: 0, '--accent': hex }}
-                    checked={goal.completed || false} 
-                    onChange={() => toggleGoal(goal.id)} 
+                    checked={selectedTargetDate ? (dailyLogs?.[selectedTargetDate]?.[goal.id] || false) : (goal.completed || false)} 
+                    onChange={() => {
+                      if (selectedTargetDate) {
+                        toggleDailyGoal(selectedTargetDate, goal.id);
+                      } else {
+                        toggleGoal(goal.id);
+                      }
+                    }} 
                   />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -287,14 +509,16 @@ export default function RoutinePane({
                   </div>
                 </div>
                 
-                <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
-                  <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '4px' }}>
-                    <Copy size={14} />
-                  </button>
-                  <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '4px' }}>
-                    <Pencil size={14} />
-                  </button>
-                </div>
+                {!selectedTargetDate && (
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
+                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '4px' }}>
+                      <Copy size={14} />
+                    </button>
+                    <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '4px' }}>
+                      <Pencil size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -310,7 +534,113 @@ export default function RoutinePane({
             <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Start adding goals and drag them to schedule.</div>
           </div>
         )}
-        </div>
+            </div>
+          </>
+        )}
+
+        {isCalendarTab && calendarSubTab === 'milestones' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto' }}>
+            {!selectedTargetDate ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                Select a date in the calendar to write milestones.
+              </div>
+            ) : (
+              <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative' }}>
+                {(getMilestonesContent() || '').split('\n\n').map((block, idx) => {
+                  const isActive = activeBlockIdx === idx;
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => setActiveBlockIdx(idx)}
+                      style={{ 
+                        minHeight: '28px', 
+                        cursor: isActive ? 'text' : 'pointer',
+                        padding: '4px 0',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      {isActive ? (
+                        <textarea
+                          ref={el => textareaRefs.current[idx] = el}
+                          value={block}
+                          onChange={e => handleInput(e, idx)}
+                          onKeyDown={e => handleKeyDown(e, idx)}
+                          onBlur={() => setActiveBlockIdx(null)}
+                          placeholder={idx === 0 && !block ? "Write your milestones for this day... (Use @ to tag goals)" : ""}
+                          style={{
+                            width: '100%', resize: 'none', background: 'transparent', 
+                            border: 'none', color: 'var(--text-primary)', padding: 0,
+                            fontSize: '14px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
+                            fontFamily: 'inherit', overflow: 'hidden'
+                          }}
+                        />
+                      ) : (
+                        <div className="markdown-preview" style={{ minHeight: '24px' }}>
+                          <ReactMarkdown>{block === '' ? '\u00A0' : block}</ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div 
+                  style={{ height: '30vh', cursor: 'text' }} 
+                  onClick={() => {
+                    const contentStr = getMilestonesContent();
+                    const blocks = (contentStr || '').split('\n\n');
+                    if (blocks[blocks.length - 1] !== '') {
+                      updateMilestonesContent(contentStr + '\n\n');
+                    }
+                    setActiveBlockIdx(blocks.length);
+                  }}
+                />
+                
+                {showMentionMenu && filteredGoals.length > 0 && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: mentionCoords.top + 'px',
+                      left: mentionCoords.left + 'px', 
+                      background: 'var(--bg)',
+                      border: '1px solid var(--panel-border)',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                      zIndex: 100,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      minWidth: '250px'
+                    }}
+                  >
+                    {filteredGoals.map((g, i) => (
+                      <div 
+                        key={g.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault(); 
+                          insertMention(g, activeBlockIdx);
+                        }}
+                        onMouseEnter={() => setMentionIndex(i)}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                          display: 'flex', flexDirection: 'column'
+                        }}
+                      >
+                        <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
+                          {g.task || g.text}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                          {g.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* BOTTOM METRICS: Routine Insights */}

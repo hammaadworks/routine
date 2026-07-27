@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Target, CheckCircle2, Plus, Trash2, Pencil, Activity, Clock, X, Rocket } from 'lucide-react';
+import { Target, CheckCircle2, Plus, Trash2, Pencil, Activity, Clock, X, Rocket, Palette } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
-const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
+const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
 export default function SprintPane({ 
   sprintGoals, setSprintGoals, 
@@ -15,19 +15,40 @@ export default function SprintPane({
   const [editingSprintGoalId, setEditingSprintGoalId] = useState(null);
   const [sprintGoalForm, setSprintGoalForm] = useState({ text: '', color: '' });
   const [confirmConfig, setConfirmConfig] = useState(null);
+  const [colorError, setColorError] = useState('');
 
   const openAddSprintGoal = () => {
     setEditingSprintGoalId(null);
-    const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
     setSprintGoalForm({ text: '', color: randomColor });
     setShowSprintGoalModal(true);
   };
 
   const openEditSprintGoal = (goal) => {
     setEditingSprintGoalId(goal.id);
-    const goalColor = goal.color || COLORS[Math.floor(Math.random() * COLORS.length)];
+    setColorError('');
+    const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
     setSprintGoalForm({ text: goal.text, color: goalColor });
     setShowSprintGoalModal(true);
+  };
+
+  const handleColorChange = (e) => {
+    const hex = e.target.value;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+    
+    // Grayscale (diff < 30) or very light (min > 220)
+    if (diff < 30 || min > 220) {
+      setColorError('Grey/white is reserved.');
+    } else {
+      setColorError('');
+      setSprintGoalForm({...sprintGoalForm, color: hex.toUpperCase()});
+    }
   };
 
   const saveSprintGoal = (e) => {
@@ -148,6 +169,8 @@ export default function SprintPane({
   if (sortByName) {
     displayedGoals.sort((a, b) => a.text.localeCompare(b.text));
   }
+
+  const isCustomColor = sprintGoalForm.color && !PRESET_COLORS.some(c => c.toLowerCase() === sprintGoalForm.color.toLowerCase());
 
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
@@ -305,21 +328,51 @@ export default function SprintPane({
               </div>
               
               <div>
-                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>Theme Color</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {COLORS.map(c => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setSprintGoalForm({...sprintGoalForm, color: c})}
+                <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+                  Theme Color
+                  {colorError && <span style={{ color: '#ef4444', marginLeft: '8px' }}>{colorError}</span>}
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {PRESET_COLORS.map(c => {
+                    const isSelected = sprintGoalForm.color && sprintGoalForm.color.toLowerCase() === c.toLowerCase();
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => { setColorError(''); setSprintGoalForm({...sprintGoalForm, color: c}); }}
+                        style={{
+                          width: '24px', height: '24px', borderRadius: '50%', padding: 0,
+                          background: c, border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
+                          cursor: 'pointer', transition: 'transform 0.1s',
+                          transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                        }}
+                      />
+                    );
+                  })}
+                  
+                  {/* Custom Color Picker */}
+                  <div style={{
+                    position: 'relative',
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    background: isCustomColor ? sprintGoalForm.color : 'rgba(255, 255, 255, 0.1)',
+                    border: `2px solid ${isCustomColor ? '#fff' : 'transparent'}`,
+                    cursor: 'pointer', transition: 'all 0.1s',
+                    transform: isCustomColor ? 'scale(1.1)' : 'scale(1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: isCustomColor ? '#fff' : 'var(--text-secondary)'
+                  }}>
+                    {!isCustomColor && <Palette size={12} />}
+                    <input 
+                      type="color"
+                      value={sprintGoalForm.color ? sprintGoalForm.color.toLowerCase() : '#ffffff'}
+                      onChange={handleColorChange}
                       style={{
-                        width: '24px', height: '24px', borderRadius: '50%', padding: 0,
-                        background: c, border: `2px solid ${sprintGoalForm.color === c ? '#fff' : 'transparent'}`,
-                        cursor: 'pointer', transition: 'transform 0.1s',
-                        transform: sprintGoalForm.color === c ? 'scale(1.1)' : 'scale(1)'
+                        position: 'absolute', top: '-10px', left: '-10px', width: '44px', height: '44px',
+                        cursor: 'pointer', opacity: 0
                       }}
+                      title="Custom Color"
                     />
-                  ))}
+                  </div>
                 </div>
               </div>
 

@@ -87,7 +87,7 @@ function getLayout(blocks) {
   return laidOutBlocks;
 }
 
-export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping }) {
+export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping, updateActiveVersion }) {
   const [newTemplateName, setNewTemplateName] = useState('');
   // Inline editing for blocks now, no block modal needed
   const [dragHoverMins, setDragHoverMins] = useState(null);
@@ -126,7 +126,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     e.preventDefault();
     if (!newTemplateName.trim()) return;
     const newId = Date.now().toString();
-    setTemplates([...templates, { id: newId, name: newTemplateName, blocks: [] }]);
+    const updates = {};
+    updates.templates = [...templates, { id: newId, name: newTemplateName, blocks: [] }];
     
     // Assign unassigned days to the newly created template
     const updatedMapping = { ...dayMapping };
@@ -138,10 +139,19 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       }
     });
     if (mappingChanged) {
-      setDayMapping(updatedMapping);
+      updates.dayMapping = updatedMapping;
     }
     
-    setActiveTemplateId(newId);
+    updates.activeTemplateId = newId;
+
+    if (updateActiveVersion) {
+      updateActiveVersion(updates);
+    } else {
+      setTemplates(updates.templates);
+      if (updates.dayMapping) setDayMapping(updates.dayMapping);
+      setActiveTemplateId(updates.activeTemplateId);
+    }
+    
     setNewTemplateName('');
   };
 
@@ -192,7 +202,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     }
 
     const newId = Date.now().toString();
-    setTemplates([...templates, { ...activeTemplate, id: newId, name: `${activeTemplate.name} (Copy)` }]);
+    const updates = {};
+    updates.templates = [...templates, { ...activeTemplate, id: newId, name: `${activeTemplate.name} (Copy)` }];
     
     // Assign unassigned days to the duplicated template
     const updatedMapping = { ...dayMapping };
@@ -204,10 +215,18 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       }
     });
     if (mappingChanged) {
-      setDayMapping(updatedMapping);
+      updates.dayMapping = updatedMapping;
     }
 
-    setActiveTemplateId(newId);
+    updates.activeTemplateId = newId;
+
+    if (updateActiveVersion) {
+      updateActiveVersion(updates);
+    } else {
+      setTemplates(updates.templates);
+      if (updates.dayMapping) setDayMapping(updates.dayMapping);
+      setActiveTemplateId(updates.activeTemplateId);
+    }
   };
 
   const deleteTemplate = () => {
@@ -229,8 +248,9 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           newActiveId = newTemplates[0].id;
         }
 
-        setTemplates(finalTemplates);
-        setActiveTemplateId(newActiveId);
+        const updates = {};
+        updates.templates = finalTemplates;
+        updates.activeTemplateId = newActiveId;
         
         // Remove references in dayMapping
         const updatedMapping = { ...dayMapping };
@@ -242,7 +262,15 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           }
         });
         if (mappingChanged) {
-          setDayMapping(updatedMapping);
+          updates.dayMapping = updatedMapping;
+        }
+
+        if (updateActiveVersion) {
+          updateActiveVersion(updates);
+        } else {
+          setTemplates(updates.templates);
+          setActiveTemplateId(updates.activeTemplateId);
+          if (updates.dayMapping) setDayMapping(updates.dayMapping);
         }
         setConfirmConfig(null);
       },
@@ -265,33 +293,41 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
     const source = e.dataTransfer.getData('source');
     
-    let updatedTemplates = [...templates];
-    let targetTemplate = updatedTemplates.find(t => t.id === activeTemplateId);
+    let updatedTemplates = templates.map(t => {
+      if (t.id === activeTemplateId) {
+        let newBlocks = [...t.blocks];
+        if (source === 'sidebar') {
+          const task = e.dataTransfer.getData('task');
+          const timeStr = e.dataTransfer.getData('time');
+          const color = e.dataTransfer.getData('color');
+          const routineGoalId = e.dataTransfer.getData('routineGoalId');
+          const duration = parseDuration(timeStr);
 
-    if (source === 'sidebar') {
-      const task = e.dataTransfer.getData('task');
-      const timeStr = e.dataTransfer.getData('time');
-      const color = e.dataTransfer.getData('color');
-      const routineGoalId = e.dataTransfer.getData('routineGoalId');
-      const duration = parseDuration(timeStr);
-
-      targetTemplate.blocks.push({
-        id: Date.now().toString(),
-        name: task,
-        startTime: startMinutes,
-        duration: duration,
-        color: color,
-        routineGoalId: routineGoalId
-      });
-    } else if (source === 'timeline') {
-      const blockId = e.dataTransfer.getData('blockId');
-      const block = targetTemplate.blocks.find(b => b.id === blockId);
-      if (block) {
-        block.startTime = startMinutes;
+          newBlocks.push({
+            id: Date.now().toString(),
+            name: task,
+            startTime: startMinutes,
+            duration: duration,
+            color: color,
+            routineGoalId: routineGoalId
+          });
+        } else if (source === 'timeline') {
+          const blockId = e.dataTransfer.getData('blockId');
+          const blockIndex = newBlocks.findIndex(b => b.id === blockId);
+          if (blockIndex !== -1) {
+            newBlocks[blockIndex] = { ...newBlocks[blockIndex], startTime: startMinutes };
+          }
+        }
+        return { ...t, blocks: newBlocks };
       }
-    }
+      return t;
+    });
 
-    setTemplates(updatedTemplates);
+    if (updateActiveVersion) {
+      updateActiveVersion({ templates: updatedTemplates });
+    } else {
+      setTemplates(updatedTemplates);
+    }
   };
 
   const handleDragOver = (e) => {
@@ -317,7 +353,12 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       }
       return t;
     });
-    setTemplates(updatedTemplates);
+
+    if (updateActiveVersion) {
+      updateActiveVersion({ templates: updatedTemplates });
+    } else {
+      setTemplates(updatedTemplates);
+    }
   };
 
   return (
@@ -504,13 +545,17 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                     onChange={(e) => {
                       const newMins = parseTime(e.target.value);
                       if (newMins !== null && !isNaN(newMins)) {
-                        let updatedTemplates = templates.map(t => {
-                          if (t.id === activeTemplateId) {
-                            return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newMins } : b) };
+                          const updatedTemplates = templates.map(t => {
+                            if (t.id === activeTemplateId) {
+                              return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newMins } : b) };
+                            }
+                            return t;
+                          });
+                          if (updateActiveVersion) {
+                            updateActiveVersion({ templates: updatedTemplates });
+                          } else {
+                            setTemplates(updatedTemplates);
                           }
-                          return t;
-                        });
-                        setTemplates(updatedTemplates);
                       }
                     }}
                     style={{ 
@@ -535,14 +580,17 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                       if (newEndMins !== null && !isNaN(newEndMins)) {
                         let newStartTime = newEndMins - block.duration;
                         if (newStartTime < 0) newStartTime += 1440;
-                        
-                        let updatedTemplates = templates.map(t => {
+                        const updatedTemplates = templates.map(t => {
                           if (t.id === activeTemplateId) {
                             return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newStartTime } : b) };
                           }
                           return t;
                         });
-                        setTemplates(updatedTemplates);
+                        if (updateActiveVersion) {
+                          updateActiveVersion({ templates: updatedTemplates });
+                        } else {
+                          setTemplates(updatedTemplates);
+                        }
                       }
                     }}
                     style={{ 
