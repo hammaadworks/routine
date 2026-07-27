@@ -499,6 +499,19 @@ export default function RoutinePane({
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
+        {isCalendarTab && effectiveDate && (
+          <button 
+            onClick={() => {
+              setEditingMilestoneIdx(null);
+              setMilestoneForm({ date: effectiveDate, tag: '', title: '', desc: '' });
+              setShowMilestoneModal(true);
+            }} 
+            className="secondary"  
+            style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
+          >
+            <Plus size={16} /> Add Milestone
+          </button>
+        )}
         <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
           <button 
             className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`} 
@@ -662,19 +675,6 @@ export default function RoutinePane({
 
         {calendarSubTab === 'milestones' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto' }}>
-            {isCalendarTab && effectiveDate && (
-              <button 
-                onClick={() => {
-                  setEditingMilestoneIdx(null);
-                  setMilestoneForm({ date: effectiveDate, tag: '', title: '', desc: '' });
-                  setShowMilestoneModal(true);
-                }} 
-                className="secondary"  
-                style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
-              >
-                <Plus size={16} /> Add Milestone
-              </button>
-            )}
             {milestoneDates.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 {isCalendarTab ? "No milestones found. Click 'Add Milestone' to create one." : "No milestones found."}
