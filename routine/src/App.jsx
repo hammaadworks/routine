@@ -161,6 +161,13 @@ export default function App() {
 
   const duplicateVersion = () => {
     const newId = Date.now().toString();
+    
+    const plans = localStorage.getItem(`routine_plans_${activeVersion.id}`);
+    if (plans) localStorage.setItem(`routine_plans_${newId}`, plans);
+    
+    const folders = localStorage.getItem(`routine_plans_folders_${activeVersion.id}`);
+    if (folders) localStorage.setItem(`routine_plans_folders_${newId}`, folders);
+
     setVersions([...versions, {
       ...activeVersion,
       id: newId,
@@ -175,6 +182,9 @@ export default function App() {
       message: 'Are you sure you want to delete this version? All its goals, plans, and calendar blocks will be lost.',
       isDanger: true,
       onConfirm: () => {
+        localStorage.removeItem(`routine_plans_${activeVersion.id}`);
+        localStorage.removeItem(`routine_plans_folders_${activeVersion.id}`);
+        
         const newVersions = versions.filter(v => v.id !== activeVersion.id);
         
         if (newVersions.length === 0) {
@@ -259,6 +269,11 @@ export default function App() {
             message: 'This will REPLACE all your existing versions and plans with the imported data. Are you absolutely sure?',
             isDanger: true,
             onConfirm: () => {
+              versions.forEach(v => {
+                localStorage.removeItem(`routine_plans_${v.id}`);
+                localStorage.removeItem(`routine_plans_folders_${v.id}`);
+              });
+
               data.versions.forEach(v => {
                 if (data.allPlans && data.allPlans[v.id]) {
                   localStorage.setItem(`routine_plans_${v.id}`, JSON.stringify(data.allPlans[v.id]));

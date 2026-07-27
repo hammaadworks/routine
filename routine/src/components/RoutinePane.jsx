@@ -499,37 +499,22 @@ export default function RoutinePane({
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
-        {effectiveDate && (
+        <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
           <button 
-            onClick={() => {
-              setEditingMilestoneIdx(null);
-              setMilestoneForm({ date: effectiveDate, tag: '', title: '', desc: '' });
-              setShowMilestoneModal(true);
-            }} 
-            className="secondary"  
-            style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
+            className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`} 
+            onClick={() => setCalendarSubTab('mark_goals')}
           >
-            <Plus size={16} /> Add Milestone
+            {isCalendarTab ? 'Mark Goals' : 'Goals'}
           </button>
-        )}
-        {isCalendarTab && (
-          <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
-            <button 
-              className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`} 
-              onClick={() => setCalendarSubTab('mark_goals')}
-            >
-              Mark Goals
-            </button>
-            <button 
-              className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`} 
-              onClick={() => setCalendarSubTab('milestones')}
-            >
-              Milestones
-            </button>
-          </div>
-        )}
+          <button 
+            className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`} 
+            onClick={() => setCalendarSubTab('milestones')}
+          >
+            Milestones
+          </button>
+        </div>
 
-        {(!isCalendarTab || calendarSubTab === 'mark_goals') && (
+        {calendarSubTab === 'mark_goals' && (
           <>
             {effectiveDate ? (
               null
@@ -675,17 +660,30 @@ export default function RoutinePane({
           </>
         )}
 
-        {isCalendarTab && calendarSubTab === 'milestones' && (
+        {calendarSubTab === 'milestones' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto' }}>
+            {isCalendarTab && effectiveDate && (
+              <button 
+                onClick={() => {
+                  setEditingMilestoneIdx(null);
+                  setMilestoneForm({ date: effectiveDate, tag: '', title: '', desc: '' });
+                  setShowMilestoneModal(true);
+                }} 
+                className="secondary"  
+                style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed', flexShrink: 0 }}
+              >
+                <Plus size={16} /> Add Milestone
+              </button>
+            )}
             {milestoneDates.length === 0 ? (
               <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                No milestones found. Click 'Add Milestone' to create one.
+                {isCalendarTab ? "No milestones found. Click 'Add Milestone' to create one." : "No milestones found."}
               </div>
             ) : (
               <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px' }}>
                 <div style={{ borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px' }}>
                   {milestoneDates.map((dateStr) => {
-                    const contentStr = getMilestonesContent(dateStr);
+                    const contentStr = (activeVersion?.milestones || {})[dateStr] || '';
                     const blocks = (contentStr || '').split('\n\n');
                     const isActiveDate = effectiveDate === dateStr;
                     
@@ -737,10 +735,10 @@ export default function RoutinePane({
                           return (
                             <div 
                               key={idx} 
-                              onClick={() => openEditMilestone(dateStr, idx, block)}
+                              onClick={() => { if (isCalendarTab) openEditMilestone(dateStr, idx, block); }}
                               style={{ 
                                 minHeight: '28px', 
-                                cursor: 'pointer',
+                                cursor: isCalendarTab ? 'pointer' : 'default',
                                 padding: '4px 0',
                                 marginBottom: '8px'
                               }}
