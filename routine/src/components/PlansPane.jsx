@@ -327,6 +327,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
                 <input 
                   value={f.name}
                   onChange={(e) => updateFolder(f.id, { name: e.target.value })}
+                  onBlur={(e) => updateFolder(f.id, { name: e.target.value.trim() })}
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     background: 'transparent', border: 'none', color: 'inherit',
@@ -465,6 +466,7 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
                 type="text" 
                 value={activeNote.title}
                 onChange={e => updateActiveNote({ title: e.target.value })}
+                onBlur={e => updateActiveNote({ title: e.target.value.trim() })}
                 style={{ 
                   background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', 
                   fontWeight: 'bold', width: '100%', padding: 0, outline: 'none', boxShadow: 'none'

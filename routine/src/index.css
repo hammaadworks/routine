@@ -150,6 +150,7 @@ body {
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
+    flex: none !important;
   }
   
   .mid-pane-content {
