@@ -8,9 +8,11 @@ import TargetPane from './components/CalendarPane';
 import Dropdown from './components/Dropdown';
 import ConfirmModal from './components/ConfirmModal';
 import BaseModal from './components/BaseModal';
+import { saveSyncConfig } from './sync';
 import { createPortal } from 'react-dom';
-import { Command, Calendar, Clock, BookOpen, Target, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup, ChevronDown } from 'lucide-react';
+import { Command, Calendar, Clock, BookOpen, Target, Layers, Plus, Copy, Trash2, X, Download, Import, DatabaseBackup, ChevronDown, Star, Cloud } from 'lucide-react';
 import './index.css';
+import LifePane from './components/LifePane';
 
 export default function App() {
   const [versions, setVersions] = useState(() => {
@@ -52,18 +54,35 @@ export default function App() {
     }];
   });
 
+  const [lifeGoals, setLifeGoals] = useState(() => {
+    return JSON.parse(localStorage.getItem('routine_lifeGoals') || '[]');
+  });
+
   const [activeVersionId, setActiveVersionId] = useState(() => {
     return localStorage.getItem('routine_activeVersionId') || 'v1';
   });
 
   const [activeCenterTab, setActiveCenterTab] = useState('calendar');
+  const [activeLeftTab, setActiveLeftTab] = useState('sprint');
   const [calendarSubTab, setCalendarSubTab] = useState('mark_goals');
   const [selectedTargetDate, setSelectedTargetDate] = useState(null);
   const [routineFilterSprintId, setRoutineFilterSprintId] = useState(null);
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [isMidPaneExpanded, setIsMidPaneExpanded] = useState(true);
+  const [isLeftPaneExpanded, setIsLeftPaneExpanded] = useState(false);
+  
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncForm, setSyncForm] = useState({ 
+    token: localStorage.getItem('gist_token') || '', 
+    id: localStorage.getItem('gist_id') || '',
+    filename: localStorage.getItem('gist_filename') || 'habits_data.json'
+  });
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    localStorage.setItem('routine_lifeGoals', JSON.stringify(lifeGoals));
+  }, [lifeGoals]);
 
   useEffect(() => {
     localStorage.setItem('routine_versions', JSON.stringify(versions));
@@ -388,13 +407,53 @@ export default function App() {
       </header>
 
       <main className="main-content">
-        <SprintPane 
-          sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
-          routineGoals={routineGoals} setRoutineGoals={setRoutineGoals} 
-          templates={templates} setTemplates={setTemplates}
-          activeTemplateId={activeTemplateId} dayMapping={dayMapping}
-          onSprintBadgeClick={(id) => setRoutineFilterSprintId(id)}
-        />
+        <div className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+          <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
+            <div className="tabs" style={{ marginBottom: '0', borderBottom: 'none', background: 'transparent' }} onClick={(e) => e.stopPropagation()}>
+              <button 
+                className={`tab ${activeLeftTab === 'sprint' ? 'active' : ''}`} 
+                onClick={() => setActiveLeftTab('sprint')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+              >
+                <Target size={16} /> Sprint
+              </button>
+              <button 
+                className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`} 
+                onClick={() => setActiveLeftTab('life')}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
+              >
+                <Star size={16} /> Life
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button className="icon-btn" style={{ padding: '4px' }} onClick={(e) => { e.stopPropagation(); setShowSyncModal(true); }} title="Cloud Sync">
+                <Cloud size={16} />
+              </button>
+              <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
+                <ChevronDown size={16} style={{ transform: isLeftPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+            {activeLeftTab === 'sprint' ? (
+              <SprintPane 
+                sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
+                routineGoals={routineGoals} setRoutineGoals={setRoutineGoals} 
+                templates={templates} setTemplates={setTemplates}
+                activeTemplateId={activeTemplateId} dayMapping={dayMapping}
+                onSprintBadgeClick={(id) => setRoutineFilterSprintId(id)}
+                lifeGoals={lifeGoals}
+              />
+            ) : (
+              <LifePane 
+                lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+                sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
+                routineGoals={routineGoals} setRoutineGoals={setRoutineGoals}
+                templates={templates} setTemplates={setTemplates}
+              />
+            )}
+          </div>
+        </div>
         
         <div className={`timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0 }}>
           <div className="tabs" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{ cursor: 'pointer', marginBottom: '0', borderBottom: '1px solid var(--panel-border)', background: 'var(--panel-bg)' }}>
@@ -439,6 +498,7 @@ export default function App() {
               <PlansPane 
                 sprintGoals={sprintGoals}
                 routineGoals={routineGoals}
+                lifeGoals={lifeGoals}
                 activeVersionId={activeVersionId}
               />
             ) : (
@@ -447,6 +507,7 @@ export default function App() {
                 setCalendarSubTab={setCalendarSubTab}
                 updateActiveVersion={updateActiveVersion}
                 sprintGoals={sprintGoals}
+                lifeGoals={lifeGoals}
                 selectedTargetDate={selectedTargetDate}
                 setSelectedTargetDate={setSelectedTargetDate}
                 routineGoals={routineGoals}
@@ -461,6 +522,7 @@ export default function App() {
           routineGoals={routineGoals} setRoutineGoals={setRoutineGoals}
           templates={templates} setTemplates={setTemplates}
           sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
+          lifeGoals={lifeGoals}
           activeTemplateId={activeTemplateId}
           routineFilterSprintId={routineFilterSprintId}
           setRoutineFilterSprintId={setRoutineFilterSprintId}
@@ -571,6 +633,81 @@ export default function App() {
           confirmText={confirmConfig.onCancel ? "Confirm" : "OK"}
         />
       )}
+
+      {/* Sync Modal */}
+      <BaseModal 
+        isOpen={showSyncModal} 
+        onClose={() => setShowSyncModal(false)}
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Cloud size={18} color="var(--accent)" /> Cloud Sync (GitHub Gist)
+          </span>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+            Sync your data across devices seamlessly. Create a private GitHub Gist, and generate a Personal Access Token (classic) with the <code>gist</code> scope.
+          </p>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>GitHub Personal Access Token</label>
+            <input 
+              type="password" 
+              placeholder="ghp_..." 
+              value={syncForm.token}
+              onChange={(e) => setSyncForm({ ...syncForm, token: e.target.value })} 
+              style={{ width: '100%', fontFamily: 'monospace', padding: '10px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '6px', color: '#fff' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Gist ID</label>
+            <input 
+              type="text" 
+              placeholder="e.g. 8a892b3c..." 
+              value={syncForm.id}
+              onChange={(e) => setSyncForm({ ...syncForm, id: e.target.value })} 
+              style={{ width: '100%', fontFamily: 'monospace', padding: '10px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '6px', color: '#fff' }}
+            />
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              You can find this in the Gist URL: gist.github.com/username/<b>[GIST_ID]</b>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Filename</label>
+            <input 
+              type="text" 
+              placeholder="e.g. habits_data.json" 
+              value={syncForm.filename}
+              onChange={(e) => setSyncForm({ ...syncForm, filename: e.target.value })} 
+              style={{ width: '100%', fontFamily: 'monospace', padding: '10px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '6px', color: '#fff' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+            <button 
+              type="button" 
+              onClick={() => {
+                setSyncForm({ token: '', id: '', filename: 'habits_data.json' });
+                saveSyncConfig('', '', '');
+                setShowSyncModal(false);
+              }} 
+              style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer' }}
+            >
+              Disconnect
+            </button>
+            <button 
+              type="button" 
+              onClick={() => {
+                saveSyncConfig(syncForm.token, syncForm.id, syncForm.filename);
+                setShowSyncModal(false);
+              }} 
+              className="primary" 
+              style={{ flex: 2, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}
+            >
+              Save & Sync
+            </button>
+          </div>
+        </div>
+      </BaseModal>
+
     </div>
   );
 }

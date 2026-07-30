@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy, FileText, ChevronRight, ChevronDown, Star } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
@@ -13,7 +13,7 @@ const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4'
 export default function RoutinePane({ 
   routineGoals, setRoutineGoals, 
   templates, setTemplates, 
-  sprintGoals, setSprintGoals, 
+  sprintGoals, setSprintGoals, lifeGoals,
   activeTemplateId,
   routineFilterSprintId, setRoutineFilterSprintId,
   selectedTargetDate, setSelectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
@@ -21,7 +21,7 @@ export default function RoutinePane({
 }) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
   const [editingRoutineGoalId, setEditingRoutineGoalId] = useState(null);
-  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '' });
+  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '', lifeGoalId: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
@@ -218,7 +218,8 @@ export default function RoutinePane({
 
   const allGoals = [
     ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
-    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' }))
+    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
+    ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
   ];
   
   const filteredGoals = allGoals.filter(g => 
@@ -255,7 +256,7 @@ export default function RoutinePane({
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
-    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '' });
+    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '', lifeGoalId: '' });
     setShowRoutineGoalModal(true);
   };
 
@@ -265,7 +266,8 @@ export default function RoutinePane({
       task: goal.task || '', 
       desc: goal.desc || '', 
       timeValue: goal.time || '', 
-      sprintGoalId: goal.sprintGoalId || '' 
+      sprintGoalId: goal.sprintGoalId || '',
+      lifeGoalId: goal.lifeGoalId || ''
     });
     setShowRoutineGoalModal(true);
   };
@@ -293,7 +295,8 @@ export default function RoutinePane({
       task: routineGoalForm.task.trim(),
       desc: (routineGoalForm.desc || '').trim(),
       time: timeString,
-      sprintGoalId: routineGoalForm.sprintGoalId
+      sprintGoalId: routineGoalForm.sprintGoalId,
+      lifeGoalId: routineGoalForm.lifeGoalId
     };
 
     if (editingRoutineGoalId) {
@@ -834,6 +837,20 @@ export default function RoutinePane({
                 options={[
                   { value: '', label: 'No Sprint Goal Linked' },
                   ...(sprintGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
+                ]}
+              />
+            </div>
+            
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Star size={14} color="#eab308" /> Life Link
+              </label>
+              <Dropdown
+                value={routineGoalForm.lifeGoalId}
+                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, lifeGoalId: val })}
+                options={[
+                  { value: '', label: 'No Life Goal Linked' },
+                  ...(lifeGoals || []).map(lg => ({ value: lg.id, label: lg.text }))
                 ]}
               />
             </div>

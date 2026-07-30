@@ -4,7 +4,7 @@ import getCaretCoordinates from 'textarea-caret';
 import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, SquarePen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
-export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }) {
+export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, activeVersionId }) {
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem(`routine_plans_${activeVersionId}`);
     return saved ? JSON.parse(saved) : [];
@@ -30,7 +30,8 @@ export default function PlansPane({ sprintGoals, routineGoals, activeVersionId }
   // All goals for mentioning
   const allGoals = [
     ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
-    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' }))
+    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
+    ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
   ];
   
   const filteredGoals = allGoals.filter(g => 

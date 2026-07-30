@@ -3,7 +3,7 @@ import { Flag, Plus, Trash2, X } from 'lucide-react';
 import Dropdown from './Dropdown';
 
 const TargetPane = ({ 
-  activeVersion, updateActiveVersion, sprintGoals,
+  activeVersion, updateActiveVersion, sprintGoals, lifeGoals,
   selectedTargetDate, setSelectedTargetDate, 
   routineGoals, templates, dayMapping,
   setCalendarSubTab
@@ -182,7 +182,8 @@ const TargetPane = ({
                 tags = [...new Set(tags)];
                 const tagColors = tags.map(tag => {
                   const goal = sprintGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
-                            || routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
+                            || routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase())
+                            || lifeGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
                   return goal?.color || '#fff';
                 });
                 
