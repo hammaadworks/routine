@@ -676,6 +676,16 @@ export default function RoutinePane({
           const r = parseInt(hex.slice(1,3), 16) || 255, g = parseInt(hex.slice(3,5), 16) || 255, b = parseInt(hex.slice(5,7), 16) || 255;
           const hasColor = goal.color || linkedSprintGoal || linkedLifeGoal;
           
+          const baseMins = goal.time ? parseDuration(goal.time) : 0;
+          let scheduledMins = 0;
+          if (currentTemplate) {
+            currentTemplate.blocks.forEach(b => {
+              if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
+            });
+          }
+          const count = goalCounts[goal.id] || 0;
+          const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
+          
           const bgStyle = {
             background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
             border: `1px solid rgba(${r},${g},${b}, ${hasColor ? '0.3' : '0.1'})`,
@@ -729,6 +739,11 @@ export default function RoutinePane({
                       {goalCounts[goal.id] > 1 && (
                         <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }}>
                           x{goalCounts[goal.id]}
+                        </div>
+                      )}
+                      {timeDiff !== 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: timeDiff > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)', borderRadius: '4px', color: timeDiff > 0 ? '#4ade80' : '#f87171', fontSize: '10px', fontWeight: 'bold' }}>
+                          {timeDiff > 0 ? '+' : ''}{timeDiff}m
                         </div>
                       )}
                     </div>

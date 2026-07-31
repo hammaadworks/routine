@@ -112,6 +112,9 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [showMobileGoals, setShowMobileGoals] = useState(false);
   
+  const [editingBlockId, setEditingBlockId] = useState(null);
+  const [blockModalData, setBlockModalData] = useState({ startTime: 0, duration: 30 });
+  
   const [zoomLevel, setZoomLevel] = useState(1);
   const [currentTimeMins, setCurrentTimeMins] = useState(() => {
     const now = new Date();
@@ -508,6 +511,21 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                 background: 'var(--accent)',
                 boxShadow: '0 0 10px rgba(234, 179, 8, 0.8)'
               }} />
+              <div style={{
+                position: 'absolute',
+                left: '12px',
+                top: '-8px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: '#000',
+                background: 'var(--accent)',
+                padding: '1px 4px',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                whiteSpace: 'nowrap'
+              }}>
+                {formatTime(currentTimeMins)}
+              </div>
             </div>
           )}
 
@@ -566,7 +584,12 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   opacity: block.isWrapSecond ? 0.9 : 1
                 }}
               >
-                <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: block.duration <= 60 ? '0' : '2px', paddingRight: block.duration <= 60 ? '0' : '16px', whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', flex: block.duration <= 60 ? 1 : 'none', minWidth: 0 }}>
+                <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: block.duration <= 60 ? '0' : '2px', paddingRight: block.duration <= 60 ? '0' : '16px', whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', flex: block.duration <= 60 ? 1 : 'none', minWidth: 0, cursor: 'pointer' }}
+                  onClick={() => {
+                    setEditingBlockId(block.originalId);
+                    setBlockModalData({ startTime: block.actualStartTime, duration: block.actualDuration });
+                  }}
+                >
                   {block.name}
                 </div>
                 <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)`, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
@@ -618,11 +641,11 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                     onChange={(e) => {
                       const newEndMins = parseTime(e.target.value);
                       if (newEndMins !== null && !isNaN(newEndMins)) {
-                        let newStartTime = newEndMins - block.actualDuration;
-                        if (newStartTime < 0) newStartTime += 1440;
+                        let newDuration = newEndMins - block.actualStartTime;
+                        if (newDuration < 0) newDuration += 1440;
                         const updatedTemplates = templates.map(t => {
                           if (t.id === activeTemplateId) {
-                            return { ...t, blocks: t.blocks.map(b => b.id === block.originalId ? { ...b, startTime: newStartTime } : b) };
+                            return { ...t, blocks: t.blocks.map(b => b.id === block.originalId ? { ...b, duration: newDuration } : b) };
                           }
                           return t;
                         });
@@ -795,6 +818,73 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           confirmText={confirmConfig.confirmText}
         />
       )}
+
+      {/* Block Edit Modal */}
+      <BaseModal
+        isOpen={!!editingBlockId}
+        onClose={() => setEditingBlockId(null)}
+        title="Edit Time"
+        maxWidth="320px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Start</label>
+              <input 
+                type="time" 
+                value={formatTime24(blockModalData.startTime)}
+                onChange={(e) => {
+                  const val = parseTime(e.target.value);
+                  if (val !== null && !isNaN(val)) setBlockModalData(prev => ({ ...prev, startTime: val }));
+                }}
+                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>End</label>
+              <input 
+                type="time" 
+                value={formatTime24((blockModalData.startTime + blockModalData.duration) % 1440)}
+                onChange={(e) => {
+                  const val = parseTime(e.target.value);
+                  if (val !== null && !isNaN(val)) {
+                    let newDur = val - blockModalData.startTime;
+                    if (newDur < 0) newDur += 1440;
+                    setBlockModalData(prev => ({ ...prev, duration: newDur }));
+                  }
+                }}
+                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Duration (mins)</label>
+            <input 
+              type="number" 
+              value={blockModalData.duration}
+              onChange={(e) => setBlockModalData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
+              style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
+            />
+          </div>
+          <button 
+            className="primary" 
+            style={{ width: '100%', padding: '10px', marginTop: '8px', color: '#000', borderRadius: '6px' }}
+            onClick={() => {
+              const updatedTemplates = templates.map(t => {
+                if (t.id === activeTemplateId) {
+                  return { ...t, blocks: t.blocks.map(b => b.id === editingBlockId ? { ...b, startTime: blockModalData.startTime, duration: blockModalData.duration } : b) };
+                }
+                return t;
+              });
+              if (updateActiveVersion) updateActiveVersion({ templates: updatedTemplates });
+              else setTemplates(updatedTemplates);
+              setEditingBlockId(null);
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </BaseModal>
 
       {/* Mobile FAB and Bottom Sheet using createPortal */}
       {createPortal(
