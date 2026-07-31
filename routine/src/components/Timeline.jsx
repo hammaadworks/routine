@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock, Info } from 'lucide-react';
+import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock, Info, ListTodo, GripVertical } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import Dropdown from './Dropdown';
@@ -36,7 +36,17 @@ const hexToRgb = (hex) => {
 function getLayout(blocks) {
   if (!blocks || blocks.length === 0) return [];
   
-  const sorted = [...blocks].sort((a, b) => a.startTime - b.startTime || b.duration - a.duration);
+  const processedBlocks = [];
+  blocks.forEach(b => {
+    if (b.startTime + b.duration > 1440) {
+      processedBlocks.push({ ...b, originalId: b.id, duration: 1440 - b.startTime, actualStartTime: b.startTime, actualDuration: b.duration, isWrapFirst: true });
+      processedBlocks.push({ ...b, id: b.id + '_wrap', originalId: b.id, startTime: 0, duration: b.startTime + b.duration - 1440, actualStartTime: b.startTime, actualDuration: b.duration, isWrapSecond: true });
+    } else {
+      processedBlocks.push({ ...b, originalId: b.id, actualStartTime: b.startTime, actualDuration: b.duration });
+    }
+  });
+
+  const sorted = [...processedBlocks].sort((a, b) => a.startTime - b.startTime || b.duration - a.duration);
   const groups = [];
   let currentGroup = [];
   let currentGroupEnd = 0;
@@ -88,14 +98,19 @@ function getLayout(blocks) {
   return laidOutBlocks;
 }
 
-export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping, updateActiveVersion }) {
+export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping, updateActiveVersion, routineGoals, sprintGoals }) {
   const [newTemplateName, setNewTemplateName] = useState('');
   // Inline editing for blocks now, no block modal needed
+  const [draggedElementId, setDraggedElementId] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Track scroll position of timeline container
   const [dragHoverMins, setDragHoverMins] = useState(null);
   const [isEditingTemplateName, setIsEditingTemplateName] = useState(false);
   const [editingTemplateName, setEditingTemplateName] = useState('');
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
+  const [showMobileGoals, setShowMobileGoals] = useState(false);
   
   const [zoomLevel, setZoomLevel] = useState(1);
   const [currentTimeMins, setCurrentTimeMins] = useState(() => {
@@ -284,6 +299,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
   const handleDrop = (e) => {
     e.preventDefault();
     setDragHoverMins(null);
+    setShowMobileGoals(false);
     if (!activeTemplateId) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -364,8 +380,21 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     }
   };
 
+  const sortedMobileGoals = [...(routineGoals || [])].sort((a, b) => {
+    const hasTimeA = a.time ? true : false;
+    const hasTimeB = b.time ? true : false;
+    if (hasTimeA !== hasTimeB) return hasTimeA ? 1 : -1;
+    if (hasTimeA && hasTimeB) {
+      const durA = parseDuration(a.time);
+      const durB = parseDuration(b.time);
+      if (durA !== durB) return durA - durB;
+    }
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return 0;
+  });
+
   return (
-    <div className="timeline-area" style={{ position: 'relative' }}>
+    <div className="timeline-inner" style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
       <div className="timeline-header" style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="timeline-header-bar">
           {/* 1. Dropdown */}
@@ -408,17 +437,17 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           )}
           
           {/* 3. Actions */}
-          <div className="th-actions" style={{ width: '100%' }}>
-            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId} style={{ flex: 1 }}>
+          <div className="th-actions" style={{ width: '100%', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
               <Pencil size={12} /> Rename
             </button>
-            <button className="secondary action-btn" onClick={handleNewClick} style={{ flex: 1 }}>
+            <button className="secondary action-btn" onClick={handleNewClick} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
               <Plus size={12} /> New
             </button>
-            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId} style={{ flex: 1 }}>
+            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
               <Copy size={12} /> Duplicate
             </button>
-            <button className="secondary template-delete-btn action-btn" onClick={deleteTemplate} disabled={!activeTemplateId} style={{ flex: 1 }}>
+            <button className="secondary template-delete-btn action-btn" onClick={deleteTemplate} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
               <Trash2 size={12} /> Delete
             </button>
           </div>
@@ -433,8 +462,9 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           onDragLeave={handleDragLeave}
           style={{ '--zoom': zoomLevel }}
         >
-          {/* Hours Grid */}
-          {Array.from({ length: 24 }).map((_, i) => {
+          {/* Hours Grid (12 AM to 11 PM) */}
+          {Array.from({ length: 24 }).map((_, idx) => {
+            const i = idx;
             const isNoon = i === 12;
             const displayTime = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
             return (
@@ -455,36 +485,38 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           })}
 
           {/* Current Time Indicator */}
-          <div 
-            style={{ 
-              position: 'absolute', 
-              top: `${currentTimeMins * zoomLevel}px`, 
-              left: '-60px', 
-              right: 0, 
-              borderBottom: '2px solid var(--accent)', 
-              boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)', 
-              zIndex: 15,
-              pointerEvents: 'none'
-            }} 
-          >
-            <div style={{
-              position: 'absolute',
-              left: 0,
-              top: '-4px',
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: 'var(--accent)',
-              boxShadow: '0 0 10px rgba(234, 179, 8, 0.8)'
-            }} />
-          </div>
+          {currentTimeMins >= 0 && currentTimeMins <= 1440 && (
+            <div 
+              style={{ 
+                position: 'absolute', 
+                top: `${(currentTimeMins) * zoomLevel}px`, 
+                left: '-60px', 
+                right: 0, 
+                borderBottom: '2px solid var(--accent)', 
+                boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)', 
+                zIndex: 15,
+                pointerEvents: 'none'
+              }} 
+            >
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: '-4px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--accent)',
+                boxShadow: '0 0 10px rgba(234, 179, 8, 0.8)'
+              }} />
+            </div>
+          )}
 
           {/* Hover Phantom Indicator */}
           {dragHoverMins !== null && (
             <div 
               style={{
                 position: 'absolute',
-                top: `${dragHoverMins * zoomLevel}px`,
+                top: `${(dragHoverMins) * zoomLevel}px`,
                 left: '10px', right: '20px',
                 height: `${30 * zoomLevel}px`,
                 background: 'rgba(234, 179, 8, 0.1)',
@@ -511,10 +543,10 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.setData('source', 'timeline');
-                  e.dataTransfer.setData('blockId', block.id);
+                  e.dataTransfer.setData('blockId', block.originalId);
                 }}
                 style={{
-                  top: `${block.startTime * zoomLevel}px`,
+                  top: `${(block.startTime) * zoomLevel}px`,
                   height: `${block.duration * zoomLevel}px`,
                   left: `calc(10px + ${block.left}% * 0.9)`, // 0.9 scaling leaves room for right margin
                   width: `calc(${block.width}% * 0.9 - 4px)`,
@@ -524,15 +556,20 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   borderLeftStyle: 'solid',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                   position: 'absolute',
-                  padding: '8px',
+                  padding: block.duration <= 60 ? '4px 8px' : '8px',
                   borderRadius: '4px',
                   overflow: 'hidden',
                   display: 'flex',
-                  flexDirection: 'column'
+                  flexDirection: block.duration <= 60 ? 'row' : 'column',
+                  alignItems: block.duration <= 60 ? 'center' : 'flex-start',
+                  gap: block.duration <= 60 ? '8px' : '0',
+                  opacity: block.isWrapSecond ? 0.9 : 1
                 }}
               >
-                <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: '2px', paddingRight: '16px' }}>{block.name}</div>
-                <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)`, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div className="time-block-title" style={{ color: hex, fontWeight: '600', fontSize: '13px', marginBottom: block.duration <= 60 ? '0' : '2px', paddingRight: block.duration <= 60 ? '0' : '16px', whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', flex: block.duration <= 60 ? 1 : 'none', minWidth: 0 }}>
+                  {block.name}
+                </div>
+                <div className="time-block-meta" style={{ color: `rgba(${hexToRgb(hex)}, 0.8)`, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                   <Clock 
                     size={10} 
                     color="#fff" 
@@ -544,13 +581,13 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   />
                   <input 
                     type="time" 
-                    value={formatTime24(block.startTime)}
+                    value={formatTime24(block.actualStartTime)}
                     onChange={(e) => {
                       const newMins = parseTime(e.target.value);
                       if (newMins !== null && !isNaN(newMins)) {
                           const updatedTemplates = templates.map(t => {
                             if (t.id === activeTemplateId) {
-                              return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newMins } : b) };
+                              return { ...t, blocks: t.blocks.map(b => b.id === block.originalId ? { ...b, startTime: newMins } : b) };
                             }
                             return t;
                           });
@@ -577,15 +614,15 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   <span>-</span>
                   <input 
                     type="time" 
-                    value={formatTime24((block.startTime + block.duration) % 1440)}
+                    value={formatTime24((block.actualStartTime + block.actualDuration) % 1440)}
                     onChange={(e) => {
                       const newEndMins = parseTime(e.target.value);
                       if (newEndMins !== null && !isNaN(newEndMins)) {
-                        let newStartTime = newEndMins - block.duration;
+                        let newStartTime = newEndMins - block.actualDuration;
                         if (newStartTime < 0) newStartTime += 1440;
                         const updatedTemplates = templates.map(t => {
                           if (t.id === activeTemplateId) {
-                            return { ...t, blocks: t.blocks.map(b => b.id === block.id ? { ...b, startTime: newStartTime } : b) };
+                            return { ...t, blocks: t.blocks.map(b => b.id === block.originalId ? { ...b, startTime: newStartTime } : b) };
                           }
                           return t;
                         });
@@ -613,7 +650,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteBlock(block.id);
+                    deleteBlock(block.originalId);
                   }}
                   style={{
                     position: 'absolute',
@@ -757,6 +794,119 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           onCancel={confirmConfig.onCancel}
           confirmText={confirmConfig.confirmText}
         />
+      )}
+
+      {/* Mobile FAB and Bottom Sheet using createPortal */}
+      {createPortal(
+        <>
+          {/* Mobile FAB for Routine Goals */}
+          <button 
+            className="mobile-only" 
+            onClick={() => setShowMobileGoals(true)}
+            style={{
+              position: 'fixed',
+              bottom: '80px', /* Increased to avoid iOS Safari bottom bar / PWA home bar */
+              right: '24px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '28px',
+              background: 'var(--accent)',
+              color: '#000',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+              zIndex: 9999, // Ensure it's very high
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <ListTodo size={24} />
+          </button>
+
+          {/* Mobile Bottom Sheet for Goals */}
+          {showMobileGoals && (
+            <div className="mobile-only" style={{ opacity: isDragging ? 0.3 : 1, pointerEvents: isDragging ? 'none' : 'auto' }}>
+              <div 
+                style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.5)', zIndex: 10000,
+                  pointerEvents: isDragging ? 'none' : 'auto'
+                }}
+                onClick={() => setShowMobileGoals(false)}
+              />
+              <div 
+                style={{
+                  position: 'fixed',
+                  bottom: 0, left: 0, right: 0,
+                  height: '45vh',
+                  background: 'var(--panel-bg)',
+                  borderTop: '1px solid var(--panel-border)',
+                  borderTopLeftRadius: '16px',
+                  borderTopRightRadius: '16px',
+                  zIndex: 10001,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 -4px 20px rgba(0,0,0,0.5)'
+                }}
+              >
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
+                    <ListTodo size={18} color="var(--accent)" /> Drag Goals to Schedule
+                  </h3>
+                  <button className="icon-btn" onClick={() => setShowMobileGoals(false)} style={{ padding: '4px' }}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {sortedMobileGoals.map(goal => {
+                    const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
+                    const hex = linkedSprintGoal?.color || '#ffffff';
+                    return (
+                      <div 
+                        key={goal.id} 
+                        className={`item-card ${goal.completed ? 'scratched' : ''}`}
+                        draggable
+                        onDragStart={(e) => {
+                          setIsDragging(true);
+                          e.dataTransfer.setData('source', 'sidebar');
+                          e.dataTransfer.setData('task', goal.task);
+                          e.dataTransfer.setData('desc', goal.desc || '');
+                          e.dataTransfer.setData('time', goal.time || '1:15');
+                          e.dataTransfer.setData('color', hex);
+                          e.dataTransfer.setData('routineGoalId', goal.id);
+                        }}
+                        onDragEnd={() => {
+                          setIsDragging(false);
+                          setShowMobileGoals(false);
+                        }}
+                        style={{ 
+                          display: 'flex', alignItems: 'center', minHeight: '48px', padding: '8px 12px',
+                          background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                          border: `1px solid rgba(255,255,255,0.1)`,
+                          borderLeft: `3px solid ${hex}`,
+                          borderRadius: '8px',
+                          touchAction: 'none'
+                        }}
+                      >
+                        <GripVertical size={16} color="var(--text-secondary)" style={{ cursor: 'grab', marginRight: '8px', opacity: 0.5 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.task}</div>
+                          {goal.time && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}><Clock size={10} /> {goal.time}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {sortedMobileGoals.length === 0 && (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      No routine goals found. Add some first!
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
       )}
     </div>
   );

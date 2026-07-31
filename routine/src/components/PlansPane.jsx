@@ -454,7 +454,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
       )}
 
       {/* Editor Area */}
-      <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         {activeNote ? (
           <>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -505,7 +505,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
                             width: '100%', resize: 'none', background: 'transparent', 
                             border: 'none', color: 'var(--text-primary)', padding: 0,
                             fontSize: '16px', lineHeight: '1.6', outline: 'none', boxShadow: 'none',
-                            fontFamily: 'inherit', overflow: 'hidden'
+                            fontFamily: 'inherit', overflow: 'hidden', wordBreak: 'break-word', whiteSpace: 'pre-wrap'
                           }}
                         />
                       ) : (

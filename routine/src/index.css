@@ -145,42 +145,24 @@ body {
     display: none !important;
   }
   
-  /* Make mid pane dynamic height based on content */
-  .timeline-area {
+  /* Make all panes and their structural scrolling containers expand to fit content on mobile */
+  .panel, .timeline-area, .mid-pane-content,
+  .pane > div, 
+  .mid-pane-content > div,
+  .pane div[style*="overflow: hidden"],
+  .pane div[style*="overflow-y: auto"],
+  .pane div[style*="overflowY: auto"],
+  .mid-pane-content div[style*="overflow: hidden"],
+  .mid-pane-content div[style*="overflow-y: auto"],
+  .mid-pane-content div[style*="overflowY: auto"] {
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
     flex: none !important;
   }
   
-  .mid-pane-content {
-    flex: none !important;
-    overflow: visible !important;
-    height: auto !important;
-  }
-  
-  .timeline-scroll {
-    overflow-y: visible !important;
-    height: auto !important;
-  }
-
-  .plans-pane-container {
-    height: auto !important;
-    min-height: 400px; 
-  }
-  
   .plans-sidebar {
     width: 50% !important;
-  }
-  
-  .plans-editor-wrapper {
-    overflow: visible !important;
-  }
-  
-  .plans-sidebar-content,
-  .plans-editor-scroll {
-    overflow: visible !important;
-    height: auto !important;
   }
 
   .accordion-icon {
@@ -649,6 +631,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     order: 4;
     width: 100%;
     justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
@@ -661,7 +644,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .timeline-grid {
   position: relative;
-  min-height: calc(1440px * var(--zoom, 1));
+  min-height: calc(1320px * var(--zoom, 1));
   margin-left: 70px;
   margin-top: 12px;
   margin-bottom: 12px;
@@ -815,4 +798,45 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .accordion-icon {
   display: none;
+}
+
+.mobile-only {
+  display: none !important;
+}
+@media (max-width: 1200px) {
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .form-row > * {
+    flex: none !important;
+    width: 100% !important;
+  }
+}
+
+/* Markdown Preview Wrapping */
+.markdown-preview {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+.markdown-preview * {
+  max-width: 100%;
+}
+.markdown-preview p {
+  margin: 0;
 }

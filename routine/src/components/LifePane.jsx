@@ -8,18 +8,18 @@ const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#
 export default function LifePane({ 
   lifeGoals, setLifeGoals,
   sprintGoals, setSprintGoals, 
-  routineGoals, setRoutineGoals
+  routineGoals, setRoutineGoals, headerTabs
 }) {
   const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
   const [editingLifeGoalId, setEditingLifeGoalId] = useState(null);
-  const [lifeGoalForm, setLifeGoalForm] = useState({ text: '', color: '' });
+  const [lifeGoalForm, setLifeGoalForm] = useState({ text: '', color: '', desc: '' });
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [colorError, setColorError] = useState('');
 
   const openAddLifeGoal = () => {
     setEditingLifeGoalId(null);
     const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-    setLifeGoalForm({ text: '', color: randomColor });
+    setLifeGoalForm({ text: '', color: randomColor, desc: '' });
     setShowLifeGoalModal(true);
   };
 
@@ -27,7 +27,7 @@ export default function LifePane({
     setEditingLifeGoalId(goal.id);
     setColorError('');
     const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-    setLifeGoalForm({ text: goal.text, color: goalColor });
+    setLifeGoalForm({ text: goal.text, color: goalColor, desc: goal.desc || '' });
     setShowLifeGoalModal(true);
   };
 
@@ -55,9 +55,9 @@ export default function LifePane({
     const cleanText = lifeGoalForm.text.trim();
     
     if (editingLifeGoalId) {
-      setLifeGoals(prev => prev.map(g => g.id === editingLifeGoalId ? { ...g, text: cleanText, color: lifeGoalForm.color } : g));
+      setLifeGoals(prev => prev.map(g => g.id === editingLifeGoalId ? { ...g, text: cleanText, color: lifeGoalForm.color, desc: lifeGoalForm.desc } : g));
     } else {
-      setLifeGoals([...lifeGoals, { id: 'lg-' + Date.now(), text: cleanText, color: lifeGoalForm.color, completed: false }]);
+      setLifeGoals([...lifeGoals, { id: 'lg-' + Date.now(), text: cleanText, color: lifeGoalForm.color, completed: false, desc: lifeGoalForm.desc }]);
     }
     setShowLifeGoalModal(false);
   };
@@ -112,6 +112,7 @@ export default function LifePane({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden', minHeight: 0 }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
+        {headerTabs}
         
         <button 
           onClick={openAddLifeGoal} className="secondary" 
@@ -159,7 +160,7 @@ export default function LifePane({
             };
 
             return (
-              <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', height: '48px', padding: '0 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
+              <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', minHeight: '48px', padding: '10px 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0 }}>
                     <input 
@@ -169,10 +170,15 @@ export default function LifePane({
                       onChange={() => toggleLife(goal.id)} 
                       style={{ '--accent': hex, flexShrink: 0 }}
                     />
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <span className="item-title" style={{ color: hex, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px', fontWeight: '500' }} title={goal.text}>
                         {goal.text}
                       </span>
+                      {goal.desc && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }} title={goal.desc}>
+                          {goal.desc}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
@@ -247,11 +253,19 @@ export default function LifePane({
       >
         <form onSubmit={saveLifeGoal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description</label>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Title</label>
             <input 
               type="text" placeholder="e.g. Write a Book" value={lifeGoalForm.text}
               onChange={(e) => setLifeGoalForm({ ...lifeGoalForm, text: e.target.value })} 
               style={{ width: '100%' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description <span style={{ opacity: 0.5 }}>(optional)</span></label>
+            <textarea 
+              placeholder="Add more details about this goal..." value={lifeGoalForm.desc}
+              onChange={(e) => setLifeGoalForm({ ...lifeGoalForm, desc: e.target.value })} 
+              style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
             />
           </div>
           

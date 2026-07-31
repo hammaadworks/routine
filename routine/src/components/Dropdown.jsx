@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 export default function Dropdown({ options, value, onChange, placeholder = 'Select...' }) {
@@ -7,18 +8,35 @@ export default function Dropdown({ options, value, onChange, placeholder = 'Sele
 
   const selectedOption = options.find(o => o.value === value);
 
+  const menuRef = useRef(null);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
+        if (menuRef.current && !menuRef.current.contains(event.target)) {
+          setIsOpen(false);
+        }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [coords, setCoords] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setCoords({
+        left: rect.left,
+        top: rect.bottom + window.scrollY,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
+
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', flex: 1 }}>
+    <div ref={dropdownRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
       <div 
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -26,21 +44,21 @@ export default function Dropdown({ options, value, onChange, placeholder = 'Sele
           padding: '10px 12px', background: 'var(--panel-bg)', 
           border: '1px solid var(--panel-border)', borderRadius: '8px',
           cursor: 'pointer', color: selectedOption ? '#fff' : 'var(--text-secondary)',
-          fontSize: '13px'
+          fontSize: '13px', minHeight: '40px', width: '100%', boxSizing: 'border-box'
         }}
       >
         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        <ChevronDown size={14} style={{ color: 'var(--text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
       </div>
 
-      {isOpen && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
+      {isOpen && coords && createPortal(
+        <div ref={menuRef} style={{
+          position: 'absolute', top: coords.top + 4, left: coords.left, width: coords.width,
           background: 'var(--bg)', border: '1px solid var(--panel-border)',
-          borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-          zIndex: 100, maxHeight: '200px', overflowY: 'auto'
+          borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.8)',
+          zIndex: 10000, maxHeight: '200px', overflowY: 'auto'
         }}>
           {options.map(opt => (
             <div
@@ -63,7 +81,8 @@ export default function Dropdown({ options, value, onChange, placeholder = 'Sele
               {opt.label}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

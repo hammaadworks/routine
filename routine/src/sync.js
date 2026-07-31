@@ -10,7 +10,13 @@ export const initSync = (onRemoteUpdate) => {
 
   // 1. Pull on load
   pullFromGist().then(remoteData => {
-    if (remoteData) {
+    if (localStorage.getItem('force_sync_push') === 'true') {
+      localStorage.removeItem('force_sync_push');
+      pushToGist();
+      return;
+    }
+
+    if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
       const localData = exportLocalData();
       if (remoteData !== localData) {
         importLocalData(remoteData);
@@ -18,6 +24,9 @@ export const initSync = (onRemoteUpdate) => {
       } else {
         lastSyncedStr = localData;
       }
+    } else {
+      // Gist is empty, push local state up to initialize it
+      pushToGist();
     }
   });
 
@@ -34,6 +43,20 @@ export const initSync = (onRemoteUpdate) => {
     syncTimeout = setTimeout(() => {
       pushToGist();
     }, 5000); // 5 seconds after last change
+  };
+
+  const originalRemoveItem = localStorage.removeItem;
+  localStorage.removeItem = function(key) {
+    originalRemoveItem.apply(this, arguments);
+    
+    // Ignore sync keys
+    if (key === 'gist_token' || key === 'gist_id' || key === 'gist_filename') return;
+    
+    // Debounce push
+    clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+      pushToGist();
+    }, 5000);
   };
 };
 
@@ -54,6 +77,19 @@ export const exportLocalData = () => {
 export const importLocalData = (jsonStr) => {
   try {
     const data = JSON.parse(jsonStr);
+    
+    // Remove local keys that are not present in remote data
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key !== 'gist_token' && key !== 'gist_id' && key !== 'gist_filename') {
+        if (!data.hasOwnProperty(key)) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    
     for (const key in data) {
       localStorage.setItem(key, data[key]);
     }
@@ -118,12 +154,13 @@ export const saveSyncConfig = (token, id, filename) => {
   gistFilename = filename || 'habits_data.json';
   if (token && id) {
     // Initial push or pull to establish sync
-    pullFromGist().then(remoteData => {
-      if (remoteData) {
+    pullFromGist().then(async remoteData => {
+      if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
         importLocalData(remoteData);
         window.location.reload();
       } else {
-        pushToGist(); // If it's empty, push current state
+        await pushToGist(); // If it's empty, push current state
+        window.location.reload();
       }
     });
   }

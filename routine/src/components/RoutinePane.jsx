@@ -21,7 +21,7 @@ export default function RoutinePane({
 }) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
   const [editingRoutineGoalId, setEditingRoutineGoalId] = useState(null);
-  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '', lifeGoalId: '' });
+  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '', lifeGoalId: '', color: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
@@ -256,7 +256,7 @@ export default function RoutinePane({
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
-    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '', lifeGoalId: '' });
+    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '', lifeGoalId: '', color: '' });
     setShowRoutineGoalModal(true);
   };
 
@@ -267,7 +267,8 @@ export default function RoutinePane({
       desc: goal.desc || '', 
       timeValue: goal.time || '', 
       sprintGoalId: goal.sprintGoalId || '',
-      lifeGoalId: goal.lifeGoalId || ''
+      lifeGoalId: goal.lifeGoalId || '',
+      color: goal.color || ''
     });
     setShowRoutineGoalModal(true);
   };
@@ -296,7 +297,8 @@ export default function RoutinePane({
       desc: (routineGoalForm.desc || '').trim(),
       time: timeString,
       sprintGoalId: routineGoalForm.sprintGoalId,
-      lifeGoalId: routineGoalForm.lifeGoalId
+      lifeGoalId: routineGoalForm.lifeGoalId,
+      color: routineGoalForm.color
     };
 
     if (editingRoutineGoalId) {
@@ -306,6 +308,17 @@ export default function RoutinePane({
       if (oldGoal && templates && setTemplates) {
         const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
         const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goalData.sprintGoalId);
+        const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goalData.lifeGoalId);
+        
+        let newColor = '#ffffff';
+        if (goalData.color) {
+          newColor = goalData.color;
+        } else if (linkedSprintGoal && linkedSprintGoal.color) {
+          newColor = linkedSprintGoal.color;
+        } else if (linkedLifeGoal && linkedLifeGoal.color) {
+          newColor = linkedLifeGoal.color;
+        }
+
         const updatedTemplates = templates.map(t => ({
           ...t,
           blocks: t.blocks.map(b => {
@@ -315,7 +328,7 @@ export default function RoutinePane({
                 name: goalData.task, 
                 duration: timeString ? parseDuration(timeString) : b.duration,
                 routineGoalId: String(editingRoutineGoalId),
-                color: linkedSprintGoal?.color || '#ffffff'
+                color: newColor
               };
             }
             return b;
@@ -340,7 +353,16 @@ export default function RoutinePane({
 
   const handleDragStart = (e, goal) => {
     const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-    const hex = linkedSprintGoal?.color || '#ffffff';
+    const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
+    
+    let hex = '#ffffff';
+    if (goal.color) {
+      hex = goal.color;
+    } else if (linkedSprintGoal && linkedSprintGoal.color) {
+      hex = linkedSprintGoal.color;
+    } else if (linkedLifeGoal && linkedLifeGoal.color) {
+      hex = linkedLifeGoal.color;
+    }
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
@@ -430,6 +452,28 @@ export default function RoutinePane({
   
   const effectiveDate = (isCalendarTab && !selectedTargetDate) ? getTodayStr() : selectedTargetDate;
 
+  let currentTemplateId = null;
+  if (effectiveDate) {
+    const [y, m, d] = effectiveDate.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    if (!isNaN(dateObj.getTime())) {
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+      currentTemplateId = dayMapping ? dayMapping[dayName] : null;
+    }
+  } else {
+    currentTemplateId = activeTemplateId;
+  }
+
+  const currentTemplate = templates?.find(t => t.id === currentTemplateId);
+  const goalCounts = {};
+  if (currentTemplate) {
+    currentTemplate.blocks.forEach(b => {
+      if (b.routineGoalId) {
+        goalCounts[b.routineGoalId] = (goalCounts[b.routineGoalId] || 0) + 1;
+      }
+    });
+  }
+
   let displayedRoutineGoals = [];
   
   if (effectiveDate) {
@@ -449,6 +493,34 @@ export default function RoutinePane({
     }
     if (sortByName) {
       displayedRoutineGoals.sort((a, b) => a.task.localeCompare(b.task));
+    } else {
+      displayedRoutineGoals.sort((a, b) => {
+        const addrA = checkRoutineAddressed(a);
+        const addrB = checkRoutineAddressed(b);
+
+        if (addrA !== addrB) {
+          return addrA ? 1 : -1;
+        }
+
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1;
+        }
+
+        const hasTimeA = a.time ? true : false;
+        const hasTimeB = b.time ? true : false;
+        
+        if (hasTimeA !== hasTimeB) {
+          return hasTimeA ? 1 : -1;
+        }
+        
+        if (hasTimeA && hasTimeB) {
+          const durA = parseDuration(a.time);
+          const durB = parseDuration(b.time);
+          if (durA !== durB) return durA - durB;
+        }
+
+        return 0;
+      });
     }
   }
 
@@ -590,12 +662,23 @@ export default function RoutinePane({
             {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
           const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-          const hex = linkedSprintGoal?.color || '#ffffff';
-          const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
+          const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
+          
+          let hex = '#ffffff';
+          if (goal.color) {
+            hex = goal.color;
+          } else if (linkedSprintGoal && linkedSprintGoal.color) {
+            hex = linkedSprintGoal.color;
+          } else if (linkedLifeGoal && linkedLifeGoal.color) {
+            hex = linkedLifeGoal.color;
+          }
+          
+          const r = parseInt(hex.slice(1,3), 16) || 255, g = parseInt(hex.slice(3,5), 16) || 255, b = parseInt(hex.slice(5,7), 16) || 255;
+          const hasColor = goal.color || linkedSprintGoal || linkedLifeGoal;
           
           const bgStyle = {
             background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-            border: `1px solid rgba(${r},${g},${b}, ${linkedSprintGoal ? '0.3' : '0.1'})`,
+            border: `1px solid rgba(${r},${g},${b}, ${hasColor ? '0.3' : '0.1'})`,
             borderLeft: `3px solid ${hex}`,
             boxShadow: `0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)`,
             borderRadius: '12px',
@@ -641,6 +724,11 @@ export default function RoutinePane({
                       {goal.time && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: 'var(--text-secondary)', fontSize: '11px', whiteSpace: 'nowrap' }}>
                           <Clock size={10} /> {goal.time}
+                        </div>
+                      )}
+                      {goalCounts[goal.id] > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }}>
+                          x{goalCounts[goal.id]}
                         </div>
                       )}
                     </div>
@@ -815,7 +903,7 @@ export default function RoutinePane({
           </div>
 
           {/* Execution details */}
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div className="form-row">
             <div style={{ flex: '0 0 100px' }}>
               <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 <Clock size={14} color="var(--accent)" /> Duration
@@ -853,6 +941,40 @@ export default function RoutinePane({
                   ...(lifeGoals || []).map(lg => ({ value: lg.id, label: lg.text }))
                 ]}
               />
+            </div>
+          </div>
+
+          {/* Routine Goal Color Picker */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Override Color
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div 
+                onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: '' })}
+                style={{ 
+                  width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
+                  border: (!routineGoalForm.color || routineGoalForm.color === '') ? '2px solid white' : '1px solid var(--panel-border)',
+                  background: 'var(--panel-bg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '10px', color: 'var(--text-secondary)'
+                }}
+                title="Auto (inherit from links)"
+              >
+                Auto
+              </div>
+              {COLORS.map(c => (
+                <div 
+                  key={c}
+                  onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: c })}
+                  style={{ 
+                    width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
+                    backgroundColor: c,
+                    border: routineGoalForm.color === c ? '2px solid white' : '2px solid transparent',
+                    boxShadow: routineGoalForm.color === c ? `0 0 10px ${c}` : 'none'
+                  }}
+                />
+              ))}
             </div>
           </div>
 
@@ -898,7 +1020,7 @@ export default function RoutinePane({
         <form onSubmit={saveMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-            <div style={{ display: 'flex', gap: '16px' }}>
+            <div className="form-row">
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</label>
                 <input 

@@ -10,18 +10,18 @@ export default function SprintPane({
   sprintGoals, setSprintGoals, 
   routineGoals, setRoutineGoals, templates, setTemplates, 
   activeTemplateId, dayMapping,
-  onSprintBadgeClick, lifeGoals
+  onSprintBadgeClick, lifeGoals, headerTabs
 }) {
   const [showSprintGoalModal, setShowSprintGoalModal] = useState(false);
   const [editingSprintGoalId, setEditingSprintGoalId] = useState(null);
-  const [sprintGoalForm, setSprintGoalForm] = useState({ text: '', color: '', lifeGoalId: '' });
+  const [sprintGoalForm, setSprintGoalForm] = useState({ text: '', color: '', lifeGoalId: '', desc: '' });
   const [confirmConfig, setConfirmConfig] = useState(null);
   const [colorError, setColorError] = useState('');
 
   const openAddSprintGoal = () => {
     setEditingSprintGoalId(null);
     const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-    setSprintGoalForm({ text: '', color: randomColor, lifeGoalId: '' });
+    setSprintGoalForm({ text: '', color: randomColor, lifeGoalId: '', desc: '' });
     setShowSprintGoalModal(true);
   };
 
@@ -29,7 +29,7 @@ export default function SprintPane({
     setEditingSprintGoalId(goal.id);
     setColorError('');
     const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
-    setSprintGoalForm({ text: goal.text, color: goalColor, lifeGoalId: goal.lifeGoalId || '' });
+    setSprintGoalForm({ text: goal.text, color: goalColor, lifeGoalId: goal.lifeGoalId || '', desc: goal.desc || '' });
     setShowSprintGoalModal(true);
   };
 
@@ -57,7 +57,7 @@ export default function SprintPane({
     if (!sprintGoalForm.text.trim()) return;
     const cleanText = sprintGoalForm.text.trim();
     if (editingSprintGoalId) {
-      setSprintGoals(prev => prev.map(g => g.id === editingSprintGoalId ? { ...g, text: cleanText, color: sprintGoalForm.color, lifeGoalId: sprintGoalForm.lifeGoalId } : g));
+      setSprintGoals(prev => prev.map(g => g.id === editingSprintGoalId ? { ...g, text: cleanText, color: sprintGoalForm.color, lifeGoalId: sprintGoalForm.lifeGoalId, desc: sprintGoalForm.desc } : g));
       
       if (templates && setTemplates && routineGoals) {
         const linkedRoutineGoalIds = routineGoals.filter(g => g.sprintGoalId === editingSprintGoalId).map(g => g.id);
@@ -73,7 +73,7 @@ export default function SprintPane({
         setTemplates(updatedTemplates);
       }
     } else {
-      setSprintGoals([...sprintGoals, { id: 'sg-' + Date.now(), text: cleanText, color: sprintGoalForm.color, completed: false, lifeGoalId: sprintGoalForm.lifeGoalId }]);
+      setSprintGoals([...sprintGoals, { id: 'sg-' + Date.now(), text: cleanText, color: sprintGoalForm.color, completed: false, lifeGoalId: sprintGoalForm.lifeGoalId, desc: sprintGoalForm.desc }]);
     }
     setShowSprintGoalModal(false);
   };
@@ -177,6 +177,7 @@ export default function SprintPane({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden', minHeight: 0 }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
+        {headerTabs}
         
         <button 
           onClick={openAddSprintGoal} className="secondary" 
@@ -224,7 +225,7 @@ export default function SprintPane({
             };
 
             return (
-              <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', height: '48px', padding: '0 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
+              <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', minHeight: '48px', padding: '10px 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0 }}>
                     <input 
@@ -234,10 +235,15 @@ export default function SprintPane({
                       onChange={() => toggleSprint(goal.id)} 
                       style={{ '--accent': hex, flexShrink: 0 }}
                     />
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <span className="item-title" style={{ color: hex, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px', fontWeight: '500' }} title={goal.text}>
                         {goal.text}
                       </span>
+                      {goal.desc && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }} title={goal.desc}>
+                          {goal.desc}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
@@ -315,11 +321,19 @@ export default function SprintPane({
       >
         <form onSubmit={saveSprintGoal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description</label>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Title</label>
             <input 
               type="text" placeholder="e.g. Launch v2.0" value={sprintGoalForm.text}
               onChange={(e) => setSprintGoalForm({ ...sprintGoalForm, text: e.target.value })} 
               style={{ width: '100%' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Goal Description <span style={{ opacity: 0.5 }}>(optional)</span></label>
+            <textarea 
+              placeholder="Add more details about this goal..." value={sprintGoalForm.desc}
+              onChange={(e) => setSprintGoalForm({ ...sprintGoalForm, desc: e.target.value })} 
+              style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
             />
           </div>
 

@@ -26,6 +26,27 @@ export default function App() {
         }
         return v;
       });
+      
+      // Cleanup orphaned plans/folders that don't belong to any existing version
+      const validVersionIds = new Set(parsed.map(v => v.id));
+      const keysToRemove = [];
+      let keysRemoved = false;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('routine_plans_') || key.startsWith('routine_plans_folders_'))) {
+          const isFolder = key.startsWith('routine_plans_folders_');
+          const vId = key.replace(isFolder ? 'routine_plans_folders_' : 'routine_plans_', '');
+          if (!validVersionIds.has(vId)) {
+            keysToRemove.push(key);
+            keysRemoved = true;
+          }
+        }
+      }
+      if (keysRemoved) {
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('force_sync_push', 'true');
+      }
+      
       return parsed;
     }
     
@@ -238,7 +259,8 @@ export default function App() {
     const backupData = {
       version: activeVersion,
       plans: plans,
-      plansFolders: plansFolders
+      plansFolders: plansFolders,
+      lifeGoals: lifeGoals
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchorNode = document.createElement('a');
@@ -263,7 +285,8 @@ export default function App() {
       versions: versions,
       activeVersionId: activeVersionId,
       allPlans,
-      allFolders
+      allFolders,
+      lifeGoals: lifeGoals
     };
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
     const downloadAnchorNode = document.createElement('a');
@@ -303,6 +326,9 @@ export default function App() {
               });
               setVersions(data.versions);
               setActiveVersionId(data.activeVersionId || data.versions[0].id);
+              if (data.lifeGoals) {
+                setLifeGoals(data.lifeGoals);
+              }
               setShowVersionModal(false);
               setConfirmConfig(null);
             },
@@ -321,6 +347,13 @@ export default function App() {
           }
           if (data.plansFolders) {
             localStorage.setItem(`routine_plans_folders_${newId}`, JSON.stringify(data.plansFolders));
+          }
+          if (data.lifeGoals) {
+            setLifeGoals(prev => {
+              const existingIds = new Set(prev.map(g => g.id));
+              const newGoals = data.lifeGoals.filter(g => !existingIds.has(g.id));
+              return [...prev, ...newGoals];
+            });
           }
           setActiveVersionId(newId);
           setShowVersionModal(false);
@@ -372,14 +405,20 @@ export default function App() {
   return (
     <div className="layout">
       <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', background: 'var(--panel-bg)', borderBottom: '1px solid var(--panel-border)' }}>
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0 }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0, flex: 1 }}>
           <div style={{ background: 'var(--accent)', padding: '6px', borderRadius: '8px', display: 'flex' }}>
             <Command size={20} color="#000" />
           </div>
           <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Routine OS</span>
         </h1>
 
-        <div className="header-controls">
+        <div style={{ display: 'flex', justifyContent: 'center', flex: 1 }}>
+          <button className="icon-btn" style={{ padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setShowSyncModal(true)} title="Cloud Sync">
+            <Cloud size={16} color="var(--accent)" /> <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>Cloud Sync</span>
+          </button>
+        </div>
+
+        <div className="header-controls" style={{ flex: 1, justifyContent: 'flex-end' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Active Period</span>
             <span style={{ fontSize: '12px', color: '#fff', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
@@ -409,26 +448,10 @@ export default function App() {
       <main className="main-content">
         <div className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
           <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
-            <div className="tabs" style={{ marginBottom: '0', borderBottom: 'none', background: 'transparent' }} onClick={(e) => e.stopPropagation()}>
-              <button 
-                className={`tab ${activeLeftTab === 'sprint' ? 'active' : ''}`} 
-                onClick={() => setActiveLeftTab('sprint')}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
-              >
-                <Target size={16} /> Sprint
-              </button>
-              <button 
-                className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`} 
-                onClick={() => setActiveLeftTab('life')}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
-              >
-                <Star size={16} /> Life
-              </button>
-            </div>
+            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Star size={18} color="var(--accent)" /> Strategy & Goals
+            </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button className="icon-btn" style={{ padding: '4px' }} onClick={(e) => { e.stopPropagation(); setShowSyncModal(true); }} title="Cloud Sync">
-                <Cloud size={16} />
-              </button>
               <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
                 <ChevronDown size={16} style={{ transform: isLeftPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
               </button>
@@ -443,6 +466,22 @@ export default function App() {
                 activeTemplateId={activeTemplateId} dayMapping={dayMapping}
                 onSprintBadgeClick={(id) => setRoutineFilterSprintId(id)}
                 lifeGoals={lifeGoals}
+                headerTabs={
+                  <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
+                    <button 
+                      className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`} 
+                      onClick={() => setActiveLeftTab('life')}
+                    >
+                      Life Goals
+                    </button>
+                    <button 
+                      className={`tab ${activeLeftTab === 'sprint' ? 'active' : ''}`} 
+                      onClick={() => setActiveLeftTab('sprint')}
+                    >
+                      Sprint Goals
+                    </button>
+                  </div>
+                }
               />
             ) : (
               <LifePane 
@@ -450,6 +489,22 @@ export default function App() {
                 sprintGoals={sprintGoals} setSprintGoals={setSprintGoals}
                 routineGoals={routineGoals} setRoutineGoals={setRoutineGoals}
                 templates={templates} setTemplates={setTemplates}
+                headerTabs={
+                  <div className="tabs" style={{ marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent' }}>
+                    <button 
+                      className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`} 
+                      onClick={() => setActiveLeftTab('life')}
+                    >
+                      Life Goals
+                    </button>
+                    <button 
+                      className={`tab ${activeLeftTab === 'sprint' ? 'active' : ''}`} 
+                      onClick={() => setActiveLeftTab('sprint')}
+                    >
+                      Sprint Goals
+                    </button>
+                  </div>
+                }
               />
             )}
           </div>
@@ -493,6 +548,8 @@ export default function App() {
                 dayMapping={dayMapping}
                 setDayMapping={setDayMapping}
                 updateActiveVersion={updateActiveVersion}
+                routineGoals={routineGoals}
+                sprintGoals={sprintGoals}
               />
             ) : activeCenterTab === 'plans' ? (
               <PlansPane 
@@ -644,10 +701,50 @@ export default function App() {
           </span>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            Sync your data across devices seamlessly. Create a private GitHub Gist, and generate a Personal Access Token (classic) with the <code>gist</code> scope.
-          </p>
+        <div 
+          style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text');
+            if (text.includes('PAT=') || text.includes('GID=') || text.includes('FILE=')) {
+              e.preventDefault();
+              const lines = text.split('\n');
+              let newSyncForm = { ...syncForm };
+              lines.forEach(line => {
+                const [key, ...valParts] = line.split('=');
+                if (!key) return;
+                const val = valParts.join('=').trim();
+                const k = key.trim().toUpperCase();
+                if (k === 'PAT') newSyncForm.token = val;
+                if (k === 'GID') newSyncForm.id = val;
+                if (k === 'FILE') newSyncForm.filename = val;
+              });
+              setSyncForm(newSyncForm);
+            }
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              Sync your data across devices seamlessly. Create a <a href="https://gist.github.com" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>private GitHub Gist</a>, and generate a <a href="https://github.com/settings/tokens/new?scopes=gist&description=Routine+OS+Sync" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Personal Access Token</a> (classic) with the <code>gist</code> scope.
+            </p>
+            <button
+              onClick={async () => {
+                const text = `PAT=${syncForm.token || ''}\nGID=${syncForm.id || ''}\nFILE=${syncForm.filename || ''}`;
+                await navigator.clipboard.writeText(text);
+                const btn = document.getElementById('copy-creds-btn');
+                if (btn) {
+                  const originalText = btn.innerHTML;
+                  btn.innerHTML = '<span style="font-size: 12px; color: var(--accent);">Copied!</span>';
+                  setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+                }
+              }}
+              id="copy-creds-btn"
+              className="icon-btn"
+              style={{ padding: '6px 10px', background: 'var(--bg)', border: '1px solid var(--panel-border)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+              title="Copy Credentials"
+            >
+              <Copy size={14} color="var(--text-secondary)" /> <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Copy</span>
+            </button>
+          </div>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>GitHub Personal Access Token</label>
             <input 
@@ -707,6 +804,22 @@ export default function App() {
           </div>
         </div>
       </BaseModal>
+
+      {/* Footer to convey end of scroll */}
+      <footer style={{
+        textAlign: 'center',
+        padding: '12px 0 0 0',
+        color: 'var(--text-secondary)',
+        fontSize: '11px',
+        opacity: 0.5,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px'
+      }}>
+        <div>Made with <span style={{ color: 'var(--accent)' }}>♥</span> by Routine OS &copy; {new Date().getFullYear()}</div>
+        <div style={{ fontStyle: 'italic' }}>"Discipline is choosing between what you want now and what you want most."</div>
+      </footer>
 
     </div>
   );
