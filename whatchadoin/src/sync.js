@@ -1,6 +1,6 @@
-let gistToken = localStorage.getItem('gist_token');
-let gistId = localStorage.getItem('gist_id');
-let gistFilename = localStorage.getItem('gist_filename') || 'habits_data.json';
+let gistToken = localStorage.getItem('whatchadoin_gist_token');
+let gistId = localStorage.getItem('whatchadoin_gist_id');
+let gistFilename = localStorage.getItem('whatchadoin_gist_filename') || 'whatchadoin_data.json';
 let lastSyncedStr = '';
 let syncTimeout = null;
 let isSyncing = false;
@@ -10,8 +10,8 @@ export const initSync = (onRemoteUpdate) => {
 
   // 1. Pull on load
   pullFromGist().then(remoteData => {
-    if (localStorage.getItem('force_sync_push') === 'true') {
-      localStorage.removeItem('force_sync_push');
+    if (localStorage.getItem('whatchadoin_force_sync_push') === 'true') {
+      localStorage.removeItem('whatchadoin_force_sync_push');
       pushToGist();
       return;
     }
@@ -20,6 +20,7 @@ export const initSync = (onRemoteUpdate) => {
       const localData = exportLocalData();
       if (remoteData !== localData) {
         importLocalData(remoteData);
+        lastSyncedStr = remoteData;
         if (onRemoteUpdate) onRemoteUpdate();
       } else {
         lastSyncedStr = localData;
@@ -32,11 +33,11 @@ export const initSync = (onRemoteUpdate) => {
 
   // 2. Override setItem to detect changes
   const originalSetItem = localStorage.setItem;
-  localStorage.setItem = function(key, value) {
+  localStorage.setItem = function(key, _value) {
     originalSetItem.apply(this, arguments);
     
     // Ignore sync keys
-    if (key === 'gist_token' || key === 'gist_id' || key === 'gist_filename') return;
+    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
     
     // Debounce push
     clearTimeout(syncTimeout);
@@ -50,7 +51,7 @@ export const initSync = (onRemoteUpdate) => {
     originalRemoveItem.apply(this, arguments);
     
     // Ignore sync keys
-    if (key === 'gist_token' || key === 'gist_id' || key === 'gist_filename') return;
+    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
     
     // Debounce push
     clearTimeout(syncTimeout);
@@ -64,7 +65,7 @@ export const exportLocalData = () => {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key !== 'gist_token' && key !== 'gist_id' && key !== 'gist_filename') {
+    if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
       data[key] = localStorage.getItem(key);
     }
   }
@@ -82,7 +83,7 @@ export const importLocalData = (jsonStr) => {
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key !== 'gist_token' && key !== 'gist_id' && key !== 'gist_filename') {
+      if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
         if (!data.hasOwnProperty(key)) {
           keysToRemove.push(key);
         }
@@ -146,12 +147,12 @@ const pushToGist = async () => {
 };
 
 export const saveSyncConfig = (token, id, filename) => {
-  localStorage.setItem('gist_token', token);
-  localStorage.setItem('gist_id', id);
-  localStorage.setItem('gist_filename', filename || 'habits_data.json');
+  localStorage.setItem('whatchadoin_gist_token', token);
+  localStorage.setItem('whatchadoin_gist_id', id);
+  localStorage.setItem('whatchadoin_gist_filename', filename || 'whatchadoin_data.json');
   gistToken = token;
   gistId = id;
-  gistFilename = filename || 'habits_data.json';
+  gistFilename = filename || 'whatchadoin_data.json';
   if (token && id) {
     // Initial push or pull to establish sync
     pullFromGist().then(async remoteData => {

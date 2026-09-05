@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Flag, Plus, Trash2, X } from 'lucide-react';
-import Dropdown from './Dropdown';
+import React, { useEffect } from 'react';
 
-const TargetPane = ({ 
-  activeVersion, updateActiveVersion, sprintGoals, lifeGoals,
+const CalendarPane = ({ 
+  activeRoutine, routineGoals, lifeGoals,
   selectedTargetDate, setSelectedTargetDate, 
-  routineGoals, templates, dayMapping,
+  habits, templates, dayMapping,
   setCalendarSubTab
 }) => {
 
@@ -20,10 +18,10 @@ const TargetPane = ({
     }
   }, [selectedTargetDate]);
 
-  if (!activeVersion.start || !activeVersion.end) {
+  if (!activeRoutine.start || !activeRoutine.end) {
     return (
-      <div style={{ padding: '24px', color: 'var(--text-secondary)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Please set a start and end date for the active version to view the Target Calendar.
+      <div style={{ padding: '24px', color: 'var(--text-secondary)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', wordBreak: 'break-word', whiteSpace: 'normal' }}>
+        Please set a start and end date for the active routine to view the Target Calendar.
       </div>
     );
   }
@@ -33,8 +31,8 @@ const TargetPane = ({
     return new Date(y, m - 1, d);
   };
 
-  const startDate = parseDate(activeVersion.start);
-  const endDate = parseDate(activeVersion.end);
+  const startDate = parseDate(activeRoutine.start);
+  const endDate = parseDate(activeRoutine.end);
 
   if (startDate > endDate) {
     return (
@@ -48,7 +46,7 @@ const TargetPane = ({
   if (monthDiff > 6) {
     return (
       <div style={{ padding: '24px', color: 'var(--danger)', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        Target period cannot exceed 6 months. Please adjust the version dates.
+        Target period cannot exceed 6 months. Please adjust the routine dates.
       </div>
     );
   }
@@ -61,7 +59,7 @@ const TargetPane = ({
   };
 
   const getGoalsForDateStr = (dateStr) => {
-    if (!routineGoals || routineGoals.length === 0) return [];
+    if (!habits || habits.length === 0) return [];
     
     const d = parseDate(dateStr);
     const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
@@ -71,20 +69,20 @@ const TargetPane = ({
       const template = templates.find(t => t.id === templateId);
       if (template) {
         const blockGoalIds = template.blocks.map(b => b.routineGoalId).filter(Boolean);
-        const scheduledGoals = routineGoals.filter(g => blockGoalIds.includes(g.id));
+        const scheduledGoals = habits.filter(g => blockGoalIds.includes(g.id));
         if (scheduledGoals.length > 0) {
           return scheduledGoals;
         }
       }
     }
-    return routineGoals;
+    return habits;
   };
 
   const isDateComplete = (dateStr) => {
     const goalsForDay = getGoalsForDateStr(dateStr);
     if (goalsForDay.length === 0) return false;
     
-    const dayLog = activeVersion.dailyLogs?.[dateStr] || {};
+    const dayLog = activeRoutine.dailyLogs?.[dateStr] || {};
     return goalsForDay.every(g => dayLog[g.id] === true);
   };
 
@@ -118,10 +116,10 @@ const TargetPane = ({
   }
 
   const isDateInRange = (dateStr) => {
-    return dateStr >= activeVersion.start && dateStr <= activeVersion.end;
+    return dateStr >= activeRoutine.start && dateStr <= activeRoutine.end;
   };
 
-  const milestones = activeVersion.milestones || {};
+  const milestones = activeRoutine.milestones || {};
 
   return (
     <div style={{ display: 'flex', height: '100%', flex: 1, overflow: 'hidden' }}>
@@ -181,8 +179,8 @@ const TargetPane = ({
                 }
                 tags = [...new Set(tags)];
                 const tagColors = tags.map(tag => {
-                  const goal = sprintGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
-                            || routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase())
+                  const goal = routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
+                            || habits?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase())
                             || lifeGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
                   return goal?.color || '#fff';
                 });
@@ -298,4 +296,4 @@ const TargetPane = ({
   );
 };
 
-export default TargetPane;
+export default CalendarPane;

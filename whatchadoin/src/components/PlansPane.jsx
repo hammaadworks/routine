@@ -1,17 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
-import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, SquarePen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search } from 'lucide-react';
+import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, SquarePen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search, ChevronLeft } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
-export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, activeVersionId }) {
+export default function PlansPane({ routineGoals, habits, lifeGoals, activeRoutineId }) {
   const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem(`routine_plans_${activeVersionId}`);
-    return saved ? JSON.parse(saved) : [];
+    const rSaved = localStorage.getItem(`routine_plans_${activeRoutineId}`);
+    const rNotes = rSaved ? JSON.parse(rSaved).map(n => ({...n, isLife: false})) : [];
+    const lSaved = localStorage.getItem(`whatchadoin_life_plans`);
+    const lNotes = lSaved ? JSON.parse(lSaved).map(n => ({...n, isLife: true})) : [];
+    return [...lNotes, ...rNotes];
   });
   const [folders, setFolders] = useState(() => {
-    const saved = localStorage.getItem(`routine_plans_folders_${activeVersionId}`);
-    return saved ? JSON.parse(saved) : [];
+    const rSaved = localStorage.getItem(`routine_plans_folders_${activeRoutineId}`);
+    const rFolders = rSaved ? JSON.parse(rSaved).map(f => ({...f, isLife: false})) : [];
+    const lSaved = localStorage.getItem(`whatchadoin_life_plans_folders`);
+    const lFolders = lSaved ? JSON.parse(lSaved).map(f => ({...f, isLife: true})) : [];
+    return [...lFolders, ...rFolders];
   });
   
   const [activeNoteId, setActiveNoteId] = useState(notes.length > 0 ? notes[0].id : null);
@@ -24,13 +30,19 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
   const [activeBlockIdx, setActiveBlockIdx] = useState(null);
   const [isDocBarCollapsed, setIsDocBarCollapsed] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const textareaRefs = useRef({});
 
   // All goals for mentioning
   const allGoals = [
-    ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
     ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
+    ...(habits || []).map(g => ({ ...g, type: 'Routine' })),
     ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
   ];
   
@@ -39,21 +51,29 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
   );
 
   useEffect(() => {
-    localStorage.setItem(`routine_plans_${activeVersionId}`, JSON.stringify(notes));
-  }, [notes, activeVersionId]);
+    const rNotes = notes.filter(n => !n.isLife);
+    const lNotes = notes.filter(n => n.isLife);
+    localStorage.setItem(`routine_plans_${activeRoutineId}`, JSON.stringify(rNotes));
+    localStorage.setItem(`whatchadoin_life_plans`, JSON.stringify(lNotes));
+  }, [notes, activeRoutineId]);
 
   useEffect(() => {
-    localStorage.setItem(`routine_plans_folders_${activeVersionId}`, JSON.stringify(folders));
-  }, [folders, activeVersionId]);
+    const rFolders = folders.filter(f => !f.isLife);
+    const lFolders = folders.filter(f => f.isLife);
+    localStorage.setItem(`routine_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
+    localStorage.setItem(`whatchadoin_life_plans_folders`, JSON.stringify(lFolders));
+  }, [folders, activeRoutineId]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
-  const createFolder = (parentId = null) => {
+  const createFolder = (parentId = null, isLife = false) => {
+    if (parentId) isLife = folders.find(f => f.id === parentId)?.isLife || false;
     const newFolder = {
       id: 'folder_' + Date.now().toString(),
       name: 'New Folder',
       parentId,
-      isExpanded: true
+      isExpanded: true,
+      isLife
     };
     setFolders([...folders, newFolder]);
   };
@@ -92,13 +112,15 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
     });
   };
 
-  const createNote = (folderId = null) => {
+  const createNote = (folderId = null, isLife = false) => {
+    if (folderId) isLife = folders.find(f => f.id === folderId)?.isLife || false;
     const newNote = {
       id: Date.now().toString(),
       title: 'Untitled Note',
       content: '',
       folderId,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      isLife
     };
     setNotes([...notes, newNote]);
     setActiveNoteId(newNote.id);
@@ -266,7 +288,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
   }, [activeBlockIdx]);
 
   const customMarkdownComponents = {
-    strong: ({ node, children, ...props }) => {
+    strong: ({ children, ...props }) => {
       const text = String(children).trim();
       if (text.startsWith('@')) {
         const goalName = text.slice(1);
@@ -279,7 +301,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
           );
         } else if (goal) {
           return (
-            <strong {...props} style={{ color: 'var(--accent)', background: 'rgba(234, 179, 8, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
+            <strong {...props} style={{ color: 'var(--text-primary)', background: 'rgba(234, 179, 8, 0.1)', padding: '0 4px', borderRadius: '4px' }}>
               {children}
             </strong>
           );
@@ -295,9 +317,9 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
     return n.title.toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q);
   });
 
-  const renderTree = (parentId = null, level = 0) => {
-    const childFolders = folders.filter(f => f.parentId === parentId);
-    let childNotes = notes.filter(n => (n.folderId || null) === parentId);
+  const renderTree = (parentId = null, level = 0, isLife = false) => {
+    const childFolders = folders.filter(f => f.parentId === parentId && f.isLife === isLife);
+    let childNotes = notes.filter(n => (n.folderId || null) === parentId && n.isLife === isLife);
     
     if (searchQuery) {
       if (parentId !== null) return null; 
@@ -343,7 +365,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
                 <button className="icon-btn" onClick={() => deleteFolder(f.id)} style={{ padding: '2px' }} title="Delete Folder"><Trash2 size={12} color="var(--danger)" /></button>
               </div>
             </div>
-            {f.isExpanded && renderTree(f.id, level + 1)}
+            {f.isExpanded && renderTree(f.id, level + 1, isLife)}
           </div>
         ))}
         {childNotes.map(n => (
@@ -403,13 +425,13 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
         <div className="plans-sidebar" style={{ borderRight: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--accent)' }}>Plans</h3>
+              <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>Life Notes</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button className="icon-btn" onClick={() => createFolder(null)} style={{ padding: '4px' }} title="New Folder">
-                  <FolderPlus size={16} />
+                <button className="icon-btn" onClick={() => createFolder(null, true)} style={{ padding: '4px' }} title="New Life Folder">
+                  <FolderPlus size={14} />
                 </button>
-                <button className="icon-btn" onClick={() => createNote(null)} style={{ padding: '4px' }} title="New Plan">
-                  <SquarePen size={16} />
+                <button className="icon-btn" onClick={() => createNote(null, true)} style={{ padding: '4px' }} title="New Life Note">
+                  <SquarePen size={14} />
                 </button>
                 <button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)} style={{ padding: '4px', display: 'flex', color: 'var(--text-secondary)' }} title="Close sidebar">
                   <PanelLeftClose size={16} />
@@ -437,15 +459,34 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
             </div>
           </div>
           <div className="plans-sidebar-content" style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-            {notes.length === 0 && folders.length === 0 ? (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
+            {renderTree(null, 0, true)}
+            
+            {(!searchQuery) && (
+              <>
+                <div style={{ margin: '16px 12px 8px 12px', borderTop: '1px solid var(--panel-border)' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 12px', marginBottom: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Routine Plans</h3>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button className="icon-btn" onClick={() => createFolder(null, false)} style={{ padding: '4px' }} title="New Routine Folder">
+                      <FolderPlus size={12} />
+                    </button>
+                    <button className="icon-btn" onClick={() => createNote(null, false)} style={{ padding: '4px' }} title="New Routine Plan">
+                      <FilePlus size={12} />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {renderTree(null, 0, false)}
+
+            {notes.length === 0 && folders.length === 0 && !searchQuery && (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '11px' }}>
                 No plans yet. Click + to create one.
               </div>
-            ) : (
-              renderTree(null, 0)
             )}
             {searchQuery && filteredNotes.length === 0 && (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '12px' }}>
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '11px' }}>
                 No matches found.
               </div>
             )}
@@ -454,11 +495,16 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
       )}
 
       {/* Editor Area */}
+      {(!isMobile || activeNote) && (
       <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         {activeNote ? (
           <>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              {isDocBarCollapsed && (
+              {isMobile ? (
+                <button className="icon-btn" onClick={() => setActiveNoteId(null)} style={{ padding: '4px', display: 'flex', color: 'var(--text-secondary)' }} title="Back to plans">
+                  <ChevronLeft size={18} />
+                </button>
+              ) : isDocBarCollapsed && (
                 <button className="icon-btn" onClick={() => setIsDocBarCollapsed(false)} style={{ padding: '4px', display: 'flex', color: 'var(--text-secondary)' }} title="Expand sidebar">
                   <PanelLeftOpen size={18} />
                 </button>
@@ -566,7 +612,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
                         <span style={{ fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal' }}>
                           {g.task || g.text}
                         </span>
-                        <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '2px' }}>
+                        <span style={{ fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px' }}>
                           {g.type}
                         </span>
                       </div>
@@ -591,6 +637,7 @@ export default function PlansPane({ sprintGoals, routineGoals, lifeGoals, active
           </div>
         )}
       </div>
+      )}
 
       {/* Confirm Modal */}
       {confirmConfig && (

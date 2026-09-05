@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, X, Target, Copy, FileText, ChevronRight, ChevronDown, Star } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, Target, Copy, ChevronDown, Star } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
@@ -10,18 +9,18 @@ import { parseDuration } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
-export default function RoutinePane({ 
-  routineGoals, setRoutineGoals, 
+export default function HabitPane({ 
+  habits, setHabits, 
   templates, setTemplates, 
-  sprintGoals, setSprintGoals, lifeGoals,
+  routineGoals, lifeGoals,
   activeTemplateId,
-  routineFilterSprintId, setRoutineFilterSprintId,
+  habitFilterRoutineGoalId, setHabitFilterRoutineGoalId,
   selectedTargetDate, setSelectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
-  isCalendarTab, activeVersion, updateActiveVersion, calendarSubTab, setCalendarSubTab
+  isCalendarTab, activeRoutine, updateActiveRoutine, calendarSubTab, setCalendarSubTab
 }) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
   const [editingRoutineGoalId, setEditingRoutineGoalId] = useState(null);
-  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', sprintGoalId: '', lifeGoalId: '', color: '' });
+  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', routineGoalId: '', lifeGoalId: '', color: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState(null);
@@ -69,7 +68,7 @@ export default function RoutinePane({
       isDanger: true,
       onConfirm: () => {
         const { dateStr, idx } = editingMilestoneIdx;
-        const newMilestones = { ...(activeVersion.milestones || {}) };
+        const newMilestones = { ...(activeRoutine.milestones || {}) };
         const blocks = (newMilestones[dateStr] || '').split('\n\n');
         blocks.splice(idx, 1);
         newMilestones[dateStr] = blocks.join('\n\n');
@@ -78,8 +77,8 @@ export default function RoutinePane({
           delete newMilestones[dateStr];
         }
         
-        updateActiveVersion({
-          ...activeVersion,
+        updateActiveRoutine({
+          ...activeRoutine,
           milestones: newMilestones
         });
         
@@ -181,7 +180,7 @@ export default function RoutinePane({
     newBlock += `**${title}**`;
     if (desc) newBlock += `  \n${desc}`;
     
-    const newMilestones = { ...(activeVersion.milestones || {}) };
+    const newMilestones = { ...(activeRoutine.milestones || {}) };
     
     if (editingMilestoneIdx) {
       const { dateStr: oldDate, idx } = editingMilestoneIdx;
@@ -203,8 +202,8 @@ export default function RoutinePane({
       }
     });
     
-    updateActiveVersion({
-      ...activeVersion,
+    updateActiveRoutine({
+      ...activeRoutine,
       milestones: newMilestones
     });
     
@@ -217,8 +216,8 @@ export default function RoutinePane({
   const modalInputRefs = useRef({});
 
   const allGoals = [
-    ...(sprintGoals || []).map(g => ({ ...g, type: 'Sprint' })),
     ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
+    ...(habits || []).map(g => ({ ...g, type: 'Routine' })),
     ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
   ];
   
@@ -226,39 +225,32 @@ export default function RoutinePane({
     (g.task || g.text || '').toLowerCase().includes(mentionQuery.toLowerCase())
   );
 
-  const getMilestonesContent = () => {
-    if (!effectiveDate) return '';
-    return (activeVersion?.milestones || {})[effectiveDate] || '';
-  };
 
-  const updateMilestonesContent = (newContent) => {
-    if (!effectiveDate) return;
-    const currentMilestones = activeVersion?.milestones || {};
-    updateActiveVersion({
-      milestones: {
-        ...currentMilestones,
-        [effectiveDate]: newContent
-      }
-    });
-  };
 
   // Removed inline editing handlers
 
-  const checkSprintAddressed = (goal) => {
-    const explicitlyReferenced = (routineGoals || []).some(g => g.sprintGoalId === goal.id);
+  const checkRoutineGoalAddressed = (goal) => {
+    const explicitlyReferenced = (habits || []).some(g => g.routineGoalId === goal.id);
     if (explicitlyReferenced) return true;
     const txt = goal.text.toLowerCase().trim();
     if (!txt) return false;
-    const inGoals = (routineGoals || []).some(g => g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
+    const inGoals = (habits || []).some(g => g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
     const inTimeline = templates?.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
     return inGoals || inTimeline;
   };
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
-    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', sprintGoalId: '', lifeGoalId: '', color: '' });
+    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', routineGoalId: '', lifeGoalId: '', color: '' });
     setShowRoutineGoalModal(true);
   };
+
+  useEffect(() => {
+    const handleFab = () => openAddRoutineGoal();
+    window.addEventListener('fab:add-habits', handleFab);
+    return () => window.removeEventListener('fab:add-habits', handleFab);
+  }, []);
+
 
   const openEditRoutineGoal = (goal) => {
     setEditingRoutineGoalId(goal.id);
@@ -266,7 +258,7 @@ export default function RoutinePane({
       task: goal.task || '', 
       desc: goal.desc || '', 
       timeValue: goal.time || '', 
-      sprintGoalId: goal.sprintGoalId || '',
+      routineGoalId: goal.routineGoalId || '',
       lifeGoalId: goal.lifeGoalId || '',
       color: goal.color || ''
     });
@@ -280,7 +272,7 @@ export default function RoutinePane({
       id: 'rg-' + Date.now(),
       completed: false
     };
-    setRoutineGoals([...(routineGoals || []), newGoal]);
+    setHabits([...(habits || []), newGoal]);
   };
 
   const saveRoutineGoal = (e) => {
@@ -296,25 +288,25 @@ export default function RoutinePane({
       task: routineGoalForm.task.trim(),
       desc: (routineGoalForm.desc || '').trim(),
       time: timeString,
-      sprintGoalId: routineGoalForm.sprintGoalId,
+      routineGoalId: routineGoalForm.routineGoalId,
       lifeGoalId: routineGoalForm.lifeGoalId,
       color: routineGoalForm.color
     };
 
     if (editingRoutineGoalId) {
-      const oldGoal = (routineGoals || []).find(g => g.id === editingRoutineGoalId);
-      setRoutineGoals((routineGoals || []).map(g => g.id === editingRoutineGoalId ? { ...g, ...goalData } : g));
+      const oldGoal = (habits || []).find(g => g.id === editingRoutineGoalId);
+      setHabits((habits || []).map(g => g.id === editingRoutineGoalId ? { ...g, ...goalData } : g));
       
       if (oldGoal && templates && setTemplates) {
         const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
-        const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goalData.sprintGoalId);
+        const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goalData.routineGoalId);
         const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goalData.lifeGoalId);
         
         let newColor = '#ffffff';
         if (goalData.color) {
           newColor = goalData.color;
-        } else if (linkedSprintGoal && linkedSprintGoal.color) {
-          newColor = linkedSprintGoal.color;
+        } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
+          newColor = linkedRoutineGoal.color;
         } else if (linkedLifeGoal && linkedLifeGoal.color) {
           newColor = linkedLifeGoal.color;
         }
@@ -342,24 +334,24 @@ export default function RoutinePane({
         id: 'rg-' + Date.now(),
         completed: false
       };
-      setRoutineGoals([...(routineGoals || []), newGoal]);
+      setHabits([...(habits || []), newGoal]);
     }
     setShowRoutineGoalModal(false);
   };
 
   const toggleGoal = (id) => {
-    setRoutineGoals((routineGoals || []).map(g => g.id === id ? { ...g, completed: !g.completed } : g));
+    setHabits((habits || []).map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
   const handleDragStart = (e, goal) => {
-    const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
+    const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goal.routineGoalId);
     const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
     
     let hex = '#ffffff';
     if (goal.color) {
       hex = goal.color;
-    } else if (linkedSprintGoal && linkedSprintGoal.color) {
-      hex = linkedSprintGoal.color;
+    } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
+      hex = linkedRoutineGoal.color;
     } else if (linkedLifeGoal && linkedLifeGoal.color) {
       hex = linkedLifeGoal.color;
     }
@@ -385,16 +377,16 @@ export default function RoutinePane({
     return templates.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
   };
 
-  const openGoalCount = (routineGoals || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
+  const openGoalCount = (habits || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
 
   const confirmDeleteGoal = (id, taskName) => {
     setConfirmConfig({
-      title: 'Delete Routine Goal',
+      title: 'Delete Habit',
       message: `Are you sure you want to delete "${taskName}"? This will also remove any calendar blocks linked to it.`,
       isDanger: true,
       onConfirm: () => {
         // 1. Delete the goal from the pane
-        setRoutineGoals((routineGoals || []).filter(g => g.id !== id));
+        setHabits((habits || []).filter(g => g.id !== id));
 
         // 2. Cascade delete blocks from the timeline
         if (templates && setTemplates) {
@@ -413,7 +405,7 @@ export default function RoutinePane({
   };
 
   const getScheduledGoalsForDate = (dateStr) => {
-    if (!routineGoals || routineGoals.length === 0) return [];
+    if (!habits || habits.length === 0) return [];
     
     const [y, m, d] = dateStr.split('-');
     const dateObj = new Date(y, m - 1, d);
@@ -424,13 +416,13 @@ export default function RoutinePane({
       const template = templates.find(t => t.id === templateId);
       if (template) {
         const blockGoalIds = template.blocks.map(b => b.routineGoalId).filter(Boolean);
-        const scheduledGoals = routineGoals.filter(g => blockGoalIds.includes(g.id));
+        const scheduledGoals = habits.filter(g => blockGoalIds.includes(g.id));
         if (scheduledGoals.length > 0) {
           return scheduledGoals;
         }
       }
     }
-    return routineGoals;
+    return habits;
   };
 
   const getTodayStr = () => {
@@ -479,13 +471,13 @@ export default function RoutinePane({
   if (effectiveDate) {
     displayedRoutineGoals = getScheduledGoalsForDate(effectiveDate);
   } else {
-    displayedRoutineGoals = (routineGoals || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (routineFilterSprintId) {
-      const sprintGoal = sprintGoals?.find(sg => sg.id === routineFilterSprintId);
-      if (sprintGoal) {
-        const txt = sprintGoal.text.toLowerCase().trim();
+    displayedRoutineGoals = (habits || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (habitFilterRoutineGoalId) {
+      const routineGoal = routineGoals?.find(sg => sg.id === habitFilterRoutineGoalId);
+      if (routineGoal) {
+        const txt = routineGoal.text.toLowerCase().trim();
         displayedRoutineGoals = displayedRoutineGoals.filter(g => 
-          g.sprintGoalId === routineFilterSprintId || 
+          g.routineGoalId === habitFilterRoutineGoalId || 
           (txt && g.task.toLowerCase().trim() === txt) || 
           (txt && g.desc && g.desc.toLowerCase().trim() === txt)
         );
@@ -524,7 +516,7 @@ export default function RoutinePane({
     }
   }
 
-  const milestoneDates = Object.keys(activeVersion.milestones || {}).filter(d => (activeVersion.milestones[d] || '').trim() !== '');
+  const milestoneDates = Object.keys(activeRoutine.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '');
   milestoneDates.sort((a, b) => new Date(a) - new Date(b));
 
   useEffect(() => {
@@ -540,7 +532,7 @@ export default function RoutinePane({
 
   // Parse markdown to render colored tags
   const customMarkdownComponents = {
-    strong: ({ node, children, ...props }) => {
+    strong: ({ children, ...props }) => {
       const text = String(children).trim();
       if (text.startsWith('@')) {
         const goalName = text.slice(1);
@@ -567,7 +559,7 @@ export default function RoutinePane({
     <div className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-           {effectiveDate ? <><Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18} color="var(--accent)" /> Routine Goals</>}
+           {effectiveDate ? <><Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18} color="var(--accent)" /> Habits</>}
         </h2>
         <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
           <ChevronDown size={16} style={{ transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
@@ -630,24 +622,24 @@ export default function RoutinePane({
                     />
                   </div>
                   <button 
-                    className={`secondary ${(routineFilterSprintId || sortByName) ? 'sort-active-glow' : ''}`}
+                    className={`secondary ${(habitFilterRoutineGoalId || sortByName) ? 'sort-active-glow' : ''}`}
                     onClick={() => {
-                      if (routineFilterSprintId && setRoutineFilterSprintId) {
-                        setRoutineFilterSprintId(null);
+                      if (habitFilterRoutineGoalId && setHabitFilterRoutineGoalId) {
+                        setHabitFilterRoutineGoalId(null);
                       } else {
                         setSortByName(!sortByName);
                       }
                     }}
                     style={{ 
                       padding: '8px 12px', 
-                      background: (routineFilterSprintId || sortByName) ? 'var(--accent)' : '',
-                      boxShadow: (routineFilterSprintId || sortByName) ? '0 0 12px var(--accent)' : 'none',
-                      color: (routineFilterSprintId || sortByName) ? '#000' : 'currentColor',
-                      borderColor: (routineFilterSprintId || sortByName) ? 'var(--accent)' : ''
+                      background: (habitFilterRoutineGoalId || sortByName) ? 'var(--accent)' : '',
+                      boxShadow: (habitFilterRoutineGoalId || sortByName) ? '0 0 12px var(--accent)' : 'none',
+                      color: (habitFilterRoutineGoalId || sortByName) ? '#000' : 'currentColor',
+                      borderColor: (habitFilterRoutineGoalId || sortByName) ? 'var(--accent)' : ''
                     }}
-                    title={routineFilterSprintId ? "Clear Filter" : "Sort by Name"}
+                    title={habitFilterRoutineGoalId ? "Clear Filter" : "Sort by Name"}
                   >
-                    {routineFilterSprintId ? (
+                    {habitFilterRoutineGoalId ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
                     ) : (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
@@ -661,20 +653,20 @@ export default function RoutinePane({
 
             {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
-          const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
+          const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goal.routineGoalId);
           const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
           
           let hex = '#ffffff';
           if (goal.color) {
             hex = goal.color;
-          } else if (linkedSprintGoal && linkedSprintGoal.color) {
-            hex = linkedSprintGoal.color;
+          } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
+            hex = linkedRoutineGoal.color;
           } else if (linkedLifeGoal && linkedLifeGoal.color) {
             hex = linkedLifeGoal.color;
           }
           
           const r = parseInt(hex.slice(1,3), 16) || 255, g = parseInt(hex.slice(3,5), 16) || 255, b = parseInt(hex.slice(5,7), 16) || 255;
-          const hasColor = goal.color || linkedSprintGoal || linkedLifeGoal;
+          const hasColor = goal.color || linkedRoutineGoal || linkedLifeGoal;
           
           const baseMins = goal.time ? parseDuration(goal.time) : 0;
           let scheduledMins = 0;
@@ -764,7 +756,7 @@ export default function RoutinePane({
             </div>
           );
         })}
-        {(routineGoals || []).length === 0 && (
+        {(habits || []).length === 0 && (
           <div style={{ 
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
             padding: '40px 20px', color: 'var(--text-secondary)', textAlign: 'center', 
@@ -789,7 +781,7 @@ export default function RoutinePane({
               <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px' }}>
                 <div style={{ borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px' }}>
                   {milestoneDates.map((dateStr) => {
-                    const contentStr = (activeVersion?.milestones || {})[dateStr] || '';
+                    const contentStr = (activeRoutine?.milestones || {})[dateStr] || '';
                     const blocks = (contentStr || '').split('\n\n');
                     const isActiveDate = effectiveDate === dateStr;
                     
@@ -879,12 +871,12 @@ export default function RoutinePane({
           <Hourglass size={14} color="var(--text-secondary)" />
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Pending:</span>
           <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
-            {sprintGoals.filter(g => !g.completed && !checkSprintAddressed(g)).length} Sprint, {openGoalCount} Routine
+            {routineGoals.filter(g => !g.completed && !checkRoutineGoalAddressed(g)).length} Routine, {openGoalCount} Routine
           </span>
         </div>
       </div>
 
-      {/* Routine Goal Modal */}
+      {/* Habit Modal */}
       <BaseModal
         isOpen={showRoutineGoalModal}
         onClose={() => setShowRoutineGoalModal(false)}
@@ -932,14 +924,14 @@ export default function RoutinePane({
             
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <Target size={14} color="#3b82f6" /> Sprint Link
+                <Target size={14} color="#3b82f6" /> Routine Link
               </label>
               <Dropdown
-                value={routineGoalForm.sprintGoalId}
-                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, sprintGoalId: val })}
+                value={routineGoalForm.routineGoalId}
+                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, routineGoalId: val })}
                 options={[
-                  { value: '', label: 'No Sprint Goal Linked' },
-                  ...(sprintGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
+                  { value: '', label: 'No Routine Goal Linked' },
+                  ...(routineGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
                 ]}
               />
             </div>
@@ -959,7 +951,7 @@ export default function RoutinePane({
             </div>
           </div>
 
-          {/* Routine Goal Color Picker */}
+          {/* Habit Color Picker */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Override Color

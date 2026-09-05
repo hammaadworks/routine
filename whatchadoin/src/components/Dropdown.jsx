@@ -47,7 +47,7 @@ export default function Dropdown({ options, value, onChange, placeholder = 'Sele
           fontSize: '13px', minHeight: '40px', width: '100%', boxSizing: 'border-box'
         }}
       >
-        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ display: 'block', paddingRight: '8px', wordBreak: 'break-word', textAlign: 'left', lineHeight: '1.4' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown size={14} style={{ color: 'var(--text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />

@@ -1,6 +1,6 @@
 # Routine OS Architecture
 
-Routine OS is built on a unified, lifted-state React architecture. The goal of this architecture is to ensure deep interconnectedness between the three primary spaces (Sprint Pane, Timeline, and Routine Pane) while maintaining high performance and precise drag-and-drop physics.
+Routine OS is built on a unified, lifted-state React architecture. The goal of this architecture is to ensure deep interconnectedness between the three primary spaces (Routine Pane, Timeline, and Routine Pane) while maintaining high performance and precise drag-and-drop physics.
 
 ## State Management
 
@@ -8,8 +8,8 @@ State is centrally managed in `App.jsx` and distributed down to the panes via pr
 
 ### Core State Trees
 
-- **`sprintGoals`**: Array of broad objective objects for the defined period.
-- **`routineGoals`**: Object mapping `{ daily: [], weekly: [] }` containing recurring atomic habits or tasks.
+- **`routineGoals`**: Array of broad objective objects for the defined period.
+- **`habits`**: Object mapping `{ daily: [], weekly: [] }` containing recurring atomic habits or tasks.
 - **`templates`**: The most complex data structure. An array of day-template objects. Each template has an `id`, `name`, and `blocks` array. `blocks` contain all scheduled timeline events.
 - **`activeTemplateId`**: Pointer to the currently viewed template in the Timeline.
 - **`dayMapping`**: Dictates which template is assigned to which day of the week.
@@ -30,7 +30,7 @@ The timeline is a custom-built 24-hour vertical grid.
 
 ### Drag & Drop Physics
 
-When a routine goal is dragged into the timeline:
+When a habit is dragged into the timeline:
 1. `onDragStart` intercepts the event, attaching the source (`routine` or `timeline`) and the item `id`.
 2. A ghost preview follows the cursor, snapping in 15-minute (`15px`) intervals.
 3. On `drop`, the engine parses the `id`, looks up the source block, calculates the exact mathematical Y offset, and constructs a new block inside `templates`.

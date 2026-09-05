@@ -9,7 +9,7 @@ Because standard web apps (running in mobile Safari/Chrome) cannot arbitrarily r
 ### 1. The Proxy Architecture
 The entire app state is stored in standard browser `localStorage`. To make syncing completely invisible to the user and the rest of the application, we hijack the native `localStorage.setItem` method at boot time.
 
-Whenever any part of the application updates a goal, changes a plan, or switches a version, it calls `localStorage.setItem`. Our proxy intercepts this:
+Whenever any part of the application updates a goal, changes a plan, or switches a routine, it calls `localStorage.setItem`. Our proxy intercepts this:
 - It saves the data locally as usual.
 - It resets a 5-second debounce timer.
 - Once you stop making changes for 5 seconds, the app compiles your entire `localStorage` state into a single JSON object and pushes it to GitHub via a `PATCH` request.

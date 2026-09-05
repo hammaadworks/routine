@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, Plus, Pencil, Copy, Trash2, ZoomIn, ZoomOut, X, Clock, Info, ListTodo, GripVertical } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
@@ -98,10 +98,10 @@ function getLayout(blocks) {
   return laidOutBlocks;
 }
 
-export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping, updateActiveVersion, routineGoals, sprintGoals }) {
+export default function Timeline({ templates, setTemplates, activeTemplateId, setActiveTemplateId, dayMapping, setDayMapping, updateActiveRoutine, habits, routineGoals }) {
   const [newTemplateName, setNewTemplateName] = useState('');
   // Inline editing for blocks now, no block modal needed
-  const [draggedElementId, setDraggedElementId] = useState(null);
+
   const [isDragging, setIsDragging] = useState(false);
   
   // Track scroll position of timeline container
@@ -164,8 +164,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     
     updates.activeTemplateId = newId;
 
-    if (updateActiveVersion) {
-      updateActiveVersion(updates);
+    if (updateActiveRoutine) {
+      updateActiveRoutine(updates);
     } else {
       setTemplates(updates.templates);
       if (updates.dayMapping) setDayMapping(updates.dayMapping);
@@ -174,6 +174,13 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
     
     setNewTemplateName('');
   };
+
+
+  useEffect(() => {
+    const handleFab = () => handleNewClick();
+    window.addEventListener('fab:add-timeline', handleFab);
+    return () => window.removeEventListener('fab:add-timeline', handleFab);
+  }, [days, dayMapping, activeTemplateId]);
 
   const handleNewClick = () => {
     // Check if all days are filled
@@ -241,8 +248,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
     updates.activeTemplateId = newId;
 
-    if (updateActiveVersion) {
-      updateActiveVersion(updates);
+    if (updateActiveRoutine) {
+      updateActiveRoutine(updates);
     } else {
       setTemplates(updates.templates);
       if (updates.dayMapping) setDayMapping(updates.dayMapping);
@@ -263,7 +270,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
         if (newTemplates.length === 0) {
           newActiveId = Date.now().toString();
-          finalTemplates = [{ id: newActiveId, name: 'Vanilla Routine', blocks: [] }];
+          finalTemplates = [{ id: newActiveId, name: 'Vanilla whatchadoin', blocks: [] }];
         } else {
           finalTemplates = newTemplates;
           newActiveId = newTemplates[0].id;
@@ -286,8 +293,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           updates.dayMapping = updatedMapping;
         }
 
-        if (updateActiveVersion) {
-          updateActiveVersion(updates);
+        if (updateActiveRoutine) {
+          updateActiveRoutine(updates);
         } else {
           setTemplates(updates.templates);
           setActiveTemplateId(updates.activeTemplateId);
@@ -345,8 +352,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       return t;
     });
 
-    if (updateActiveVersion) {
-      updateActiveVersion({ templates: updatedTemplates });
+    if (updateActiveRoutine) {
+      updateActiveRoutine({ templates: updatedTemplates });
     } else {
       setTemplates(updatedTemplates);
     }
@@ -376,14 +383,14 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
       return t;
     });
 
-    if (updateActiveVersion) {
-      updateActiveVersion({ templates: updatedTemplates });
+    if (updateActiveRoutine) {
+      updateActiveRoutine({ templates: updatedTemplates });
     } else {
       setTemplates(updatedTemplates);
     }
   };
 
-  const sortedMobileGoals = [...(routineGoals || [])].sort((a, b) => {
+  const sortedMobileGoals = [...(habits || [])].sort((a, b) => {
     const hasTimeA = a.time ? true : false;
     const hasTimeB = b.time ? true : false;
     if (hasTimeA !== hasTimeB) return hasTimeA ? 1 : -1;
@@ -417,7 +424,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                 <CalendarDays size={14} color="var(--text-secondary)" />
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Active on:</span>
               </div>
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              <div className="day-btn-container" style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', flexShrink: 0 }}>
                 {days.map(day => {
                   const isActive = dayMapping[day] === activeTemplateId;
                   const assignedTemplateId = dayMapping[day];
@@ -476,7 +483,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                   {displayTime}
                 </div>
                 {isNoon && (
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', backgroundImage: 'linear-gradient(to right, var(--accent) 30%, transparent 30%)', backgroundSize: '15px 1px', backgroundRepeat: 'repeat-x', boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)', zIndex: 1 }} />
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', backgroundImage: 'linear-gradient(to right, var(--danger, #ef4444) 30%, transparent 30%)', backgroundSize: '15px 1px', backgroundRepeat: 'repeat-x', boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)', zIndex: 1 }} />
                 )}
                 {(i === 3 || i === 21) && (
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', backgroundImage: 'linear-gradient(to right, #a855f7 30%, transparent 30%)', backgroundSize: '15px 1px', backgroundRepeat: 'repeat-x', boxShadow: '0 0 10px rgba(168, 85, 247, 0.5)', zIndex: 1 }} />
@@ -614,8 +621,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                             }
                             return t;
                           });
-                          if (updateActiveVersion) {
-                            updateActiveVersion({ templates: updatedTemplates });
+                          if (updateActiveRoutine) {
+                            updateActiveRoutine({ templates: updatedTemplates });
                           } else {
                             setTemplates(updatedTemplates);
                           }
@@ -649,8 +656,8 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
                           }
                           return t;
                         });
-                        if (updateActiveVersion) {
-                          updateActiveVersion({ templates: updatedTemplates });
+                        if (updateActiveRoutine) {
+                          updateActiveRoutine({ templates: updatedTemplates });
                         } else {
                           setTemplates(updatedTemplates);
                         }
@@ -783,221 +790,6 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           </div>
         </form>
       </BaseModal>
-
-      {/* New Template Modal */}
-      <BaseModal
-        isOpen={showNewTemplateModal}
-        onClose={() => setShowNewTemplateModal(false)}
-        title="New Template"
-      >
-        <form onSubmit={(e) => { addTemplate(e); setShowNewTemplateModal(false); }}>
-          <input type="text" placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} style={{ width: '100%', marginBottom: '12px' }} />
-          
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', marginBottom: '16px', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.2)', padding: '10px', borderRadius: '8px' }}>
-            <Info size={14} color="var(--accent)" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              If you only have minor changes to make, consider using <strong>Duplicate</strong> on an existing template instead.
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="submit" style={{ flex: 1, color: '#000' }}>Create</button>
-            <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)} style={{ flex: 1 }}>Cancel</button>
-          </div>
-        </form>
-      </BaseModal>
-      {/* Confirm Modal */}
-      {confirmConfig && (
-        <ConfirmModal 
-          title={confirmConfig.title}
-          message={confirmConfig.message}
-          isDanger={confirmConfig.isDanger}
-          image={confirmConfig.image}
-          onConfirm={confirmConfig.onConfirm}
-          onCancel={confirmConfig.onCancel}
-          confirmText={confirmConfig.confirmText}
-        />
-      )}
-
-      {/* Block Edit Modal */}
-      <BaseModal
-        isOpen={!!editingBlockId}
-        onClose={() => setEditingBlockId(null)}
-        title="Edit Time"
-        maxWidth="320px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Start</label>
-              <input 
-                type="time" 
-                value={formatTime24(blockModalData.startTime)}
-                onChange={(e) => {
-                  const val = parseTime(e.target.value);
-                  if (val !== null && !isNaN(val)) setBlockModalData(prev => ({ ...prev, startTime: val }));
-                }}
-                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>End</label>
-              <input 
-                type="time" 
-                value={formatTime24((blockModalData.startTime + blockModalData.duration) % 1440)}
-                onChange={(e) => {
-                  const val = parseTime(e.target.value);
-                  if (val !== null && !isNaN(val)) {
-                    let newDur = val - blockModalData.startTime;
-                    if (newDur < 0) newDur += 1440;
-                    setBlockModalData(prev => ({ ...prev, duration: newDur }));
-                  }
-                }}
-                style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
-              />
-            </div>
-          </div>
-          <div>
-            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Duration (mins)</label>
-            <input 
-              type="number" 
-              value={blockModalData.duration}
-              onChange={(e) => setBlockModalData(prev => ({ ...prev, duration: parseInt(e.target.value) || 0 }))}
-              style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', padding: '8px', borderRadius: '6px', color: '#fff', fontSize: '14px' }}
-            />
-          </div>
-          <button 
-            className="primary" 
-            style={{ width: '100%', padding: '10px', marginTop: '8px', color: '#000', borderRadius: '6px' }}
-            onClick={() => {
-              const updatedTemplates = templates.map(t => {
-                if (t.id === activeTemplateId) {
-                  return { ...t, blocks: t.blocks.map(b => b.id === editingBlockId ? { ...b, startTime: blockModalData.startTime, duration: blockModalData.duration } : b) };
-                }
-                return t;
-              });
-              if (updateActiveVersion) updateActiveVersion({ templates: updatedTemplates });
-              else setTemplates(updatedTemplates);
-              setEditingBlockId(null);
-            }}
-          >
-            Save
-          </button>
-        </div>
-      </BaseModal>
-
-      {/* Mobile FAB and Bottom Sheet using createPortal */}
-      {createPortal(
-        <>
-          {/* Mobile FAB for Routine Goals */}
-          <button 
-            className="mobile-only" 
-            onClick={() => setShowMobileGoals(true)}
-            style={{
-              position: 'fixed',
-              bottom: '80px', /* Increased to avoid iOS Safari bottom bar / PWA home bar */
-              right: '24px',
-              width: '56px',
-              height: '56px',
-              borderRadius: '28px',
-              background: 'var(--accent)',
-              color: '#000',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              zIndex: 9999, // Ensure it's very high
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            <ListTodo size={24} />
-          </button>
-
-          {/* Mobile Bottom Sheet for Goals */}
-          {showMobileGoals && (
-            <div className="mobile-only" style={{ opacity: isDragging ? 0.3 : 1, pointerEvents: isDragging ? 'none' : 'auto' }}>
-              <div 
-                style={{
-                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(0,0,0,0.5)', zIndex: 10000,
-                  pointerEvents: isDragging ? 'none' : 'auto'
-                }}
-                onClick={() => setShowMobileGoals(false)}
-              />
-              <div 
-                style={{
-                  position: 'fixed',
-                  bottom: 0, left: 0, right: 0,
-                  height: '45vh',
-                  background: 'var(--panel-bg)',
-                  borderTop: '1px solid var(--panel-border)',
-                  borderTopLeftRadius: '16px',
-                  borderTopRightRadius: '16px',
-                  zIndex: 10001,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxShadow: '0 -4px 20px rgba(0,0,0,0.5)'
-                }}
-              >
-                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
-                    <ListTodo size={18} color="var(--accent)" /> Drag Goals to Schedule
-                  </h3>
-                  <button className="icon-btn" onClick={() => setShowMobileGoals(false)} style={{ padding: '4px' }}>
-                    <X size={18} />
-                  </button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {sortedMobileGoals.map(goal => {
-                    const linkedSprintGoal = sprintGoals?.find(sg => sg.id === goal.sprintGoalId);
-                    const hex = linkedSprintGoal?.color || '#ffffff';
-                    return (
-                      <div 
-                        key={goal.id} 
-                        className={`item-card ${goal.completed ? 'scratched' : ''}`}
-                        draggable
-                        onDragStart={(e) => {
-                          setIsDragging(true);
-                          e.dataTransfer.setData('source', 'sidebar');
-                          e.dataTransfer.setData('task', goal.task);
-                          e.dataTransfer.setData('desc', goal.desc || '');
-                          e.dataTransfer.setData('time', goal.time || '1:15');
-                          e.dataTransfer.setData('color', hex);
-                          e.dataTransfer.setData('routineGoalId', goal.id);
-                        }}
-                        onDragEnd={() => {
-                          setIsDragging(false);
-                          setShowMobileGoals(false);
-                        }}
-                        style={{ 
-                          display: 'flex', alignItems: 'center', minHeight: '48px', padding: '8px 12px',
-                          background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-                          border: `1px solid rgba(255,255,255,0.1)`,
-                          borderLeft: `3px solid ${hex}`,
-                          borderRadius: '8px',
-                          touchAction: 'none'
-                        }}
-                      >
-                        <GripVertical size={16} color="var(--text-secondary)" style={{ cursor: 'grab', marginRight: '8px', opacity: 0.5 }} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goal.task}</div>
-                          {goal.time && <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}><Clock size={10} /> {goal.time}</div>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {sortedMobileGoals.length === 0 && (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                      No routine goals found. Add some first!
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </>,
-        document.body
-      )}
     </div>
   );
 }
