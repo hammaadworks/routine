@@ -405,7 +405,7 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
 
   return (
     <div className="timeline-inner" style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-      <div className="timeline-header" style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="timeline-header" style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="timeline-header-bar">
           {/* 1. Dropdown */}
           <div className="th-dropdown">
@@ -448,17 +448,17 @@ export default function Timeline({ templates, setTemplates, activeTemplateId, se
           
           {/* 3. Actions */}
           <div className="th-actions" style={{ width: '100%', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
-              <Pencil size={12} /> Rename
+            <button className="secondary action-btn" onClick={() => { setEditingTemplateName(activeTemplate?.name || ''); setIsEditingTemplateName(true); }} disabled={!activeTemplateId} style={{ flex: '1', minWidth: '40px', justifyContent: 'center', padding: '8px' }}>
+              <Pencil size={14} /> <span className="mobile-hidden" style={{ marginLeft: '6px' }}>Rename</span>
             </button>
-            <button className="secondary action-btn" onClick={handleNewClick} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
-              <Plus size={12} /> New
+            <button className="secondary action-btn" onClick={handleNewClick} style={{ flex: '1', minWidth: '40px', justifyContent: 'center', padding: '8px' }}>
+              <Plus size={14} /> <span className="mobile-hidden" style={{ marginLeft: '6px' }}>New</span>
             </button>
-            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
-              <Copy size={12} /> Duplicate
+            <button className="secondary action-btn" onClick={duplicateTemplate} disabled={!activeTemplateId} style={{ flex: '1', minWidth: '40px', justifyContent: 'center', padding: '8px' }}>
+              <Copy size={14} /> <span className="mobile-hidden" style={{ marginLeft: '6px' }}>Duplicate</span>
             </button>
-            <button className="secondary template-delete-btn action-btn" onClick={deleteTemplate} disabled={!activeTemplateId} style={{ flex: '1 1 40%', minWidth: '80px', justifyContent: 'center' }}>
-              <Trash2 size={12} /> Delete
+            <button className="secondary template-delete-btn action-btn" onClick={deleteTemplate} disabled={!activeTemplateId} style={{ flex: '1', minWidth: '40px', justifyContent: 'center', padding: '8px' }}>
+              <Trash2 size={14} /> <span className="mobile-hidden" style={{ marginLeft: '6px' }}>Delete</span>
             </button>
           </div>
         </div>

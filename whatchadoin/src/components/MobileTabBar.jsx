@@ -3,9 +3,9 @@ import { Target, CalendarDays, Zap, FileText } from 'lucide-react';
 
 export default function MobileTabBar({ activeTab, onTabChange }) {
   const tabs = [
-    { id: 'timeline', icon: CalendarDays, label: 'Timeline' },
+    { id: 'goals', icon: Target, label: 'Goals' },
+    { id: 'timeline', icon: CalendarDays, label: 'Schedule', default: true },
     { id: 'habits', icon: Zap, label: 'Habits' },
-    { id: 'goals', icon: Target, label: 'Goals' }
   ];
 
   return (

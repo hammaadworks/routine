@@ -19,9 +19,13 @@ export const initSync = (onRemoteUpdate) => {
     if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
       const localData = exportLocalData();
       if (remoteData !== localData) {
-        importLocalData(remoteData);
-        lastSyncedStr = remoteData;
-        if (onRemoteUpdate) onRemoteUpdate();
+        const success = importLocalData(remoteData);
+        if (success) {
+          lastSyncedStr = remoteData;
+          if (onRemoteUpdate) onRemoteUpdate();
+        } else {
+          lastSyncedStr = localData;
+        }
       } else {
         lastSyncedStr = localData;
       }
@@ -92,10 +96,16 @@ export const importLocalData = (jsonStr) => {
     keysToRemove.forEach(k => localStorage.removeItem(k));
     
     for (const key in data) {
-      localStorage.setItem(key, data[key]);
+      if (typeof data[key] === 'string') {
+        localStorage.setItem(key, data[key]);
+      } else {
+        localStorage.setItem(key, JSON.stringify(data[key]));
+      }
     }
+    return true;
   } catch (e) {
     console.error("Failed to parse remote sync data", e);
+    return false;
   }
 };
 

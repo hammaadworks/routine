@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendToProvider } from '../utils/aiProviders';
 import { Settings, Send, PanelRight, PanelBottom, ExternalLink, X } from 'lucide-react';
+import AIConfigEditor from './AIConfigEditor';
 
 const TOOLS = [
 // ... keeping tools as is ...
@@ -72,11 +73,33 @@ export default function AIAgentApp({ isDocked = false }) {
 
   const [config, setConfig] = useState(() => {
     const saved = localStorage.getItem('whatchadoin_ai_config');
-    return saved ? JSON.parse(saved) : {
-      provider: 'openai',
-      apiKey: '',
-      model: 'gpt-4o',
-      customEndpoint: ''
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.profiles) return parsed;
+        return {
+          activeProfileId: 'default',
+          profiles: [{
+            id: 'default',
+            name: 'Default Profile',
+            provider: parsed.provider || 'openai',
+            model: parsed.model || 'gpt-4o',
+            apiKey: parsed.apiKey || '',
+            customEndpoint: parsed.customEndpoint || ''
+          }]
+        };
+      } catch (e) {}
+    }
+    return {
+      activeProfileId: 'default',
+      profiles: [{
+        id: 'default',
+        name: 'Default Profile',
+        provider: 'openai',
+        model: 'gpt-4o',
+        apiKey: '',
+        customEndpoint: ''
+      }]
     };
   });
   const [showSettings, setShowSettings] = useState(!isDocked);
@@ -118,7 +141,8 @@ export default function AIAgentApp({ isDocked = false }) {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    if (!config.apiKey) {
+    const activeProfile = config.profiles.find(p => p.id === config.activeProfileId) || config.profiles[0];
+    if (!activeProfile.apiKey) {
       alert("Please configure your API Key in Settings first.");
       if (!isDocked) {
         setShowSettings(true);
@@ -144,7 +168,8 @@ export default function AIAgentApp({ isDocked = false }) {
   };
 
   const processLLMLoop = async (currentMsgs) => {
-    const response = await sendToProvider(currentMsgs, appState, TOOLS, config);
+    const activeProfile = config.profiles.find(p => p.id === config.activeProfileId) || config.profiles[0];
+    const response = await sendToProvider(currentMsgs, appState, TOOLS, activeProfile);
     
     if (response.type === 'tool_call') {
       const assistantMsg = response.message;
@@ -200,55 +225,7 @@ export default function AIAgentApp({ isDocked = false }) {
             <Settings size={20} /> AI Config
           </h2>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Provider</label>
-              <select 
-                value={config.provider} 
-                onChange={e => setConfig({...config, provider: e.target.value})}
-                style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '4px' }}
-              >
-                <option value="openai">OpenAI</option>
-                <option value="groq">Groq</option>
-                <option value="gemini">Gemini</option>
-                <option value="custom">Custom (OpenAI Compatible)</option>
-              </select>
-            </div>
-            
-            {config.provider === 'custom' && (
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Custom Endpoint URL</label>
-                <input 
-                  type="text" 
-                  value={config.customEndpoint} 
-                  onChange={e => setConfig({...config, customEndpoint: e.target.value})}
-                  placeholder="https://your-api.com/v1/chat/completions"
-                  style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '4px' }}
-                />
-              </div>
-            )}
-
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Model</label>
-              <input 
-                type="text" 
-                value={config.model} 
-                onChange={e => setConfig({...config, model: e.target.value})}
-                placeholder="gpt-4o"
-                style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '4px' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>API Key</label>
-              <input 
-                type="password" 
-                value={config.apiKey} 
-                onChange={e => setConfig({...config, apiKey: e.target.value})}
-                style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '4px' }}
-              />
-            </div>
-          </div>
+          <AIConfigEditor config={config} setConfig={setConfig} />
         </div>
       </div>
 
