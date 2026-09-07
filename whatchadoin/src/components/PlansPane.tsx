@@ -3,33 +3,66 @@ import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, SquarePen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search, ChevronLeft } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import { getAllGoalsForMention } from '../utils';
 
-export default function PlansPane({ routineGoals, habits, lifeGoals, activeRoutineId }) {
-  const [notes, setNotes] = useState(() => {
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  folderId: string | null;
+  createdAt: string;
+  isLife: boolean;
+}
+
+interface FolderType {
+  id: string;
+  name: string;
+  parentId: string | null;
+  isExpanded: boolean;
+  isLife: boolean;
+}
+
+interface ConfirmConfig {
+  title: string;
+  message: string;
+  isDanger: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+interface PlansPaneProps {
+  routineGoals: any[];
+  habits: any[];
+  lifeGoals: any[];
+  activeRoutineId: string;
+}
+
+export default function PlansPane({ routineGoals, habits, lifeGoals, activeRoutineId }: PlansPaneProps) {
+  const [notes, setNotes] = useState<Note[]>(() => {
     const rSaved = localStorage.getItem(`routine_plans_${activeRoutineId}`);
-    const rNotes = rSaved ? JSON.parse(rSaved).map(n => ({...n, isLife: false})) : [];
+    const rNotes = rSaved ? JSON.parse(rSaved).map((n: any) => ({...n, isLife: false})) : [];
     const lSaved = localStorage.getItem(`whatchadoin_life_plans`);
-    const lNotes = lSaved ? JSON.parse(lSaved).map(n => ({...n, isLife: true})) : [];
+    const lNotes = lSaved ? JSON.parse(lSaved).map((n: any) => ({...n, isLife: true})) : [];
     return [...lNotes, ...rNotes];
   });
-  const [folders, setFolders] = useState(() => {
+  const [folders, setFolders] = useState<FolderType[]>(() => {
     const rSaved = localStorage.getItem(`routine_plans_folders_${activeRoutineId}`);
-    const rFolders = rSaved ? JSON.parse(rSaved).map(f => ({...f, isLife: false})) : [];
+    const rFolders = rSaved ? JSON.parse(rSaved).map((f: any) => ({...f, isLife: false})) : [];
     const lSaved = localStorage.getItem(`whatchadoin_life_plans_folders`);
-    const lFolders = lSaved ? JSON.parse(lSaved).map(f => ({...f, isLife: true})) : [];
+    const lFolders = lSaved ? JSON.parse(lSaved).map((f: any) => ({...f, isLife: true})) : [];
     return [...lFolders, ...rFolders];
   });
   
-  const [activeNoteId, setActiveNoteId] = useState(notes.length > 0 ? notes[0].id : null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0].id : null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
-  const [activeBlockIdx, setActiveBlockIdx] = useState(null);
+  const [activeBlockIdx, setActiveBlockIdx] = useState<number | null>(null);
   const [isDocBarCollapsed, setIsDocBarCollapsed] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState(null);
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -37,18 +70,10 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const textareaRefs = useRef({});
+  const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
   // All goals for mentioning
-  const allGoals = [
-    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
-    ...(habits || []).map(g => ({ ...g, type: 'Routine' })),
-    ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
-  ];
-  
-  const filteredGoals = allGoals.filter(g => 
-    (g.task || g.text || '').toLowerCase().includes(mentionQuery.toLowerCase())
-  );
+  const { allGoals, filteredGoals } = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery);
 
   useEffect(() => {
     const rNotes = notes.filter(n => !n.isLife);
@@ -66,9 +91,9 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
-  const createFolder = (parentId = null, isLife = false) => {
+  const createFolder = (parentId: string | null = null, isLife = false) => {
     if (parentId) isLife = folders.find(f => f.id === parentId)?.isLife || false;
-    const newFolder = {
+    const newFolder: FolderType = {
       id: 'folder_' + Date.now().toString(),
       name: 'New Folder',
       parentId,
@@ -78,17 +103,17 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     setFolders([...folders, newFolder]);
   };
 
-  const updateFolder = (id, updates) => {
+  const updateFolder = (id: string, updates: Partial<FolderType>) => {
     setFolders(folders.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
-  const deleteFolder = (id) => {
+  const deleteFolder = (id: string) => {
     setConfirmConfig({
       title: 'Delete Folder',
       message: 'Are you sure you want to delete this folder and all its contents?',
       isDanger: true,
       onConfirm: () => {
-        const subfolderIds = new Set([id]);
+        const subfolderIds = new Set<string>([id]);
         let changed = true;
         while(changed) {
           changed = false;
@@ -100,10 +125,11 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
           });
         }
         
-        setFolders(folders.filter(f => !subfolderIds.has(f.id)));
-        const newNotes = notes.filter(n => !subfolderIds.has(n.folderId));
+        setFolders(folders.map(f => f).filter(f => !subfolderIds.has(f.id)));
+        const newNotes = notes.filter(n => (n.folderId ? !subfolderIds.has(n.folderId) : true));
         setNotes(newNotes);
-        if (activeNoteId && subfolderIds.has(notes.find(n => n.id === activeNoteId)?.folderId)) {
+        const activeFolderId = notes.find(n => n.id === activeNoteId)?.folderId;
+        if (activeNoteId && activeFolderId && subfolderIds.has(activeFolderId)) {
           setActiveNoteId(null);
         }
         setConfirmConfig(null);
@@ -112,9 +138,9 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     });
   };
 
-  const createNote = (folderId = null, isLife = false) => {
+  const createNote = (folderId: string | null = null, isLife = false) => {
     if (folderId) isLife = folders.find(f => f.id === folderId)?.isLife || false;
-    const newNote = {
+    const newNote: Note = {
       id: Date.now().toString(),
       title: 'Untitled Note',
       content: '',
@@ -126,11 +152,11 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     setActiveNoteId(newNote.id);
   };
 
-  const updateActiveNote = (updates) => {
+  const updateActiveNote = (updates: Partial<Note>) => {
     setNotes(notes.map(n => n.id === activeNoteId ? { ...n, ...updates } : n));
   };
 
-  const deleteNote = (id) => {
+  const deleteNote = (id: string) => {
     setConfirmConfig({
       title: 'Delete Plan',
       message: 'Are you sure you want to delete this plan?',
@@ -147,11 +173,11 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     });
   };
 
-  const duplicateNote = (id) => {
+  const duplicateNote = (id: string) => {
     const noteToCopy = notes.find(n => n.id === id);
     if (!noteToCopy) return;
     
-    const newNote = {
+    const newNote: Note = {
       ...noteToCopy,
       id: Date.now().toString(),
       title: `${noteToCopy.title} (Copy)`,
@@ -163,7 +189,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     setActiveNoteId(newNote.id);
   };
 
-  const handleKeyDown = (e, idx) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, idx: number) => {
     if (showMentionMenu) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -182,12 +208,15 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       return;
     }
 
+    if (!activeNote) return;
+
     const blocks = activeNote.content.split('\n\n');
+    const target = e.target as HTMLTextAreaElement;
     
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const cursor = e.target.selectionStart;
-      const val = blocks[idx];
+      const cursor = target.selectionStart;
+      const val = blocks[idx] || '';
       const before = val.slice(0, cursor);
       const after = val.slice(cursor);
       
@@ -196,9 +225,9 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       newBlocks.splice(idx + 1, 0, after);
       updateActiveNote({ content: newBlocks.join('\n\n') });
       setActiveBlockIdx(idx + 1);
-    } else if (e.key === 'Backspace' && e.target.selectionStart === 0 && idx > 0) {
+    } else if (e.key === 'Backspace' && target.selectionStart === 0 && idx > 0) {
       e.preventDefault();
-      const prevBlock = blocks[idx - 1];
+      const prevBlock = blocks[idx - 1] || '';
       const newBlocks = [...blocks];
       newBlocks[idx - 1] = prevBlock + (newBlocks[idx] ? '\n\n' + newBlocks[idx] : '');
       newBlocks.splice(idx, 1);
@@ -211,23 +240,25 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
           ref.selectionStart = ref.selectionEnd = prevBlock.length;
         }
       }, 0);
-    } else if (e.key === 'ArrowUp' && e.target.selectionStart === 0 && idx > 0) {
+    } else if (e.key === 'ArrowUp' && target.selectionStart === 0 && idx > 0) {
       setActiveBlockIdx(idx - 1);
-    } else if (e.key === 'ArrowDown' && e.target.selectionStart === e.target.value.length && idx < blocks.length - 1) {
+    } else if (e.key === 'ArrowDown' && target.selectionStart === target.value.length && idx < blocks.length - 1) {
       setActiveBlockIdx(idx + 1);
     }
   };
 
-  const handleInput = (e, idx) => {
-    const val = e.target.value;
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>, idx: number) => {
+    if (!activeNote) return;
+    const target = e.target;
+    const val = target.value;
     const blocks = activeNote.content.split('\n\n');
     blocks[idx] = val;
     updateActiveNote({ content: blocks.join('\n\n') });
     
-    e.target.style.height = 'auto';
-    e.target.style.height = (e.target.scrollHeight) + 'px';
+    target.style.height = 'auto';
+    target.style.height = (target.scrollHeight) + 'px';
     
-    const cursor = e.target.selectionStart;
+    const cursor = target.selectionStart;
     const textBeforeCursor = val.slice(0, cursor);
     
     const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
@@ -237,9 +268,9 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       setShowMentionMenu(true);
       setMentionIndex(0);
       
-      const coords = getCaretCoordinates(e.target, cursor);
-      const rect = e.target.getBoundingClientRect();
-      const containerRect = e.target.parentElement.getBoundingClientRect();
+      const coords = getCaretCoordinates(target, cursor);
+      const rect = target.getBoundingClientRect();
+      const containerRect = target.parentElement?.getBoundingClientRect() || { top: 0 };
       
       setMentionCoords({
         top: coords.top + 24 + (rect.top - containerRect.top),
@@ -250,13 +281,16 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     }
   };
 
-  const insertMention = (goal, idx) => {
+  const insertMention = (goal: any, idx: number) => {
     const goalText = goal.task || goal.text;
     const ref = textareaRefs.current[idx];
+    if (!ref) return;
     const cursor = ref.selectionStart;
     
+    if (!activeNote) return;
+
     const blocks = activeNote.content.split('\n\n');
-    const blockContent = blocks[idx];
+    const blockContent = blocks[idx] || '';
     const textBeforeCursor = blockContent.slice(0, cursor);
     const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
     
@@ -268,8 +302,8 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       setTimeout(() => {
         if (textareaRefs.current[idx]) {
           const newCursorPos = startIdx + goalText.length + 4;
-          textareaRefs.current[idx].selectionStart = textareaRefs.current[idx].selectionEnd = newCursorPos;
-          textareaRefs.current[idx].focus();
+          textareaRefs.current[idx]!.selectionStart = textareaRefs.current[idx]!.selectionEnd = newCursorPos;
+          textareaRefs.current[idx]!.focus();
         }
       }, 0);
     }
@@ -279,18 +313,21 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
   useEffect(() => {
     if (activeBlockIdx !== null && textareaRefs.current[activeBlockIdx]) {
       const ref = textareaRefs.current[activeBlockIdx];
-      ref.focus();
-      ref.style.height = 'auto';
-      ref.style.height = (ref.scrollHeight) + 'px';
+      if (ref) {
+        ref.focus();
+        ref.style.height = 'auto';
+        ref.style.height = (ref.scrollHeight) + 'px';
+      }
     }
   }, [activeBlockIdx]);
 
-  const customMarkdownComponents = {
-    strong: ({ children, ...props }) => {
+  const customMarkdownComponents: Record<string, React.ElementType> = {
+    // noinspection JSUnusedGlobalSymbols
+    strong: ({ children, ...props }: any) => {
       const text = String(children).trim();
       if (text.startsWith('@')) {
         const goalName = text.slice(1);
-        const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
+        const goal = allGoals.find((g: any) => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
         if (goal && goal.color) {
           return (
             <strong {...props} style={{ color: goal.color, background: `${goal.color}20`, padding: '0 4px', borderRadius: '4px' }}>
@@ -315,7 +352,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     return n.title.toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q);
   });
 
-  const renderTree = (parentId = null, level = 0, isLife = false) => {
+  const renderTree = (parentId: string | null = null, level = 0, isLife = false) => {
     const childFolders = folders.filter(f => f.parentId === parentId && f.isLife === isLife);
     let childNotes = notes.filter(n => (n.folderId || null) === parentId && n.isLife === isLife);
     
@@ -596,8 +633,10 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
                       <div 
                         key={g.id}
                         onMouseDown={(e) => {
-                          e.preventDefault(); 
-                          insertMention(g, activeBlockIdx);
+                          e.preventDefault();
+                          if (activeBlockIdx !== null) {
+                            insertMention(g, activeBlockIdx);
+                          }
                         }}
                         onMouseEnter={() => setMentionIndex(i)}
                         style={{

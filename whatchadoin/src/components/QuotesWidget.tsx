@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Shuffle, Settings, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import BaseModal from './BaseModal';
 
-const DEFAULT_QUOTES = [
+
+export interface Quote {
+  id: string;
+  text: string;
+}
+
+const DEFAULT_QUOTES: Quote[] = [
+
   { id: '1', text: "Get up. Discipline is how ambition turns into money." },
   { id: '2', text: "Consistency is boring, but it pays rent and freedom." },
   { id: '3', text: "Your habits are literally designing your bank account." },
@@ -26,7 +33,7 @@ const DEFAULT_QUOTES = [
 ];
 
 export default function QuotesWidget() {
-  const [quotes, setQuotes] = useState(() => {
+  const [quotes, setQuotes] = useState<Quote[]>(() => {
     const saved = localStorage.getItem('whatchadoin_quotes');
     if (saved) return JSON.parse(saved);
     return DEFAULT_QUOTES;
@@ -35,7 +42,7 @@ export default function QuotesWidget() {
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [newQuoteText, setNewQuoteText] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
 
   useEffect(() => {
@@ -60,7 +67,7 @@ export default function QuotesWidget() {
     setCurrentQuoteIndex(newQuotes.length - 1);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     const updated = quotes.filter(q => q.id !== id);
     if (updated.length === 0) {
       const defaultOne = { id: Date.now().toString(), text: "Keep going." };
@@ -74,12 +81,12 @@ export default function QuotesWidget() {
     }
   };
 
-  const startEdit = (quote) => {
+  const startEdit = (quote: Quote) => {
     setEditingId(quote.id);
     setEditText(quote.text);
   };
 
-  const saveEdit = (id) => {
+  const saveEdit = (id: string) => {
     if (!editText.trim()) return;
     setQuotes(quotes.map(q => q.id === id ? { ...q, text: editText.trim() } : q));
     setEditingId(null);
@@ -124,7 +131,7 @@ export default function QuotesWidget() {
           </div>
 
           <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid var(--panel-border)', borderRadius: '6px', padding: '8px', background: 'rgba(0,0,0,0.2)' }}>
-            {quotes.map((q, idx) => (
+            {quotes.map((q: Quote, idx: number) => (
               <div key={q.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px', background: 'var(--panel-bg)', borderRadius: '6px', border: currentQuoteIndex === idx ? '1px solid var(--accent)' : '1px solid var(--panel-border)' }}>
                 {editingId === q.id ? (
                   <div style={{ display: 'flex', gap: '8px', flex: 1 }}>

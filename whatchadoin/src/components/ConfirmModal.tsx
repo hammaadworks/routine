@@ -1,7 +1,18 @@
-
+import React, { ReactNode } from 'react';
 import BaseModal from './BaseModal';
 
-export default function ConfirmModal({ title = 'Confirm Action', message, image, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = true }) {
+export interface ConfirmModalProps {
+  title?: string;
+  message: ReactNode;
+  image?: string;
+  onConfirm: () => void;
+  onCancel?: () => void;
+  confirmText?: string;
+  cancelText?: string;
+  isDanger?: boolean;
+}
+
+export default function ConfirmModal({ title = 'Confirm Action', message, image, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', isDanger = true }: ConfirmModalProps) {
   return (
     <BaseModal isOpen={true} onClose={onCancel} title={title}>
       {image && (

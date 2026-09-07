@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { sendToProvider } from '../utils/aiProviders';
 import { Settings, Send, PanelRight, PanelBottom, ExternalLink, X } from 'lucide-react';
 import AIConfigEditor from './AIConfigEditor';
@@ -53,15 +53,15 @@ const TOOLS = [
   }
 ];
 
-export default function AIAgentApp({ isDocked = false }) {
-  const [appState, setAppState] = useState(null);
-  const [messages, setMessages] = useState([]);
+export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean }) {
+  const [appState, setAppState] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const channelRef = useRef(null);
-  const pendingResolvers = useRef({}); 
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  const pendingResolvers = useRef<Record<string, (value: any) => void>>({}); 
 
-  const changeDock = (position) => {
+  const changeDock = (position: string) => {
     if (channelRef.current) {
       channelRef.current.postMessage({ type: 'DOCK_COMMAND', payload: position });
     }
@@ -109,11 +109,11 @@ export default function AIAgentApp({ isDocked = false }) {
   }, [config]);
 
   useEffect(() => {
-    const handleConfigUpdate = (e) => {
+    const handleConfigUpdate = (e: any) => {
       setConfig(e.detail);
     };
-    window.addEventListener('ai_config_updated', handleConfigUpdate);
-    return () => window.removeEventListener('ai_config_updated', handleConfigUpdate);
+    window.addEventListener('ai_config_updated', handleConfigUpdate as EventListener);
+    return () => window.removeEventListener('ai_config_updated', handleConfigUpdate as EventListener);
   }, []);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export default function AIAgentApp({ isDocked = false }) {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    const activeProfile = config.profiles.find(p => p.id === config.activeProfileId) || config.profiles[0];
+    const activeProfile = config.profiles.find((p: any) => p.id === config.activeProfileId) || config.profiles[0];
     if (!activeProfile.apiKey) {
       alert("Please configure your API Key in Settings first.");
       if (!isDocked) {
@@ -160,15 +160,15 @@ export default function AIAgentApp({ isDocked = false }) {
 
     try {
       await processLLMLoop(currentMsgs);
-    } catch (err) {
+    } catch (err: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const processLLMLoop = async (currentMsgs) => {
-    const activeProfile = config.profiles.find(p => p.id === config.activeProfileId) || config.profiles[0];
+  const processLLMLoop = async (currentMsgs: any[]) => {
+    const activeProfile = config.profiles.find((p: any) => p.id === config.activeProfileId) || config.profiles[0];
     const response = await sendToProvider(currentMsgs, appState, TOOLS, activeProfile);
     
     if (response.type === 'tool_call') {
@@ -187,7 +187,7 @@ export default function AIAgentApp({ isDocked = false }) {
           pendingResolvers.current[callId] = resolve;
         });
 
-        channelRef.current.postMessage({
+        channelRef.current?.postMessage({
           type: 'TOOL_EXECUTION',
           tool: toolName,
           args,
@@ -195,7 +195,7 @@ export default function AIAgentApp({ isDocked = false }) {
         });
 
         // Wait for result from main tab
-        const result = await resultPromise;
+        const result = await resultPromise as any;
         const contentStr = result.status === 'success' ? 'Action executed successfully.' : `Error: ${result.error}`;
         
         toolResultsMsgs.push({
@@ -269,7 +269,7 @@ export default function AIAgentApp({ isDocked = false }) {
                 </div>
               ) : msg.role === 'assistant' && msg.tool_calls ? (
                 <div style={{ fontSize: '12px', color: '#60a5fa', padding: '8px', background: 'rgba(96, 165, 250, 0.1)', borderRadius: '4px' }}>
-                  Working: {msg.tool_calls.map(tc => tc.function.name).join(', ')}...
+                  Working: {msg.tool_calls.map((tc: any) => tc.function.name).join(', ')}...
                 </div>
               ) : (
                 <div style={{ padding: '12px 16px', background: msg.role === 'user' ? 'var(--accent)' : 'var(--panel-bg)', color: msg.role === 'user' ? '#000' : '#fff', borderRadius: '12px', border: msg.role === 'user' ? 'none' : '1px solid var(--panel-border)' }}>

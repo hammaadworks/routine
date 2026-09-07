@@ -1,7 +1,20 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
-function formatHeaderDate(dateStr) {
+interface Routine {
+  name?: string;
+  start?: string;
+  end?: string;
+  [key: string]: any;
+}
+
+interface RoutineSelectorProps {
+  activeRoutine: Routine | null | undefined;
+  setRoutineModalView: (view: 'list' | 'edit') => void;
+  setShowRoutineModal: (show: boolean) => void;
+}
+
+function formatHeaderDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -14,7 +27,7 @@ function formatHeaderDate(dateStr) {
   return `${day}-${month}'${year}`;
 }
 
-export default function RoutineSelector({ activeRoutine, setRoutineModalView, setShowRoutineModal }) {
+export default function RoutineSelector({ activeRoutine, setRoutineModalView, setShowRoutineModal }: RoutineSelectorProps) {
   return (
     <div className="header-center-panel" style={{ minWidth: 0, padding: '0 4px' }}>
       <div style={{ 
@@ -32,7 +45,7 @@ export default function RoutineSelector({ activeRoutine, setRoutineModalView, se
       }}>
         
         <div style={{ display: 'flex', justifyContent: 'center', minWidth: 0, padding: '0 8px' }}>
-          <span style={{ fontSize: '11px', color: activeRoutine?.start ? '#fff' : 'var(--text-secondary)', fontWeight: '700', whiteSpace: 'nowrap', opacity: activeRoutine?.start ? 1 : 0.6, letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: '11px', color: activeRoutine?.start ? '#fff' : 'var(--text-secondary)', fontWeight: 700, whiteSpace: 'nowrap', opacity: activeRoutine?.start ? 1 : 0.6, letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {formatHeaderDate(activeRoutine?.start) || 'START'}
           </span>
         </div>
@@ -60,8 +73,8 @@ export default function RoutineSelector({ activeRoutine, setRoutineModalView, se
             minWidth: 0,
             maxWidth: '100%'
           }} 
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(234, 179, 8, 0.2)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(234, 179, 8, 0.1)'; }}
+          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(234, 179, 8, 0.2)'; }}
+          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = 'rgba(234, 179, 8, 0.1)'; }}
           title="Switch or Manage Routines"
         >
           <div style={{ width: 14, flexShrink: 0 }} />
@@ -72,7 +85,7 @@ export default function RoutineSelector({ activeRoutine, setRoutineModalView, se
         </button>
 
         <div style={{ display: 'flex', justifyContent: 'center', minWidth: 0, padding: '0 8px' }}>
-          <span style={{ fontSize: '11px', color: activeRoutine?.end ? '#fff' : 'var(--text-secondary)', fontWeight: '700', whiteSpace: 'nowrap', opacity: activeRoutine?.end ? 1 : 0.6, letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontSize: '11px', color: activeRoutine?.end ? '#fff' : 'var(--text-secondary)', fontWeight: 700, whiteSpace: 'nowrap', opacity: activeRoutine?.end ? 1 : 0.6, letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {formatHeaderDate(activeRoutine?.end) || 'END'}
           </span>
         </div>
@@ -81,3 +94,4 @@ export default function RoutineSelector({ activeRoutine, setRoutineModalView, se
     </div>
   );
 }
+

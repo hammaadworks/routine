@@ -2,18 +2,30 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
-export default function Dropdown({ options, value, onChange, placeholder = 'Select...' }) {
+export interface Option {
+  value: string | number;
+  label: string | React.ReactNode;
+}
+
+export interface DropdownProps {
+  options: Option[];
+  value?: string | number | null;
+  onChange: (value: string | number) => void;
+  placeholder?: string;
+}
+
+export default function Dropdown({ options, value, onChange, placeholder = 'Select...' }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find(o => o.value === value);
 
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
           setIsOpen(false);
         }
       }
@@ -22,7 +34,7 @@ export default function Dropdown({ options, value, onChange, placeholder = 'Sele
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const [coords, setCoords] = useState(null);
+  const [coords, setCoords] = useState<{left: number, top: number, width: number} | null>(null);
 
   useEffect(() => {
     if (isOpen && dropdownRef.current) {

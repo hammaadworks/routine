@@ -1,4 +1,4 @@
-export async function sendToProvider(messages, appState, tools, config) {
+export async function sendToProvider(messages: any, appState: any, tools: any, config: any) {
   const { provider, apiKey, model, customEndpoint } = config;
 
   const systemMessage = {

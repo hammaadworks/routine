@@ -5,9 +5,32 @@ import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
-import { parseDuration } from '../utils';
+import SearchSortBar from './SearchSortBar';
+import { parseDuration, getScheduledGoalsForDate, getAllGoalsForMention, getGoalColor, sortHabits } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
+
+interface HabitPaneProps {
+  habits: any[];
+  setHabits: (h: any[]) => void;
+  templates: any[];
+  setTemplates: (t: any[]) => void;
+  routineGoals: any[];
+  lifeGoals: any[];
+  activeTemplateId: string | null;
+  habitFilterRoutineGoalId: string | null;
+  setHabitFilterRoutineGoalId: (id: string | null) => void;
+  selectedTargetDate: string | null;
+  setSelectedTargetDate: (date: string) => void;
+  dailyLogs: any;
+  toggleDailyGoal: (date: string, id: string) => void;
+  dayMapping: any;
+  isCalendarTab: boolean;
+  activeRoutine: any;
+  updateActiveRoutine: (r: any) => void;
+  calendarSubTab: string;
+  setCalendarSubTab: (t: string) => void;
+}
 
 export default function HabitPane({ 
   habits, setHabits, 
@@ -17,15 +40,15 @@ export default function HabitPane({
   habitFilterRoutineGoalId, setHabitFilterRoutineGoalId,
   selectedTargetDate, setSelectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
   isCalendarTab, activeRoutine, updateActiveRoutine, calendarSubTab, setCalendarSubTab
-}) {
+}: HabitPaneProps) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
-  const [editingRoutineGoalId, setEditingRoutineGoalId] = useState(null);
+  const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<any>(null);
   const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', routineGoalId: '', lifeGoalId: '', color: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
-  const [confirmConfig, setConfirmConfig] = useState(null);
+  const [confirmConfig, setConfirmConfig] = useState<any>(null);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
-  const [editingMilestoneIdx, setEditingMilestoneIdx] = useState(null);
+  const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
   const [milestoneForm, setMilestoneForm] = useState({ date: '', tag: '', title: '', desc: '' });
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
@@ -34,12 +57,12 @@ export default function HabitPane({
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
   const [mentionIndex, setMentionIndex] = useState(0);
-  const [activeModalField, setActiveModalField] = useState(null);
+  const [activeModalField, setActiveModalField] = useState<any>(null);
   
-  const openEditMilestone = (dateStr, idx, block) => {
-    let tag = '';
-    let title = '';
-    let desc = '';
+  const openEditMilestone = (dateStr: string, idx: number, block: string) => {
+    let tag;
+    let title;
+    let desc;
     const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
     const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
     
@@ -48,14 +71,17 @@ export default function HabitPane({
       title = matchWithTag[2];
       desc = (matchWithTag[3] || '').trim().replace(/  \n/g, '\n');
     } else if (matchWithoutTag) {
+      tag = '';
       title = matchWithoutTag[1];
       desc = (matchWithoutTag[2] || '').trim().replace(/  \n/g, '\n');
     } else {
-      title = block; 
+      tag = '';
+      title = block;
+      desc = '';
     }
     
     setEditingMilestoneIdx({ dateStr, idx });
-    setMilestoneForm({ date: dateStr, tag, title, desc });
+    setMilestoneForm({ date: dateStr, tag: tag || '', title: title || '', desc: desc || '' });
     setShowMilestoneModal(true);
   };
 
@@ -90,9 +116,9 @@ export default function HabitPane({
     });
   };
   
-    const handleModalInput = (e, field) => {
+    const handleModalInput = (e: any, field: string) => {
     const val = e.target.value;
-    setMilestoneForm(prev => ({ ...prev, [field]: val }));
+    setMilestoneForm(prev => ({ ...prev, [field as keyof typeof prev]: val }));
     
     const cursor = e.target.selectionStart;
     const textBefore = val.slice(0, cursor);
@@ -119,8 +145,8 @@ export default function HabitPane({
     }
   };
 
-  const insertModalMention = (goal, field) => {
-    const val = milestoneForm[field];
+  const insertModalMention = (goal: any, field: string) => {
+    const val = milestoneForm[field as keyof typeof milestoneForm];
     const el = modalInputRefs.current[field];
     if (!el) return;
     
@@ -134,7 +160,7 @@ export default function HabitPane({
     const newBefore = words.join(' ') + (words.length > 0 ? ' ' : '') + '@' + goalText + ' ';
     const newVal = newBefore + textAfter;
     
-    setMilestoneForm(prev => ({ ...prev, [field]: newVal }));
+    setMilestoneForm(prev => ({ ...prev, [field as keyof typeof prev]: newVal }));
     setShowMentionMenu(false);
     setActiveModalField(null);
     
@@ -144,7 +170,7 @@ export default function HabitPane({
     }, 0);
   };
 
-  const handleModalKeyDown = (e, field) => {
+  const handleModalKeyDown = (e: any, field: string) => {
     if (showMentionMenu && activeModalField === field) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -164,7 +190,7 @@ export default function HabitPane({
     }
   };
 
-  const saveMilestone = (e) => {
+  const saveMilestone = (e: any) => {
     e.preventDefault();
     if (!milestoneForm.date || !milestoneForm.title) return;
     
@@ -213,29 +239,21 @@ export default function HabitPane({
     setCalendarSubTab('milestones');
     if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
   };
-  const modalInputRefs = useRef({});
+  const modalInputRefs = useRef<any>({});
 
-  const allGoals = [
-    ...(routineGoals || []).map(g => ({ ...g, type: 'Routine' })),
-    ...(habits || []).map(g => ({ ...g, type: 'Routine' })),
-    ...(lifeGoals || []).map(g => ({ ...g, type: 'Life' }))
-  ];
-  
-  const filteredGoals = allGoals.filter(g => 
-    (g.task || g.text || '').toLowerCase().includes(mentionQuery.toLowerCase())
-  );
+  const { allGoals, filteredGoals } = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery);
 
 
 
   // Removed inline editing handlers
 
-  const checkRoutineGoalAddressed = (goal) => {
+  const checkRoutineGoalAddressed = (goal: any) => {
     const explicitlyReferenced = (habits || []).some(g => g.routineGoalId === goal.id);
     if (explicitlyReferenced) return true;
     const txt = goal.text.toLowerCase().trim();
     if (!txt) return false;
     const inGoals = (habits || []).some(g => g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
-    const inTimeline = templates?.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
+    const inTimeline = templates?.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
     return inGoals || inTimeline;
   };
 
@@ -252,7 +270,7 @@ export default function HabitPane({
   }, []);
 
 
-  const openEditRoutineGoal = (goal) => {
+  const openEditRoutineGoal = (goal: any) => {
     setEditingRoutineGoalId(goal.id);
     setRoutineGoalForm({ 
       task: goal.task || '', 
@@ -265,7 +283,7 @@ export default function HabitPane({
     setShowRoutineGoalModal(true);
   };
 
-  const duplicateGoal = (goal) => {
+  const duplicateGoal = (goal: any) => {
     const newGoal = {
       ...goal,
       task: '0_' + goal.task,
@@ -275,7 +293,7 @@ export default function HabitPane({
     setHabits([...(habits || []), newGoal]);
   };
 
-  const saveRoutineGoal = (e) => {
+  const saveRoutineGoal = (e: any) => {
     e.preventDefault();
     if (!routineGoalForm.task.trim()) return;
     
@@ -299,21 +317,11 @@ export default function HabitPane({
       
       if (oldGoal && templates && setTemplates) {
         const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
-        const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goalData.routineGoalId);
-        const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goalData.lifeGoalId);
-        
-        let newColor = '#ffffff';
-        if (goalData.color) {
-          newColor = goalData.color;
-        } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
-          newColor = linkedRoutineGoal.color;
-        } else if (linkedLifeGoal && linkedLifeGoal.color) {
-          newColor = linkedLifeGoal.color;
-        }
+        const newColor = getGoalColor(goalData, routineGoals, lifeGoals);
 
         const updatedTemplates = templates.map(t => ({
           ...t,
-          blocks: t.blocks.map(b => {
+          blocks: t.blocks.map((b: any) => {
             if (String(b.routineGoalId) === String(editingRoutineGoalId) || b.name.toLowerCase().trim() === oldTaskLower) {
               return { 
                 ...b, 
@@ -339,22 +347,12 @@ export default function HabitPane({
     setShowRoutineGoalModal(false);
   };
 
-  const toggleGoal = (id) => {
+  const toggleGoal = (id: string) => {
     setHabits((habits || []).map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
-  const handleDragStart = (e, goal) => {
-    const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goal.routineGoalId);
-    const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
-    
-    let hex = '#ffffff';
-    if (goal.color) {
-      hex = goal.color;
-    } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
-      hex = linkedRoutineGoal.color;
-    } else if (linkedLifeGoal && linkedLifeGoal.color) {
-      hex = linkedLifeGoal.color;
-    }
+  const handleDragStart = (e: any, goal: any) => {
+    const hex = getGoalColor(goal, routineGoals, lifeGoals);
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
@@ -364,22 +362,22 @@ export default function HabitPane({
     e.dataTransfer.setData('routineGoalId', goal.id);
   };
 
-  const checkRoutineAddressed = (goal) => {
+  const checkRoutineAddressed = (goal: any) => {
     if (!templates) return false;
     
     // 1. Check explicit linking
-    const explicitlyReferenced = templates.some(t => t.blocks.some(b => String(b.routineGoalId) === String(goal.id)));
+    const explicitlyReferenced = templates.some(t => t.blocks.some((b: any) => String(b.routineGoalId) === String(goal.id)));
     if (explicitlyReferenced) return true;
 
     // 2. Fallback to text matching
     const txt = goal.task.toLowerCase().trim();
     if (!txt) return false;
-    return templates.some(t => t.blocks.some(b => b.name.toLowerCase().trim() === txt));
+    return templates.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
   };
 
   const openGoalCount = (habits || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
 
-  const confirmDeleteGoal = (id, taskName) => {
+  const confirmDeleteGoal = (id: string, taskName: string) => {
     setConfirmConfig({
       title: 'Delete Habit',
       message: `Are you sure you want to delete "${taskName}"? This will also remove any calendar blocks linked to it.`,
@@ -392,7 +390,7 @@ export default function HabitPane({
         if (templates && setTemplates) {
           const updatedTemplates = templates.map(t => ({
             ...t,
-            blocks: t.blocks.filter(b => b.routineGoalId !== id)
+            blocks: t.blocks.filter((b: any) => b.routineGoalId !== id)
           }));
           setTemplates(updatedTemplates);
         }
@@ -404,26 +402,7 @@ export default function HabitPane({
     });
   };
 
-  const getScheduledGoalsForDate = (dateStr) => {
-    if (!habits || habits.length === 0) return [];
-    
-    const [y, m, d] = dateStr.split('-');
-    const dateObj = new Date(y, m - 1, d);
-    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-    const templateId = dayMapping ? dayMapping[dayName] : null;
-    
-    if (templateId && templates) {
-      const template = templates.find(t => t.id === templateId);
-      if (template) {
-        const blockGoalIds = template.blocks.map(b => b.routineGoalId).filter(Boolean);
-        const scheduledGoals = habits.filter(g => blockGoalIds.includes(g.id));
-        if (scheduledGoals.length > 0) {
-          return scheduledGoals;
-        }
-      }
-    }
-    return habits;
-  };
+  const getScheduledGoalsForDateLocal = (dateStr: string) => getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
 
   const getTodayStr = () => {
     const d = new Date();
@@ -433,12 +412,12 @@ export default function HabitPane({
     return `${y}-${m}-${day}`;
   };
   
-  const formatHeaderDate = (dateString) => {
+  const formatHeaderDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const day = date.getDate();
     const month = date.toLocaleString('en-US', { month: 'long' });
-    const getOrdinalNum = (n) => n + (n > 0 ? ['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] : '');
+    const getOrdinalNum = (n: number) => n + (n > 0 ? (['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] || '') : '');
     return `${getOrdinalNum(day)} ${month}`;
   };
   
@@ -446,20 +425,20 @@ export default function HabitPane({
 
   let currentTemplateId = null;
   if (effectiveDate) {
-    const [y, m, d] = effectiveDate.split('-');
-    const dateObj = new Date(y, m - 1, d);
+    const [y, m, d] = (effectiveDate || '').split('-');
+    const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
     if (!isNaN(dateObj.getTime())) {
-      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-      currentTemplateId = dayMapping ? dayMapping[dayName] : null;
+      const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', { weekday: 'long' }) : '';
+      currentTemplateId = dayMapping && dayName ? dayMapping[dayName] : null;
     }
   } else {
     currentTemplateId = activeTemplateId;
   }
 
   const currentTemplate = templates?.find(t => t.id === currentTemplateId);
-  const goalCounts = {};
+  const goalCounts: Record<string, number> = {};
   if (currentTemplate) {
-    currentTemplate.blocks.forEach(b => {
+    currentTemplate.blocks.forEach((b: any) => {
       if (b.routineGoalId) {
         goalCounts[b.routineGoalId] = (goalCounts[b.routineGoalId] || 0) + 1;
       }
@@ -469,7 +448,7 @@ export default function HabitPane({
   let displayedRoutineGoals = [];
   
   if (effectiveDate) {
-    displayedRoutineGoals = getScheduledGoalsForDate(effectiveDate);
+    displayedRoutineGoals = getScheduledGoalsForDateLocal(effectiveDate);
   } else {
     displayedRoutineGoals = (habits || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
     if (habitFilterRoutineGoalId) {
@@ -484,40 +463,22 @@ export default function HabitPane({
       }
     }
     if (sortByName) {
-      displayedRoutineGoals.sort((a, b) => a.task.localeCompare(b.task));
+      displayedRoutineGoals.sort((a: any, b: any) => a.task.localeCompare(b.task));
     } else {
-      displayedRoutineGoals.sort((a, b) => {
+      displayedRoutineGoals.sort((a: any, b: any) => {
         const addrA = checkRoutineAddressed(a);
         const addrB = checkRoutineAddressed(b);
-
         if (addrA !== addrB) {
           return addrA ? 1 : -1;
         }
-
-        if (a.completed !== b.completed) {
-          return a.completed ? 1 : -1;
-        }
-
-        const hasTimeA = !!a.time;
-        const hasTimeB = !!b.time;
-        
-        if (hasTimeA !== hasTimeB) {
-          return hasTimeA ? 1 : -1;
-        }
-        
-        if (hasTimeA && hasTimeB) {
-          const durA = parseDuration(a.time);
-          const durB = parseDuration(b.time);
-          if (durA !== durB) return durA - durB;
-        }
-
         return 0;
       });
+      displayedRoutineGoals = sortHabits(displayedRoutineGoals);
     }
   }
 
   const milestoneDates = Object.keys(activeRoutine.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '');
-  milestoneDates.sort((a, b) => new Date(a) - new Date(b));
+  milestoneDates.sort((a: any, b: any) => new Date(a).getTime() - new Date(b).getTime());
 
   useEffect(() => {
     if (isCalendarTab && calendarSubTab === 'milestones' && effectiveDate) {
@@ -532,7 +493,8 @@ export default function HabitPane({
 
   // Parse markdown to render colored tags
   const customMarkdownComponents = {
-    strong: ({ children, ...props }) => {
+    // noinspection JSUnusedGlobalSymbols
+    strong: ({ children, ...props }: any) => {
       const text = String(children).trim();
       if (text.startsWith('@')) {
         const goalName = text.slice(1);
@@ -606,44 +568,14 @@ export default function HabitPane({
                   <Plus size={16} /> Add Goal
                 </button>
 
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--text-secondary)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    </div>
-                    <input 
-                      type="text" 
-                      placeholder="Find by name..." 
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
-                    />
-                  </div>
-                  <button 
-                    className={`secondary ${(habitFilterRoutineGoalId || sortByName) ? 'sort-active-glow' : ''}`}
-                    onClick={() => {
-                      if (habitFilterRoutineGoalId && setHabitFilterRoutineGoalId) {
-                        setHabitFilterRoutineGoalId(null);
-                      } else {
-                        setSortByName(!sortByName);
-                      }
-                    }}
-                    style={{ 
-                      padding: '8px 12px', 
-                      background: (habitFilterRoutineGoalId || sortByName) ? 'var(--accent)' : '',
-                      boxShadow: (habitFilterRoutineGoalId || sortByName) ? '0 0 12px var(--accent)' : 'none',
-                      color: (habitFilterRoutineGoalId || sortByName) ? '#000' : 'currentColor',
-                      borderColor: (habitFilterRoutineGoalId || sortByName) ? 'var(--accent)' : ''
-                    }}
-                    title={habitFilterRoutineGoalId ? "Clear Filter" : "Sort by Name"}
-                  >
-                    {habitFilterRoutineGoalId ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon><line x1="23" y1="13" x2="17" y2="19"></line><line x1="17" y1="13" x2="23" y2="19"></line></svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
-                    )}
-                  </button>
-                </div>
+                  <SearchSortBar
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    sortByName={sortByName}
+                    setSortByName={setSortByName}
+                    isFilterActive={!!habitFilterRoutineGoalId}
+                    onFilterClear={() => setHabitFilterRoutineGoalId && setHabitFilterRoutineGoalId(null)}
+                  />
               </>
             )}
 
@@ -651,25 +583,15 @@ export default function HabitPane({
 
             {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
-          const linkedRoutineGoal = routineGoals?.find(sg => sg.id === goal.routineGoalId);
-          const linkedLifeGoal = lifeGoals?.find(lg => lg.id === goal.lifeGoalId);
-          
-          let hex = '#ffffff';
-          if (goal.color) {
-            hex = goal.color;
-          } else if (linkedRoutineGoal && linkedRoutineGoal.color) {
-            hex = linkedRoutineGoal.color;
-          } else if (linkedLifeGoal && linkedLifeGoal.color) {
-            hex = linkedLifeGoal.color;
-          }
+          const hex = getGoalColor(goal, routineGoals, lifeGoals);
           
           const r = parseInt(hex.slice(1,3), 16) || 255, g = parseInt(hex.slice(3,5), 16) || 255, b = parseInt(hex.slice(5,7), 16) || 255;
-          const hasColor = goal.color || linkedRoutineGoal || linkedLifeGoal;
+          const hasColor = goal.color;
           
           const baseMins = goal.time ? parseDuration(goal.time) : 0;
           let scheduledMins = 0;
           if (currentTemplate) {
-            currentTemplate.blocks.forEach(b => {
+            currentTemplate.blocks.forEach((b: any) => {
               if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
             });
           }
@@ -684,7 +606,7 @@ export default function HabitPane({
             borderRadius: '12px',
           };
 
-          const isCompletedForView = effectiveDate ? (dailyLogs?.[effectiveDate]?.[goal.id] || false) : (goal.completed || false);
+          const isCompletedForView = effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
           return (
             <div 
               key={goal.id} 
@@ -700,8 +622,8 @@ export default function HabitPane({
                   <input 
                     type="checkbox" 
                     className="checkbox-square" 
-                    style={{ flexShrink: 0, '--accent': hex }}
-                    checked={effectiveDate ? (dailyLogs?.[effectiveDate]?.[goal.id] || false) : (goal.completed || false)} 
+                    style={{ flexShrink: 0, '--accent': hex } as React.CSSProperties}
+                    checked={effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false)} 
                     onChange={() => {
                       if (effectiveDate) {
                         toggleDailyGoal(effectiveDate, goal.id);
@@ -726,9 +648,9 @@ export default function HabitPane({
                           <Clock size={10} /> {goal.time}
                         </div>
                       )}
-                      {goalCounts[goal.id] > 1 && (
+                      {(goalCounts[goal.id] || 0) > 1 && (
                         <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '10px', fontWeight: 'bold' }}>
-                          x{goalCounts[goal.id]}
+                          x{goalCounts[goal.id] || 0}
                         </div>
                       )}
                       {timeDiff !== 0 && (
@@ -789,11 +711,11 @@ export default function HabitPane({
                     blockDate.setHours(0, 0, 0, 0);
                     const isPast = blockDate < todayDate;
                     let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
-                    let multiColors = [];
+                    let multiColors: string[] = [];
                     const tagsMatch = contentStr.match(/@([^\s*]+)/g);
                     if (tagsMatch) {
-                      const uniqueTags = [...new Set(tagsMatch.map(t => t.slice(1).toLowerCase()))];
-                      uniqueTags.forEach(tag => {
+                      const uniqueTags = [...new Set(tagsMatch.map((t: any) => t.slice(1).toLowerCase()))];
+                      uniqueTags.forEach((tag: any) => {
                         const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === tag);
                         if (goal && goal.color) {
                           multiColors.push(goal.color);
@@ -804,14 +726,14 @@ export default function HabitPane({
                     let backgroundStyle = nodeColor;
                     if (multiColors.length > 1) {
                       const sliceSize = 100 / multiColors.length;
-                      let gradientStops = [];
+                      let gradientStops: string[] = [];
                       multiColors.forEach((color, i) => {
                         gradientStops.push(`${color} ${i * sliceSize}% ${(i + 1) * sliceSize}%`);
                       });
                       backgroundStyle = `conic-gradient(${gradientStops.join(', ')})`;
                     } else if (multiColors.length === 1) {
-                      backgroundStyle = multiColors[0];
-                      nodeColor = multiColors[0];
+                      backgroundStyle = multiColors[0] || '';
+                      nodeColor = multiColors[0] || '';
                     }
                     
                     return (
@@ -826,7 +748,7 @@ export default function HabitPane({
                           {new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                         
-                        {blocks.map((block, idx) => {
+                        {blocks.map((block: string, idx: number) => {
                           if (!block.trim()) return null;
                           return (
                             <div 
@@ -840,7 +762,7 @@ export default function HabitPane({
                               }}
                             >
                               <div className="markdown-preview" style={{ minHeight: '24px' }}>
-                                <ReactMarkdown components={customMarkdownComponents}>
+                                <ReactMarkdown components={customMarkdownComponents as any}>
                                   {block === '' ? '\u00A0' : block}
                                 </ReactMarkdown>
                               </div>
@@ -914,7 +836,7 @@ export default function HabitPane({
                 <Clock size={14} color="var(--accent)" /> Duration
               </label>
               <input 
-                type="text" placeholder="1:20" value={routineGoalForm.timeValue}
+                type="text" placeholder="1:20" value={String(routineGoalForm.timeValue)}
                 onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, timeValue: e.target.value })} 
                 style={{ width: '100%', padding: '12px 14px', fontSize: '16px', textAlign: 'center' }}
               />
@@ -925,7 +847,7 @@ export default function HabitPane({
                 <Target size={14} color="#3b82f6" /> Routine Link
               </label>
               <Dropdown
-                value={routineGoalForm.routineGoalId}
+                value={String(routineGoalForm.routineGoalId)}
                 onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, routineGoalId: val })}
                 options={[
                   { value: '', label: 'No Routine Goal Linked' },
@@ -939,7 +861,7 @@ export default function HabitPane({
                 <Star size={14} color="#eab308" /> Life Link
               </label>
               <Dropdown
-                value={routineGoalForm.lifeGoalId}
+                value={String(routineGoalForm.lifeGoalId)}
                 onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, lifeGoalId: val })}
                 options={[
                   { value: '', label: 'No Life Goal Linked' },
@@ -1031,7 +953,7 @@ export default function HabitPane({
                 <input 
                   type="date" value={milestoneForm.date}
                   onChange={(e) => setMilestoneForm({ ...milestoneForm, date: e.target.value })} required
-                  onKeyDown={(e) => e.preventDefault()} onClick={(e) => e.target.showPicker()}
+                  onKeyDown={(e) => e.preventDefault()} onClick={(e) => (e.target as HTMLInputElement).showPicker()}
                   style={{ width: '100%', fontSize: '14px', padding: '12px 14px', colorScheme: 'dark', cursor: 'pointer' }}
                 />
               </div>

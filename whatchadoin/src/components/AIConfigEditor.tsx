@@ -1,10 +1,29 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-export default function AIConfigEditor({ config, setConfig }) {
+export interface AIProfile {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  apiKey: string;
+  customEndpoint?: string;
+}
+
+export interface AIConfig {
+  activeProfileId: string;
+  profiles: AIProfile[];
+}
+
+interface AIConfigEditorProps {
+  config: AIConfig;
+  setConfig: (config: AIConfig) => void;
+}
+
+export default function AIConfigEditor({ config, setConfig }: AIConfigEditorProps) {
   const activeProfile = config.profiles.find(p => p.id === config.activeProfileId) || config.profiles[0];
 
-  const updateActiveProfile = (updates) => {
+  const updateActiveProfile = (updates: Partial<AIProfile>) => {
     const newProfiles = config.profiles.map(p => 
       p.id === activeProfile.id ? { ...p, ...updates } : p
     );
@@ -13,7 +32,7 @@ export default function AIConfigEditor({ config, setConfig }) {
 
   const addProfile = () => {
     const newId = 'profile-' + Date.now();
-    const newProfile = {
+    const newProfile: AIProfile = {
       id: newId,
       name: 'New Profile',
       provider: 'openai',
@@ -27,7 +46,7 @@ export default function AIConfigEditor({ config, setConfig }) {
     });
   };
 
-  const deleteProfile = (id) => {
+  const deleteProfile = (id: string) => {
     if (config.profiles.length === 1) {
       alert("You must have at least one profile.");
       return;
@@ -98,7 +117,7 @@ export default function AIConfigEditor({ config, setConfig }) {
             <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)' }}>Custom Endpoint URL</label>
             <input 
               type="text" 
-              value={activeProfile.customEndpoint} 
+              value={activeProfile.customEndpoint || ''} 
               onChange={e => updateActiveProfile({ customEndpoint: e.target.value })}
               placeholder="https://your-api.com/v1/chat/completions"
               style={{ width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '6px' }}
@@ -130,3 +149,4 @@ export default function AIConfigEditor({ config, setConfig }) {
     </div>
   );
 }
+

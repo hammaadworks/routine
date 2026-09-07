@@ -2,10 +2,10 @@ let gistToken = localStorage.getItem('whatchadoin_gist_token');
 let gistId = localStorage.getItem('whatchadoin_gist_id');
 let gistFilename = localStorage.getItem('whatchadoin_gist_filename') || 'whatchadoin_data.json';
 let lastSyncedStr = '';
-let syncTimeout = null;
+let syncTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 let isSyncing = false;
 
-export const initSync = (onRemoteUpdate) => {
+export const initSync = (onRemoteUpdate?: () => void) => {
   if (!gistToken || !gistId) return;
 
   // 1. Pull on load
@@ -37,8 +37,8 @@ export const initSync = (onRemoteUpdate) => {
 
   // 2. Override setItem to detect changes
   const originalSetItem = localStorage.setItem;
-  localStorage.setItem = function(key, _value) {
-    originalSetItem.apply(this, arguments);
+  localStorage.setItem = function(key: string, _value: string) {
+    originalSetItem.apply(this, [key, _value] as any);
     
     // Ignore sync keys
     if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
@@ -51,8 +51,8 @@ export const initSync = (onRemoteUpdate) => {
   };
 
   const originalRemoveItem = localStorage.removeItem;
-  localStorage.removeItem = function(key) {
-    originalRemoveItem.apply(this, arguments);
+  localStorage.removeItem = function(key: string) {
+    originalRemoveItem.apply(this, [key] as any);
     
     // Ignore sync keys
     if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
@@ -66,28 +66,30 @@ export const initSync = (onRemoteUpdate) => {
 };
 
 export const exportLocalData = () => {
-  const data = {};
+  const data: Record<string, string | null> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+    if (key === null) continue;
+    if (key !== null && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
       data[key] = localStorage.getItem(key);
     }
   }
   // Sort keys to ensure deterministic string representation
-  const sortedData = {};
+  const sortedData: Record<string, string | null | undefined> = {};
   Object.keys(data).sort().forEach(k => sortedData[k] = data[k]);
   return JSON.stringify(sortedData);
 };
 
-export const importLocalData = (jsonStr) => {
+export const importLocalData = (jsonStr: string) => {
   try {
     const data = JSON.parse(jsonStr);
     
     // Remove local keys that are not present in remote data
-    const keysToRemove = [];
+    const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+    if (key === null) continue;
+      if (key !== null && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
         if (!data.hasOwnProperty(key)) {
           keysToRemove.push(key);
         }
@@ -156,7 +158,7 @@ const pushToGist = async () => {
   }
 };
 
-export const saveSyncConfig = (token, id, filename) => {
+export const saveSyncConfig = (token: string, id: string, filename?: string) => {
   localStorage.setItem('whatchadoin_gist_token', token);
   localStorage.setItem('whatchadoin_gist_id', id);
   localStorage.setItem('whatchadoin_gist_filename', filename || 'whatchadoin_data.json');

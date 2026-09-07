@@ -3,6 +3,26 @@ import { Settings, Copy, DatabaseBackup, Import } from 'lucide-react';
 import BaseModal from './BaseModal';
 import AIConfigEditor from './AIConfigEditor';
 
+interface SyncForm {
+  token: string;
+  id: string;
+  filename: string;
+}
+
+interface SettingsModalProps {
+  showSettingsModal: boolean;
+  setShowSettingsModal: (show: boolean) => void;
+  settingsTab: string;
+  setSettingsTab: (tab: string) => void;
+  syncForm: SyncForm;
+  setSyncForm: (form: SyncForm) => void;
+  saveSyncConfig: (token: string, id: string, filename: string) => void;
+  aiConfig: any;
+  setAiConfig: (config: any) => void;
+  exportAllData: () => void;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+}
+
 export default function SettingsModal({
   showSettingsModal,
   setShowSettingsModal,
@@ -15,7 +35,7 @@ export default function SettingsModal({
   setAiConfig,
   exportAllData,
   fileInputRef
-}) {
+}: SettingsModalProps) {
   const [copied, setCopied] = React.useState(false);
 
   return (
@@ -90,9 +110,14 @@ export default function SettingsModal({
                     document.body.appendChild(textArea);
                     textArea.focus();
                     textArea.select();
+                    // noinspection JSDeprecatedSymbols
                     const success = document.execCommand('copy');
                     textArea.remove();
-                    if (!success) throw new Error('execCommand failed');
+                    if (!success) {
+                      console.error('Clipboard write failed: execCommand failed');
+                      alert('Failed to copy to clipboard. Your browser might be blocking it.');
+                      return;
+                    }
                   }
                   setCopied(true);
                   setTimeout(() => setCopied(false), 2000);
@@ -201,8 +226,10 @@ export default function SettingsModal({
               className="primary" 
               style={{ flex: 2, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}
               disabled={
-                (syncForm.id && !/^[a-f0-9]{32}$/i.test(syncForm.id)) ||
-                (syncForm.token && !syncForm.token.startsWith('ghp_') && !syncForm.token.startsWith('github_pat_'))
+                Boolean(
+                  (syncForm.id && !/^[a-f0-9]{32}$/i.test(syncForm.id)) ||
+                  (syncForm.token && !syncForm.token.startsWith('ghp_') && !syncForm.token.startsWith('github_pat_'))
+                )
               }
             >
               Save & Sync

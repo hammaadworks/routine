@@ -4,7 +4,7 @@ export const loadRoutines = () => {
   if (saved) {
     const parsed = JSON.parse(saved);
     
-    const validRoutineIds = new Set(parsed.map(v => v.id));
+    const validRoutineIds = new Set(parsed.map((v: any) => v.id));
     const keysToRemove = [];
     let keysRemoved = false;
     for (let i = 0; i < localStorage.length; i++) {

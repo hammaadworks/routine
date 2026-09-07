@@ -2,6 +2,43 @@ import React from 'react';
 import { Layers, Plus, Settings, Copy, Download, Trash2 } from 'lucide-react';
 import BaseModal from './BaseModal';
 
+export interface Routine {
+  id: string;
+  name: string;
+  desc: string;
+  start: string;
+  end: string;
+  routineGoals: any[];
+  habits: any[];
+  templates: any[];
+  activeTemplateId: string;
+  dayMapping: Record<string, string>;
+}
+
+export interface ConfirmConfig {
+  title: string;
+  message: string;
+  isDanger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+export interface RoutineModalProps {
+  showRoutineModal: boolean;
+  setShowRoutineModal: (show: boolean) => void;
+  routineModalView: 'list' | 'edit';
+  setRoutineModalView: (view: 'list' | 'edit') => void;
+  routines: Routine[];
+  setRoutines: (routines: Routine[]) => void;
+  activeRoutineId: string;
+  setActiveRoutineId: (id: string) => void;
+  editingRoutineId: string | null;
+  setEditingRoutineId: (id: string | null) => void;
+  activeRoutine: Routine;
+  lifeGoals: any[];
+  setConfirmConfig: (config: ConfirmConfig | null) => void;
+}
+
 export default function RoutineModal({
   showRoutineModal,
   setShowRoutineModal,
@@ -16,11 +53,11 @@ export default function RoutineModal({
   activeRoutine,
   lifeGoals,
   setConfirmConfig
-}) {
-  const editRoutine = routines.find(r => r.id === (editingRoutineId || activeRoutineId)) || activeRoutine;
+}: RoutineModalProps) {
+  const editRoutine = routines.find((r: Routine) => r.id === (editingRoutineId || activeRoutineId)) || activeRoutine;
   
-  const handleUpdate = (updates) => {
-    setRoutines(routines.map(r => r.id === editRoutine.id ? { ...r, ...updates } : r));
+  const handleUpdate = (updates: Partial<Routine>) => {
+    setRoutines(routines.map((r: Routine) => r.id === editRoutine.id ? { ...r, ...updates } : r));
   };
 
   return (
@@ -37,7 +74,7 @@ export default function RoutineModal({
     >
       {routineModalView === 'list' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {routines.map(r => (
+          {routines.map((r: Routine) => (
             <div 
               key={r.id} 
               onClick={() => {
@@ -53,7 +90,7 @@ export default function RoutineModal({
                 </div>
               </div>
               <button 
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   setEditingRoutineId(r.id);
                   setRoutineModalView('edit');
@@ -94,11 +131,11 @@ export default function RoutineModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Routine Name</label>
-            <input type="text" value={editRoutine.name} onChange={(e) => handleUpdate({ name: e.target.value })} onBlur={(e) => handleUpdate({ name: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
+            <input type="text" value={editRoutine.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
           </div>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Description (optional)</label>
-            <input type="text" value={editRoutine.desc || ''} onChange={(e) => handleUpdate({ desc: e.target.value })} onBlur={(e) => handleUpdate({ desc: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
+            <input type="text" value={editRoutine.desc || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <div style={{ flex: 1 }}>
@@ -106,9 +143,9 @@ export default function RoutineModal({
               <input 
                 type="date" 
                 value={editRoutine.start || ''} 
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const newStart = e.target.value;
-                  const updates = { start: newStart };
+                  const updates: Partial<Routine> = { start: newStart };
                   if (!newStart) {
                     updates.end = '';
                   } else if (editRoutine.end && newStart > editRoutine.end) {
@@ -116,8 +153,8 @@ export default function RoutineModal({
                   }
                   handleUpdate(updates);
                 }} 
-                onKeyDown={(e) => e.preventDefault()}
-                onClick={(e) => { if (e.target.showPicker) e.target.showPicker(); }}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.preventDefault()}
+                onClick={(e: React.MouseEvent<HTMLInputElement>) => { if ('showPicker' in e.currentTarget) { (e.currentTarget as any).showPicker(); } }}
                 style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', cursor: 'pointer' }} 
               />
             </div>
@@ -128,7 +165,7 @@ export default function RoutineModal({
                 min={editRoutine.start || ''}
                 value={editRoutine.end || ''} 
                 disabled={!editRoutine.start}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const newEnd = e.target.value;
                   if (editRoutine.start && newEnd && newEnd < editRoutine.start) {
                     handleUpdate({ end: editRoutine.start });
@@ -136,8 +173,8 @@ export default function RoutineModal({
                     handleUpdate({ end: newEnd });
                   }
                 }}
-                onKeyDown={(e) => e.preventDefault()}
-                onClick={(e) => { if (e.target.showPicker && editRoutine.start) e.target.showPicker(); }}
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.preventDefault()}
+                onClick={(e: React.MouseEvent<HTMLInputElement>) => { if ('showPicker' in e.currentTarget && editRoutine.start) { (e.currentTarget as any).showPicker(); } }}
                 style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', cursor: editRoutine.start ? 'pointer' : 'not-allowed', opacity: editRoutine.start ? 1 : 0.5 }} 
               />
             </div>
@@ -161,7 +198,7 @@ export default function RoutineModal({
                 if (plans) localStorage.setItem(`whatchadoin_plans_${newId}`, plans);
                 const folders = localStorage.getItem(`whatchadoin_plans_folders_${editRoutine.id}`);
                 if (folders) localStorage.setItem(`whatchadoin_plans_folders_${newId}`, folders);
-                setRoutines([...routines, { ...editRoutine, id: newId, name: `${editRoutine.name} (Copy)` }]);
+                setRoutines([...routines, { ...editRoutine, id: newId, name: `${editRoutine?.name} (Copy)` }]);
                 setActiveRoutineId(newId);
                 setRoutineModalView('list');
               }} 
@@ -179,7 +216,7 @@ export default function RoutineModal({
                 const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
                 const a = document.createElement('a');
                 a.href = dataStr;
-                a.download = `whatchadoin_routine_${editRoutine.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+                a.download = `whatchadoin_routine_${editRoutine?.name?.replace(/[^a-z0-9]/gi, '_')?.toLowerCase() || 'unnamed'}.json`;
                 a.click();
               }} 
               className="secondary" 
@@ -197,7 +234,7 @@ export default function RoutineModal({
                   onConfirm: () => {
                     localStorage.removeItem(`whatchadoin_plans_${editRoutine.id}`);
                     localStorage.removeItem(`whatchadoin_plans_folders_${editRoutine.id}`);
-                    const newRoutines = routines.filter(v => v.id !== editRoutine.id);
+                    const newRoutines = routines.filter((v: Routine) => v.id !== editRoutine.id);
                     if (newRoutines.length === 0) {
                       const vanillaId = Date.now().toString();
                       setRoutines([{ id: vanillaId, name: 'Vanilla', desc: '', start: '', end: '', routineGoals: [], habits: [], templates: [{ id: 't1', name: 'Vanilla whatchadoin', blocks: [] }], activeTemplateId: 't1', dayMapping: { Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: '', Sunday: '' } }]);

@@ -1,55 +1,77 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Star, Plus, Pencil, Activity, Palette } from 'lucide-react';
+import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
+import { validateColor, getCardBgStyle } from '../utils';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
+
+interface Goal {
+  id: string;
+  text: string;
+  color?: string;
+  completed?: boolean;
+  desc?: string;
+  lifeGoalId?: string;
+}
+
+interface LifePaneProps {
+  lifeGoals: Goal[];
+  setLifeGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
+  routineGoals?: Goal[];
+  setRoutineGoals?: React.Dispatch<React.SetStateAction<Goal[]>>;
+  habits?: Goal[];
+  setHabits?: React.Dispatch<React.SetStateAction<Goal[]>>;
+  headerTabs?: React.ReactNode;
+}
+
+interface ConfirmConfig {
+  title: string;
+  message: string;
+  isDanger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
 
 export default function LifePane({ 
   lifeGoals, setLifeGoals,
   routineGoals, setRoutineGoals, 
   habits, setHabits, headerTabs
-}) {
+}: LifePaneProps) {
   const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
-  const [editingLifeGoalId, setEditingLifeGoalId] = useState(null);
+  const [editingLifeGoalId, setEditingLifeGoalId] = useState<string | null>(null);
   const [lifeGoalForm, setLifeGoalForm] = useState({ text: '', color: '', desc: '' });
-  const [confirmConfig, setConfirmConfig] = useState(null);
+  const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
   const [colorError, setColorError] = useState('');
 
   const openAddLifeGoal = () => {
     setEditingLifeGoalId(null);
-    const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+    const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
     setLifeGoalForm({ text: '', color: randomColor, desc: '' });
     setShowLifeGoalModal(true);
   };
 
-  const openEditLifeGoal = (goal) => {
+  const openEditLifeGoal = (goal: Goal) => {
     setEditingLifeGoalId(goal.id);
     setColorError('');
-    const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
+    const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
     setLifeGoalForm({ text: goal.text, color: goalColor, desc: goal.desc || '' });
     setShowLifeGoalModal(true);
   };
 
-  const handleColorChange = (e) => {
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const hex = e.target.value;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-    
-    if (diff < 30 || min > 220) {
-      setColorError('Grey/white is reserved.');
+    const { isValid, error } = validateColor(hex);
+    if (!isValid) {
+      setColorError(error || 'Invalid color');
     } else {
       setColorError('');
       setLifeGoalForm({...lifeGoalForm, color: hex.toUpperCase()});
     }
   };
 
-  const saveLifeGoal = (e) => {
+  const saveLifeGoal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!lifeGoalForm.text.trim()) return;
     const cleanText = lifeGoalForm.text.trim();
@@ -62,11 +84,11 @@ export default function LifePane({
     setShowLifeGoalModal(false);
   };
 
-  const toggleLife = (id) => {
+  const toggleLife = (id: string) => {
     setLifeGoals(lifeGoals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
   };
 
-  const deleteLifeGoal = (id, text) => {
+  const deleteLifeGoal = (id: string, text: string) => {
     setConfirmConfig({
       title: 'Delete Life Goal',
       message: `Are you sure you want to delete the life goal: "${text}"? Routine and habits linked to it will be unlinked.`,
@@ -91,7 +113,7 @@ export default function LifePane({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
 
-  const getLinkedCount = (goal) => {
+  const getLinkedCount = (goal: Goal) => {
     let count = 0;
     if (routineGoals) {
       count += routineGoals.filter(g => g.lifeGoalId === goal.id).length;
@@ -121,43 +143,19 @@ export default function LifePane({
           <Plus size={16} /> Add Life Goal
         </button>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          <div style={{ flex: 1, position: 'relative' }}>
-            <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--text-secondary)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            </div>
-            <input 
-              type="text" 
-              placeholder="Find by name..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ width: '100%', paddingLeft: '32px', fontSize: '13px' }}
-            />
-          </div>
-          <button 
-            className={`secondary ${sortByName ? 'sort-active-glow' : ''}`}
-            onClick={() => setSortByName(!sortByName)}
-            style={{ 
-              padding: '8px 12px', 
-              background: sortByName ? 'var(--accent)' : '',
-              boxShadow: sortByName ? '0 0 12px var(--accent)' : 'none',
-              color: sortByName ? '#000' : 'currentColor',
-              borderColor: sortByName ? 'var(--accent)' : ''
-            }}
-            title="Sort by Name"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M7 12h10"></path><path d="M10 18h4"></path></svg>
-          </button>
-        </div>
+        <SearchSortBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          sortByName={sortByName}
+          setSortByName={setSortByName}
+          isFilterActive={searchQuery.length > 0 || sortByName}
+          onFilterClear={() => { setSearchQuery(''); setSortByName(false); }}
+        />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '8px 12px 8px 4px', marginTop: '-8px' }}>
           {displayedGoals.map(goal => {
             const linkedCount = getLinkedCount(goal);
             const hex = goal.color || '#eab308';
-            const r = parseInt(hex.slice(1,3), 16), g = parseInt(hex.slice(3,5), 16), b = parseInt(hex.slice(5,7), 16);
-            const bgStyle = {
-              borderLeft: `4px solid ${hex}`,
-              background: `rgba(${r},${g},${b},0.1)`,
-            };
+            const bgStyle = getCardBgStyle(hex);
 
             return (
               <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', minHeight: '48px', padding: '10px 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
@@ -168,7 +166,7 @@ export default function LifePane({
                       className="checkbox-square" 
                       checked={goal.completed || false} 
                       onChange={() => toggleLife(goal.id)} 
-                      style={{ '--accent': hex, flexShrink: 0 }}
+                      style={{ '--accent': hex, flexShrink: 0 } as React.CSSProperties}
                     />
                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                       <span className="item-title" style={{ color: hex, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px', fontWeight: '500' }} title={goal.text}>
@@ -205,7 +203,7 @@ export default function LifePane({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: linkedCount > 0 ? `0 4px 8px rgba(${r},${g},${b},0.3)` : '0 2px 8px rgba(255,255,255,0.4)',
+                  boxShadow: linkedCount > 0 ? `0 4px 8px ${hex}4D` : '0 2px 8px rgba(255,255,255,0.4)',
                   border: '2px solid var(--panel-bg)',
                   zIndex: 10
                 }}>
@@ -334,6 +332,7 @@ export default function LifePane({
           isDanger={confirmConfig.isDanger}
           onConfirm={confirmConfig.onConfirm}
           onCancel={confirmConfig.onCancel}
+          image={undefined}
         />
       )}
 

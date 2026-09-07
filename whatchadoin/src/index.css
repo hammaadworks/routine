@@ -195,27 +195,13 @@ body {
   gap: 16px;
 }
 
-.header-divider {
-  width: 1px;
-  height: 32px;
-  background: var(--panel-border);
-}
 
-.routine-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
-.routine-dropdown {
-  width: 220px;
-}
 
 @media (max-width: 768px) {
   .layout {
-    padding: 8px;
     gap: 8px;
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px));
+    padding: 8px 8px calc(80px + env(safe-area-inset-bottom, 20px)) 8px;
   }
   .header {
     flex-direction: row !important;
@@ -243,35 +229,15 @@ body {
     justify-content: space-between !important;
   }
 
-  .active-period-block {
-    align-items: flex-start !important;
-  }
 
-  .routine-selector {
-    flex: 1;
-    min-width: 0;
-  }
 
   .mobile-hidden {
     display: none !important;
   }
 
-  .header-divider {
-    display: none;
-  }
 
-  .routine-dropdown {
-    width: 100%;
-  }
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  overflow-y: auto;
-  padding-right: 12px;
-}
 
 .plans-sidebar {
   width: 280px;
@@ -460,64 +426,14 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   white-space: normal;
 }
 
-.item-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 6px;
-  transition: opacity 0.2s;
-  word-break: break-word;
-  white-space: normal;
-}
 
-.item-meta {
-  display: inline-flex;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  align-items: center;
-  background: rgba(234, 179, 8, 0.1);
-  padding: 4px 10px;
-  border-radius: 9999px;
-  margin-top: 10px;
-  border: 1px solid currentColor;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
 
 /* Checkboxes & Scratched effect */
-.checkbox-round {
-  width: 18px;
-  height: 18px;
-  transform: scale(1);
-}
 .checkbox-round:checked {
   border-color: var(--accent);
 }
 
-.scratched .item-title, .scratched .item-desc, .scratched .item-meta {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
 
-.addressed-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--success);
-  background: rgba(16, 185, 129, 0.1);
-  padding: 4px 10px;
-  border-radius: 9999px;
-  margin-top: 8px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border: 1px solid currentColor;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
-}
 
 .addressed-badge:hover {
   transform: translateY(-1px);
@@ -525,31 +441,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 }
 
 /* Timeline */
-.timeline-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--panel-border);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex-shrink: 0;
-}
 
-.timeline-header-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  background: rgba(0,0,0,0.2);
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--panel-border);
-}
 
-.th-dropdown {
-  width: 220px;
-  flex-shrink: 0;
-  order: 1;
-}
 
 .th-active-on {
   display: flex;
@@ -575,9 +468,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   display: none;
 }
 
-.th-delete {
-  order: 4;
-}
 
 .day-btn {
   width: 28px;
@@ -793,13 +683,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   display: none;
 }
 
-.mobile-only {
-  display: none !important;
-}
 @media (max-width: 1024px) {
-  .mobile-only {
-    display: flex !important;
-  }
 }
 
 .form-row {
@@ -848,30 +732,11 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   }
 }
 
-.th-dropdown {
-  min-width: 0;
-}
 .th-active-on {
-  min-width: 0;
-}
-.routine-selector {
-  min-width: 0;
-}
-.routine-dropdown {
   min-width: 0;
 }
 
 @media (max-width: 1024px) {
-  .timeline-header-bar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  .th-dropdown {
-    order: 1;
-    width: 100% !important;
-  }
   .th-active-on {
     order: 2;
     width: 100%;
@@ -939,41 +804,14 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     color: var(--accent);
   }
 
-  .mobile-tab-bar .tab-btn.middle-tab {
-    position: relative;
-    top: -20px;
-    flex: 0 0 auto;
-    padding: 0;
-  }
 
-  .mobile-tab-bar .middle-icon-wrapper {
-    background: var(--bg);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    width: 56px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
 
-  .mobile-tab-bar .tab-btn.middle-tab.active .middle-icon-wrapper {
-    background: var(--accent);
-    border-color: var(--accent);
-    box-shadow: 0 8px 24px rgba(var(--accent-rgb, 200, 255, 0), 0.4);
-    transform: scale(1.05);
-  }
 
   .mobile-tab-bar .tab-btn.active span {
     color: var(--accent);
   }
 
   
-  .mobile-hidden-pane {
-    display: none !important;
-  }
 
   .main-content.mobile-tab-goals .timeline-area,
   .main-content.mobile-tab-goals .right-pane,
@@ -1067,5 +905,50 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     to {
       transform: translateY(0);
     }
+  }
+}
+
+/* MyDayMaker Badge Styles */
+.myday-maker-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.05);
+  padding: 6px 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.myday-maker-top-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.myday-maker-divider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255,255,255,0.2);
+  margin: 0 4px;
+}
+
+@media (max-width: 768px) {
+  .myday-maker-badge {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    border-radius: 12px;
+    padding: 6px 16px;
+  }
+  .myday-maker-divider {
+    display: none;
+  }
+  .myday-maker-days {
+    text-align: center;
+    line-height: 1.2;
+    padding-bottom: 2px;
+  }
+  .main-app-wrapper {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px)) !important;
   }
 }

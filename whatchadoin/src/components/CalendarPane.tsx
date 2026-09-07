@@ -1,6 +1,35 @@
 import React, { useEffect } from 'react';
+import { getScheduledGoalsForDate } from '../utils';
 
-const CalendarPane = ({ 
+interface Routine {
+  start?: string;
+  end?: string;
+  dailyLogs?: Record<string, Record<string, boolean>>;
+  milestones?: Record<string, string>;
+  [key: string]: any;
+}
+
+interface Goal {
+  id?: string;
+  task?: string;
+  text?: string;
+  color?: string;
+  [key: string]: any;
+}
+
+interface CalendarPaneProps {
+  activeRoutine: Routine;
+  routineGoals: Goal[];
+  lifeGoals: Goal[];
+  selectedTargetDate: string | null;
+  setSelectedTargetDate: (date: string | null) => void;
+  habits: Goal[];
+  templates: any;
+  dayMapping: Record<string, string>;
+  setCalendarSubTab?: (tab: string) => void;
+}
+
+const CalendarPane: React.FC<CalendarPaneProps> = ({ 
   activeRoutine, routineGoals, lifeGoals,
   selectedTargetDate, setSelectedTargetDate, 
   habits, templates, dayMapping,
@@ -26,13 +55,13 @@ const CalendarPane = ({
     );
   }
 
-  const parseDate = (dateStr) => {
+  const parseDate = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-');
-    return new Date(y, m - 1, d);
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
   };
 
-  const startDate = parseDate(activeRoutine.start);
-  const endDate = parseDate(activeRoutine.end);
+  const startDate = parseDate(activeRoutine.start!);
+  const endDate = parseDate(activeRoutine.end!);
 
   if (startDate > endDate) {
     return (
@@ -51,39 +80,21 @@ const CalendarPane = ({
     );
   }
 
-  const formatDate = (date) => {
+  const formatDate = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   };
 
-  const getGoalsForDateStr = (dateStr) => {
-    if (!habits || habits.length === 0) return [];
-    
-    const d = parseDate(dateStr);
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-    const templateId = dayMapping ? dayMapping[dayName] : null;
-    
-    if (templateId && templates) {
-      const template = templates.find(t => t.id === templateId);
-      if (template) {
-        const blockGoalIds = template.blocks.map(b => b.routineGoalId).filter(Boolean);
-        const scheduledGoals = habits.filter(g => blockGoalIds.includes(g.id));
-        if (scheduledGoals.length > 0) {
-          return scheduledGoals;
-        }
-      }
-    }
-    return habits;
-  };
+  const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
 
-  const isDateComplete = (dateStr) => {
+  const isDateComplete = (dateStr: string) => {
     const goalsForDay = getGoalsForDateStr(dateStr);
     if (goalsForDay.length === 0) return false;
     
     const dayLog = activeRoutine.dailyLogs?.[dateStr] || {};
-    return goalsForDay.every(g => dayLog[g.id] === true);
+    return goalsForDay.every((g: Goal) => dayLog[g.id!] === true);
   };
 
   const months = [];
@@ -115,8 +126,8 @@ const CalendarPane = ({
     currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
   }
 
-  const isDateInRange = (dateStr) => {
-    return dateStr >= activeRoutine.start && dateStr <= activeRoutine.end;
+  const isDateInRange = (dateStr: string) => {
+    return dateStr >= activeRoutine.start! && dateStr <= activeRoutine.end!;
   };
 
   const milestones = activeRoutine.milestones || {};
@@ -179,9 +190,9 @@ const CalendarPane = ({
                 }
                 tags = [...new Set(tags)];
                 const tagColors = tags.map(tag => {
-                  const goal = routineGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase()) 
-                            || habits?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase())
-                            || lifeGoals?.find(g => (g.task || g.text || '').toLowerCase() === tag.toLowerCase());
+                  const goal = routineGoals?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase()) 
+                            || habits?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase())
+                            || lifeGoals?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase());
                   return goal?.color || '#fff';
                 });
                 
