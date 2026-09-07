@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createTimeline, utils } from 'animejs';
 import RoutineGoalPane from './components/RoutineGoalPane';
 import HabitPane from './components/HabitPane';
-import Timeline from './components/Timeline';
+import MyDay from './components/MyDay';
 import PlansPane from './components/PlansPane';
 import CalendarPane from './components/CalendarPane';
 import Dropdown from './components/Dropdown';
@@ -423,7 +423,7 @@ export default function App() {
               onClick={() => setActiveCenterTab('timeline')}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}
             >
-              <Clock size={16} /> Timeline
+              <Clock size={16} /> My Day
             </button>
             <button 
               className={`tab ${activeCenterTab === 'calendar' ? 'active' : ''}`} 
@@ -446,7 +446,7 @@ export default function App() {
           
           <div className="mid-pane-content" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             {activeCenterTab === 'timeline' ? (
-              <Timeline 
+              <MyDay 
                 templates={templates} 
                 setTemplates={setTemplates}
                 activeTemplateId={activeTemplateId}
@@ -573,7 +573,7 @@ export default function App() {
             if (mobileTab === 'goals') window.dispatchEvent(new CustomEvent('fab:add-strategy'));
             if (mobileTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits'));
             if (mobileTab === 'timeline') {
-              window.dispatchEvent(new CustomEvent('fab:add-timeline'));
+              window.dispatchEvent(new CustomEvent('fab:add-myday'));
             }
           }}
         >

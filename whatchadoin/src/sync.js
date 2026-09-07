@@ -12,7 +12,7 @@ export const initSync = (onRemoteUpdate) => {
   pullFromGist().then(remoteData => {
     if (localStorage.getItem('whatchadoin_force_sync_push') === 'true') {
       localStorage.removeItem('whatchadoin_force_sync_push');
-      pushToGist();
+      pushToGist().catch(console.error);
       return;
     }
 
@@ -31,9 +31,9 @@ export const initSync = (onRemoteUpdate) => {
       }
     } else {
       // Gist is empty, push local state up to initialize it
-      pushToGist();
+      pushToGist().catch(console.error);
     }
-  });
+  }).catch(console.error);
 
   // 2. Override setItem to detect changes
   const originalSetItem = localStorage.setItem;
@@ -46,7 +46,7 @@ export const initSync = (onRemoteUpdate) => {
     // Debounce push
     clearTimeout(syncTimeout);
     syncTimeout = setTimeout(() => {
-      pushToGist();
+      pushToGist().catch(console.error);
     }, 5000); // 5 seconds after last change
   };
 
@@ -60,7 +60,7 @@ export const initSync = (onRemoteUpdate) => {
     // Debounce push
     clearTimeout(syncTimeout);
     syncTimeout = setTimeout(() => {
-      pushToGist();
+      pushToGist().catch(console.error);
     }, 5000);
   };
 };
@@ -173,6 +173,6 @@ export const saveSyncConfig = (token, id, filename) => {
         await pushToGist(); // If it's empty, push current state
         window.location.reload();
       }
-    });
+    }).catch(console.error);
   }
 };

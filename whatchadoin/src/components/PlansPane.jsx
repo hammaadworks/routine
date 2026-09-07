@@ -262,9 +262,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     
     if (match) {
       const startIdx = cursor - match[1].length - 1; 
-      const newText = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
-      
-      blocks[idx] = newText;
+      blocks[idx] = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
       updateActiveNote({ content: blocks.join('\n\n') });
       
       setTimeout(() => {

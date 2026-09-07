@@ -14,6 +14,10 @@
   --block-bg: rgba(234, 179, 8, 0.15);
   --block-border: rgba(234, 179, 8, 0.4);
   
+  --surface-light: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.04);
+  --zoom: 1;
+
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
@@ -36,7 +40,7 @@ html, body {
 body {
   background-color: var(--bg);
   color: var(--text-primary);
-  font-family: var(--font-main);
+  font-family: var(--font-main), sans-serif;
   line-height: 1.5;
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
@@ -314,7 +318,7 @@ input, select, textarea {
   color: var(--text-primary);
   border-radius: 8px;
   padding: 10px 14px;
-  font-family: var(--font-main);
+  font-family: var(--font-main), sans-serif;
   font-size: 16px;
   outline: none;
   transition: all 0.2s;
@@ -328,7 +332,7 @@ input, select, textarea {
   padding: 0;
   margin: 0;
   vertical-align: middle;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   appearance: none;
   -webkit-appearance: none;
   outline: none;
@@ -352,8 +356,8 @@ input, select, textarea {
 .checkbox-square:checked::after {
   content: '';
   position: absolute;
-  top: 1.5px;
-  left: 4.5px;
+  top: 2px;
+  left: 5px;
   width: 4px;
   height: 8px;
   border: solid #000;
@@ -479,7 +483,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   border: 1px solid currentColor;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 
 /* Checkboxes & Scratched effect */
@@ -508,7 +512,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   border-radius: 9999px;
   margin-top: 8px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   border: 1px solid currentColor;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);

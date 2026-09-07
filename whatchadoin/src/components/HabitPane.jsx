@@ -498,8 +498,8 @@ export default function HabitPane({
           return a.completed ? 1 : -1;
         }
 
-        const hasTimeA = a.time ? true : false;
-        const hasTimeB = b.time ? true : false;
+        const hasTimeA = !!a.time;
+        const hasTimeB = !!b.time;
         
         if (hasTimeA !== hasTimeB) {
           return hasTimeA ? 1 : -1;
@@ -596,9 +596,7 @@ export default function HabitPane({
 
         {calendarSubTab === 'mark_goals' && (
           <>
-            {effectiveDate ? (
-              null
-            ) : (
+            {!effectiveDate && (
               <>
                 
                 <button 
