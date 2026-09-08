@@ -344,6 +344,13 @@ export default function App() {
                 setShowSettingsModal={setShowSettingsModal}
             />
 
+            {/* Mobile Tab Bar */}
+            <MobileTabBar 
+                activeTab={mobileTab} 
+                onTabChange={setMobileTab} 
+                showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
+            />
+
             <main className={`main-content mobile-tab-${mobileTab}`}>
                 <div className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
                      style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden'}}>
@@ -572,13 +579,6 @@ export default function App() {
             </footer>
         </div>
         {/* End Main App Container */}
-
-        {/* Mobile Tab Bar */}
-        <MobileTabBar 
-            activeTab={mobileTab} 
-            onTabChange={setMobileTab} 
-            showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
-        />
 
         {/* Docked AI Agent */}
 

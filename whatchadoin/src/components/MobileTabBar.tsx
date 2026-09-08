@@ -23,20 +23,25 @@ export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTa
         }
     };
 
-    return (<div className="mobile-tab-bar">
-            {tabs.map(tab => {
-                // noinspection JSUnusedLocalSymbols
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (<button
-                        key={tab.id}
-                        className={`tab-btn ${isActive ? 'active' : ''}`}
-                        onClick={() => onTabChange(tab.id)}
-                    >
-                        <Icon size={20} color={isActive ? 'var(--accent)' : 'var(--text-secondary)'}/>
-                        <span>{tab.label}</span>
-                    </button>);
-            })}
+    return (
+        <>
+            <div className="mobile-tab-bar">
+                {tabs.map(tab => {
+                    // noinspection JSUnusedLocalSymbols
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            className={`tab-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => onTabChange(tab.id)}
+                        >
+                            <Icon size={20} color={isActive ? 'var(--accent)' : 'var(--text-secondary)'}/>
+                            <span>{tab.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
             {showFab && (
                 <button
                     className="tab-btn-fab"
@@ -46,5 +51,6 @@ export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTa
                     <span className="fab-label">Add</span>
                 </button>
             )}
-        </div>);
+        </>
+    );
 }

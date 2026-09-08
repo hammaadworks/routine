@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, Plus, Pencil, Activity, Palette } from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
@@ -45,6 +45,12 @@ export default function LifePane({
   const [lifeGoalForm, setLifeGoalForm] = useState({ text: '', color: '', desc: '' });
   const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
   const [colorError, setColorError] = useState('');
+
+  useEffect(() => {
+    const handleFab = () => openAddLifeGoal();
+    window.addEventListener('fab:add-strategy', handleFab);
+    return () => window.removeEventListener('fab:add-strategy', handleFab);
+  }, []);
 
   const openAddLifeGoal = () => {
     setEditingLifeGoalId(null);
@@ -246,7 +252,7 @@ export default function LifePane({
         title={
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Star size={18} color="var(--accent)" /> 
-            {editingLifeGoalId ? 'Edit Life Goal' : 'New Life Goal'}
+            {editingLifeGoalId ? 'Edit Life Goal' : 'What you wanna achieve in life?'}
           </span>
         }
       >
@@ -264,7 +270,7 @@ export default function LifePane({
             <textarea 
               placeholder="Add more details about this goal..." value={lifeGoalForm.desc}
               onChange={(e) => setLifeGoalForm({ ...lifeGoalForm, desc: e.target.value })} 
-              style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+              style={{ width: '100%', minHeight: '120px', resize: 'vertical' }}
             />
           </div>
           
