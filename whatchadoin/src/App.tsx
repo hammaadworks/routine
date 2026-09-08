@@ -8,7 +8,7 @@ import PlansPane from './components/PlansPane';
 import CalendarPane from './components/CalendarPane';
 import ConfirmModal from './components/ConfirmModal';
 import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, ChevronDown, Clock, Plus, Star} from 'lucide-react';
+import {BookOpen, Calendar, ChevronDown, Clock, Star} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
 import AIAgentApp from './components/AIAgentApp';
@@ -513,7 +513,6 @@ export default function App() {
             </main>
 
             {/* Routine Modal */}
-            // @ts-ignore
             <RoutineModal
                 showRoutineModal={showRoutineModal}
                 setShowRoutineModal={setShowRoutineModal}
@@ -574,24 +573,12 @@ export default function App() {
         </div>
         {/* End Main App Container */}
 
-        {/* Sticky FAB for Mobile */}
-        {!(mobileTab === 'timeline' && activeCenterTab !== 'timeline') && (<div className="mobile-fab-container">
-            <button
-                className="mobile-fab"
-                onClick={() => {
-                    if (mobileTab === 'goals') window.dispatchEvent(new CustomEvent('fab:add-strategy'));
-                    if (mobileTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits'));
-                    if (mobileTab === 'timeline') {
-                        window.dispatchEvent(new CustomEvent('fab:add-myday'));
-                    }
-                }}
-            >
-                <Plus size={24} color="#000"/>
-            </button>
-        </div>)}
-
         {/* Mobile Tab Bar */}
-        <MobileTabBar activeTab={mobileTab} onTabChange={setMobileTab}/>
+        <MobileTabBar 
+            activeTab={mobileTab} 
+            onTabChange={setMobileTab} 
+            showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
+        />
 
         {/* Docked AI Agent */}
 

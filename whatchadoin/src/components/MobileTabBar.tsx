@@ -1,18 +1,27 @@
 
-import {CalendarDays, Target, Zap} from 'lucide-react';
+import {CalendarDays, Target, Zap, Plus} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
     onTabChange: (tabId: string) => void;
+    showFab?: boolean;
 }
 
-export default function MobileTabBar({activeTab, onTabChange}: MobileTabBarProps) {
+export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTabBarProps) {
     const tabs = [{id: 'goals', icon: Target, label: 'Goals'}, {
         id: 'timeline',
         icon: CalendarDays,
-        label: 'My Day',
+        label: 'Schedule',
         default: true
     }, {id: 'habits', icon: Zap, label: 'Habits'},];
+
+    const handleFabClick = () => {
+        if (activeTab === 'goals') window.dispatchEvent(new CustomEvent('fab:add-strategy'));
+        if (activeTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits'));
+        if (activeTab === 'timeline') {
+            window.dispatchEvent(new CustomEvent('fab:add-myday'));
+        }
+    };
 
     return (<div className="mobile-tab-bar">
             {tabs.map(tab => {
@@ -28,5 +37,14 @@ export default function MobileTabBar({activeTab, onTabChange}: MobileTabBarProps
                         <span>{tab.label}</span>
                     </button>);
             })}
+            {showFab && (
+                <button
+                    className="tab-btn-fab"
+                    onClick={handleFabClick}
+                >
+                    <Plus className="fab-icon" />
+                    <span className="fab-label">Add</span>
+                </button>
+            )}
         </div>);
 }

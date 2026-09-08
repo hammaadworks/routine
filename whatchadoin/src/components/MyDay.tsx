@@ -414,7 +414,7 @@ export default function MyDay({
     const sortedMobileGoals = sortHabits(habits);
 
     return (<div className="timeline-inner"
-                 style={{position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0}}>
+                 style={{position: 'relative', flex: 1, width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0}}>
             <MyDayMaker
                 templates={templates}
                 activeTemplateId={activeTemplateId}
@@ -572,8 +572,8 @@ export default function MyDay({
                                 style={{
                                     top: `${(block.startTime) * zoomLevel}px`,
                                     height: `${block.duration * zoomLevel}px`,
-                                    left: `calc(10px + ${block.left}% * 0.9)`, // 0.9 scaling leaves room for right margin
-                                    width: `calc(${block.width}% * 0.9 - 4px)`,
+                                    left: `calc(10px + ${block.left}%)`, // Removed 0.9 scaling to fill the gap
+                                    width: `calc(${block.width}% - 14px)`,
                                     backgroundColor: `rgba(${hexToRgb(hex)}, 0.15)`,
                                     borderLeftColor: hex,
                                     borderLeftWidth: '4px',

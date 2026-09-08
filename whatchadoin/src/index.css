@@ -114,7 +114,7 @@ body {
   overflow: hidden;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1279px) {
   .layout {
     height: auto !important;
     min-height: 100vh;
@@ -683,7 +683,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1279px) {
 }
 
 .form-row {
@@ -736,7 +736,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   min-width: 0;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1279px) {
   .th-active-on {
     order: 2;
     width: 100%;
@@ -764,7 +764,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   display: none;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1279px) {
   .mobile-tab-bar {
     display: flex;
     justify-content: space-around;
@@ -779,7 +779,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 32px);
-    max-width: 400px;
     z-index: 100;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
@@ -840,19 +839,13 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .day-btn-container { flex-shrink: 0 !important; }
 
-/* Sticky Mobile FAB */
-.mobile-fab-container { display: none; }
-
-@media (max-width: 1024px) {
-  .mobile-fab-container {
-    display: block;
+/* Responsive FAB */
+@media (max-width: 767px) {
+  .tab-btn-fab {
     position: fixed;
     bottom: calc(env(safe-area-inset-bottom, 20px) + 90px);
     right: 20px;
     z-index: 99;
-  }
-  
-  .mobile-fab {
     width: 56px;
     height: 56px;
     border-radius: 28px;
@@ -866,9 +859,45 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     cursor: pointer;
     transition: transform 0.2s, background 0.2s;
   }
-
-  .mobile-fab:active {
+  .tab-btn-fab:active {
     transform: scale(0.95);
+  }
+  .tab-btn-fab .fab-label {
+    display: none;
+  }
+  .tab-btn-fab .fab-icon {
+    width: 24px;
+    height: 24px;
+    stroke: #000;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .tab-btn-fab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px;
+    flex: 1;
+    transition: all 0.2s;
+  }
+  .tab-btn-fab .fab-icon {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-secondary);
+  }
+  .tab-btn-fab .fab-label {
+    display: block;
+  }
+  .tab-btn-fab:active {
+    opacity: 0.7;
   }
 }
 
