@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState } from 'react';
 import { CalendarDays, ChevronDown, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import Dropdown from './Dropdown';

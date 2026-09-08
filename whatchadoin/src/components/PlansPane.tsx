@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
@@ -53,7 +54,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     return [...lFolders, ...rFolders];
   });
   
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0].id : null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0]?.id || null : null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -165,7 +166,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
         const newNotes = notes.filter(n => n.id !== id);
         setNotes(newNotes);
         if (activeNoteId === id) {
-          setActiveNoteId(newNotes.length > 0 ? newNotes[0].id : null);
+          setActiveNoteId(newNotes.length > 0 ? newNotes[0]?.id || null : null);
         }
         setConfirmConfig(null);
       },
@@ -263,7 +264,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     
     const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
     if (match) {
-      const query = match[1];
+      const query = match[1] || '';
       setMentionQuery(query);
       setShowMentionMenu(true);
       setMentionIndex(0);
@@ -295,7 +296,8 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
     
     if (match) {
-      const startIdx = cursor - match[1].length - 1; 
+      const matchLength = match[1]?.length || 0;
+      const startIdx = cursor - matchLength - 1; 
       blocks[idx] = blockContent.slice(0, startIdx) + `**@${goalText}** ` + blockContent.slice(cursor);
       updateActiveNote({ content: blocks.join('\n\n') });
       
@@ -576,7 +578,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
                     >
                       {isActive ? (
                         <textarea
-                          ref={el => textareaRefs.current[idx] = el}
+                          ref={el => { textareaRefs.current[idx] = el; }}
                           value={block}
                           onChange={e => handleInput(e, idx)}
                           onKeyDown={e => handleKeyDown(e, idx)}

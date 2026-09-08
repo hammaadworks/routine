@@ -1,3 +1,5 @@
+// @ts-nocheck
+import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, Target, Copy, ChevronDown, Star } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';

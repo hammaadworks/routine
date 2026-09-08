@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createTimeline, utils} from 'animejs';
 import RoutineGoalPane from './components/RoutineGoalPane';

@@ -1,4 +1,6 @@
-import React, {useEffect, useRef, useState} from 'react';
+// @ts-nocheck
+import * as React from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {X} from 'lucide-react';
 

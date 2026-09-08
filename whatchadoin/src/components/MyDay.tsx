@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {Clock, GripVertical, X, ZoomIn, ZoomOut} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';

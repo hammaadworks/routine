@@ -1,4 +1,5 @@
-import React from 'react';
+import * as React from 'react';
+
 import { Layers, Plus, Settings, Copy, Download, Trash2 } from 'lucide-react';
 import BaseModal from './BaseModal';
 
@@ -241,7 +242,10 @@ export default function RoutineModal({
                       setActiveRoutineId(vanillaId);
                     } else {
                       setRoutines(newRoutines);
-                      if (activeRoutineId === editRoutine.id) setActiveRoutineId(newRoutines[0].id);
+                      if (activeRoutineId === editRoutine.id) {
+                        const firstId = newRoutines[0]?.id;
+                        if (firstId) setActiveRoutineId(firstId);
+                      }
                     }
                     setConfirmConfig(null);
                     setRoutineModalView('list');

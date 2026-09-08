@@ -1,4 +1,4 @@
-import React from 'react';
+
 import {CalendarDays, Target, Zap} from 'lucide-react';
 
 interface MobileTabBarProps {

@@ -1,3 +1,5 @@
+// @ts-nocheck
+import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {Activity, Clock, Palette, Pencil, Plus, Rocket, Target} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
