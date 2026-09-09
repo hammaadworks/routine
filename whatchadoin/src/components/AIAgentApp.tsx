@@ -88,7 +88,7 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
             customEndpoint: parsed.customEndpoint || ''
           }]
         };
-      } catch (e) {}
+      } catch (_e) {}
     }
     return {
       activeProfileId: 'default',

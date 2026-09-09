@@ -2,7 +2,7 @@ import * as React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createTimeline, utils} from 'animejs';
 import RoutineGoalPane from './components/RoutineGoalPane';
-import HabitPane from './components/HabitPane';
+import RoutinePane from './components/RoutinePane';
 import MyDay from './components/MyDay';
 import PlansPane from './components/PlansPane';
 import CalendarPane from './components/CalendarPane';
@@ -30,10 +30,11 @@ export default function App() {
 
     const [activeCenterTab, setActiveCenterTab] = useState<string>('timeline');
     const [mobileTab, setMobileTab] = useState<string>('timeline'); // 'strategy' | 'timeline' | 'habits'
-    const [activeLeftTab, setActiveLeftTab] = useState<string>('routine');
+    const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
     const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
     const [habitFilterRoutineGoalId, setHabitFilterRoutineGoalId] = useState<string | null>(null);
+    const [habitFilterLifeGoalId, setHabitFilterLifeGoalId] = useState<string | null>(null);
     const [showRoutineModal, setShowRoutineModal] = useState<boolean>(false);
     const [routineModalView, setRoutineModalView] = useState<'list' | 'edit'>('list'); // 'list' | 'edit'
     const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
@@ -347,13 +348,16 @@ export default function App() {
             {/* Mobile Tab Bar */}
             <MobileTabBar 
                 activeTab={mobileTab} 
-                onTabChange={setMobileTab} 
+                onTabChange={(tab) => {
+                    setMobileTab(tab);
+                    if (tab === 'goals') setActiveLeftTab('life');
+                }} 
                 showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
             />
 
             <main className={`main-content mobile-tab-${mobileTab}`}>
                 <div className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
-                     style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden'}}>
+                     style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
                     <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)}
                          style={{
                              display: 'flex',
@@ -393,19 +397,20 @@ export default function App() {
                                     className="tab"
                                     onClick={() => setActiveLeftTab('life')}
                                 >
-                                    Life Goals
+                                    Life
                                 </button>
                                 <button
                                     className="tab active"
                                     onClick={() => setActiveLeftTab('routine')}
                                 >
-                                    Routine Goals
+                                    Routine
                                 </button>
                             </div>}
                         />) : (<LifePane
                             lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
                             routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
                             habits={habits} setHabits={setHabits as any}
+                            onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
                             headerTabs={<div className="tabs" style={{
                                 marginBottom: '16px',
                                 borderBottom: '1px solid var(--panel-border)',
@@ -415,13 +420,13 @@ export default function App() {
                                     className="tab active"
                                     onClick={() => setActiveLeftTab('life')}
                                 >
-                                    Life Goals
+                                    Life
                                 </button>
                                 <button
                                     className="tab"
                                     onClick={() => setActiveLeftTab('routine')}
                                 >
-                                    Routine Goals
+                                    Routine
                                 </button>
                             </div>}
                         />)}
@@ -429,7 +434,7 @@ export default function App() {
                 </div>
 
                 <div className={`timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
-                    display: 'flex', flexDirection: 'column', overflow: 'visible', minHeight: 0, padding: 0
+                    display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0
                 }}>
                     <div className="tabs" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{
                         cursor: 'pointer',
@@ -469,7 +474,7 @@ export default function App() {
                         </button>
                     </div>
 
-                    <div className="mid-pane-content" style={{flex: 1, display: 'flex', overflow: 'visible'}}>
+                    <div className="mid-pane-content" style={{flex: 1, display: 'flex', overflow: 'hidden'}}>
                         {activeCenterTab === 'timeline' ? (<MyDay
                             templates={templates}
                             setTemplates={setTemplates as any}
@@ -499,13 +504,15 @@ export default function App() {
                     </div>
                 </div>
 
-                <HabitPane
+                <RoutinePane
                     habits={habits} setHabits={setHabits as any}
                     templates={templates} setTemplates={setTemplates as any}
                     routineGoals={routineGoals} lifeGoals={lifeGoals}
                     activeTemplateId={activeTemplateId}
                     habitFilterRoutineGoalId={habitFilterRoutineGoalId}
                     setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
+                    habitFilterLifeGoalId={habitFilterLifeGoalId}
+                    setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
                     selectedTargetDate={activeCenterTab === 'calendar' ? selectedTargetDate : null}
                     setSelectedTargetDate={setSelectedTargetDate}
                     dailyLogs={activeRoutine.dailyLogs || {}}

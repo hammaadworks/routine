@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as React from 'react';
-import {useEffect, useState} from 'react';
-import {Activity, Clock, Palette, Pencil, Plus, Rocket, Target} from 'lucide-react';
+import {useEffect, useState, useRef} from 'react';
+import {Activity, Palette, Pencil, Rocket, Target, GripVertical, Plus} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
@@ -70,7 +70,7 @@ export default function RoutineGoalPane({
                                             setHabits,
                                             templates,
                                             setTemplates,
-                                            activeTemplateId,
+                                            _activeTemplateId,
                                             onRoutineGoalBadgeClick,
                                             lifeGoals,
                                             headerTabs
@@ -80,6 +80,30 @@ export default function RoutineGoalPane({
     const [routineGoalForm, setRoutineGoalForm] = useState({text: '', color: '', lifeGoalId: '', desc: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
+    const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
+
+    const dragItem = useRef<any>(null);
+    const dragOverItem = useRef<any>(null);
+
+    const handleDragStart = (e: React.DragEvent, position: number) => {
+        dragItem.current = position;
+    };
+
+    const handleDragEnter = (e: React.DragEvent, position: number) => {
+        dragOverItem.current = position;
+    };
+
+    const handleDragEnd = () => {
+        if (dragItem.current !== null && dragOverItem.current !== null) {
+            const newList = [...routineGoals];
+            const draggedItemContent = newList[dragItem.current];
+            newList.splice(dragItem.current, 1);
+            newList.splice(dragOverItem.current, 0, draggedItemContent);
+            setRoutineGoals(newList);
+        }
+        dragItem.current = null;
+        dragOverItem.current = null;
+    };
 
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
@@ -200,43 +224,7 @@ export default function RoutineGoalPane({
         return linkedGoals.length;
     };
 
-    // Metrics Calculations
-    let unallocatedMins = 24 * 60;
-    if (activeTemplateId && templates) {
-        const t = templates.find(temp => temp.id === activeTemplateId);
-        if (t && t.blocks) {
-            const intervals = (t.blocks || []).map((b: TemplateBlock) => [b.startTime ?? 0, (b.startTime ?? 0) + (b.duration || 0)]);
-            intervals.sort((a, b) => a[0] - b[0]);
 
-            let allocated = 0;
-            let currentStart = -1;
-            let currentEnd = -1;
-
-            for (const [start, end] of (intervals as [number, number][])) {
-                if (currentEnd < start) {
-                    if (currentStart !== -1) {
-                        allocated += currentEnd - currentStart;
-                    }
-                    currentStart = start;
-                    currentEnd = end;
-                } else {
-                    currentEnd = Math.max(currentEnd, end);
-                }
-            }
-
-            if (currentStart !== -1) {
-                allocated += currentEnd - currentStart;
-            }
-
-            unallocatedMins -= allocated;
-        }
-    }
-
-    const formatDuration = (mins: number) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return `${h}h ${m}m`;
-    };
 
     let displayedGoals = routineGoals.filter((g: RoutineGoal) => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
     if (sortByName) {
@@ -258,19 +246,13 @@ export default function RoutineGoalPane({
             }}>
                 {headerTabs}
 
-                <button
-                    onClick={openAddRoutineGoal} className="secondary"
-                    style={{
-                        width: '100%',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '12px',
-                        borderStyle: 'dashed'
-                    }}
+
+                <button 
+                    onClick={openAddRoutineGoal} 
+                    className="secondary desktop-only-btn" 
+                    style={{ width: '100%', flexShrink: 0, marginBottom: '16px', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
                 >
-                    <Plus size={16}/> Add Routine Goal
+                    <Plus size={16} /> Add Routine Goal
                 </button>
 
                 <SearchSortBar
@@ -290,25 +272,35 @@ export default function RoutineGoalPane({
                     padding: '8px 12px 8px 4px',
                     marginTop: '-8px'
                 }}>
-                    {displayedGoals.map(goal => {
+                    {displayedGoals.map((goal, index) => {
                         const linkedCount = getLinkedCount(goal);
                         const hex = goal.color || '#eab308';
                         const bgStyle = getCardBgStyle(hex);
 
-                        return (<div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{
-                            cursor: 'default',
-                            position: 'relative',
-                            minHeight: '48px',
-                            padding: '10px 12px',
-                            display: 'flex',
-                            alignItems: 'center', ...bgStyle
-                        }}>
+                        return (<div 
+                            key={goal.id} 
+                            className={`item-card ${goal.completed ? 'scratched' : ''}`} 
+                            draggable={!searchQuery && !sortByName}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragEnter={(e) => handleDragEnter(e, index)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => e.preventDefault()}
+                            style={{
+                                cursor: (!searchQuery && !sortByName) ? 'grab' : 'default',
+                                position: 'relative',
+                                minHeight: '48px',
+                                padding: '10px 12px',
+                                display: 'flex',
+                                alignItems: 'center', ...bgStyle
+                            }}
+                        >
                             <div style={{
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'
                             }}>
                                 <div style={{
                                     display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                                 }}>
+                                    <GripVertical size={16} color="var(--text-secondary)" style={{ cursor: (!searchQuery && !sortByName) ? 'grab' : 'default', flexShrink: 0, opacity: 0.5 }} />
                                     <input
                                         type="checkbox"
                                         className="checkbox-square"
@@ -354,7 +346,13 @@ export default function RoutineGoalPane({
                             </div>
 
                             <div
-                                onClick={() => onRoutineGoalBadgeClick && onRoutineGoalBadgeClick(goal.id)}
+                                onClick={() => {
+                                    if (window.innerWidth >= 1400) {
+                                        if (onRoutineGoalBadgeClick) onRoutineGoalBadgeClick(goal.id);
+                                    } else {
+                                        setDrawerRoutineGoalId(goal.id);
+                                    }
+                                }}
                                 title="Filter Habits"
                                 style={{
                                     position: 'absolute',
@@ -415,14 +413,7 @@ export default function RoutineGoalPane({
                     display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
                 }}>
                     <Activity size={14} color="var(--accent)"/>
-                    Routine Insights:
-                </div>
-                <div style={{display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '20px'}}>
-                    <Clock size={14} color="var(--text-secondary)"/>
-                    <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>Time left:</span>
-                    <span style={{
-                        fontSize: '13px', fontWeight: '600', color: '#fff'
-                    }}>{formatDuration(unallocatedMins)}</span>
+                    Routine Goals : {routineGoals.filter((g: RoutineGoal) => g.completed).length} / {routineGoals.length}
                 </div>
             </div>
 
@@ -586,5 +577,34 @@ export default function RoutineGoalPane({
                 image={undefined}
             />)}
 
-        </div>);
+            {drawerRoutineGoalId && (
+                <BaseModal
+                    isOpen={!!drawerRoutineGoalId}
+                    onClose={() => setDrawerRoutineGoalId(null)}
+                    title={
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            Linked Habits
+                        </span>
+                    }
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {(() => {
+                            const linkedHabits = (habits || []).filter(g => g.routineGoalId === drawerRoutineGoalId);
+                            if (linkedHabits.length === 0) {
+                                return <div style={{ color: 'var(--text-secondary)' }}>No habits linked to this goal.</div>;
+                            }
+                            return (
+                                <div>
+                                    {linkedHabits.map(h => (
+                                        <div key={h.id} style={{ padding: '8px', background: 'var(--surface-light)', borderRadius: '6px', marginBottom: '4px' }}>{h.task}</div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                </BaseModal>
+            )}
+
+        </div>
+    );
 }

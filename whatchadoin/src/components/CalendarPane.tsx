@@ -127,7 +127,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
     };
 
     const months = [];
-    let currentMonthDate = new Date(startDate.getFullYear() || "", startDate.getMonth() || "", 1 || "");
+    let currentMonthDate = new Date(startDate.getFullYear() || 0, startDate.getMonth() || 0, 1);
     const endMonthDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
 
     while (currentMonthDate <= endMonthDate) {

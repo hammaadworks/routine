@@ -139,7 +139,7 @@ body {
     flex-direction: column;
     overflow-y: visible;
   }
-  .main-content > :nth-child(3) { order: 1; } /* right pane (HabitPane) */
+  .main-content > :nth-child(3) { order: 1; } /* right pane (RoutinePane) */
   .main-content > :nth-child(2) { order: 2; } /* mid pane (timeline-area) */
   .main-content > :nth-child(1) { order: 3; } /* left pane (RoutineGoalPane) */
 
@@ -842,8 +842,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 @media (max-width: 1400px) {
   .tab-btn-fab {
     position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
-    right: 20px;
+    bottom: calc(env(safe-area-inset-bottom, 20px) + 40px);
+    right: 32px;
     z-index: 99;
     width: 56px;
     height: 56px;
@@ -954,5 +954,14 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   }
   .main-app-wrapper {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px)) !important;
+  }
+}
+
+.desktop-only-btn {
+  display: flex;
+}
+@media (max-width: 1399px) {
+  .desktop-only-btn {
+    display: none !important;
   }
 }

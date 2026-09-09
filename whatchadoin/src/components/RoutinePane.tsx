@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Hourglass, Target, Copy, ChevronDown, Star } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Target, Copy, ChevronDown, Star } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
@@ -22,6 +22,8 @@ interface HabitPaneProps {
   activeTemplateId: string | null;
   habitFilterRoutineGoalId: string | null;
   setHabitFilterRoutineGoalId: (id: string | null) => void;
+  habitFilterLifeGoalId?: string | null;
+  setHabitFilterLifeGoalId?: (id: string | null) => void;
   selectedTargetDate: string | null;
   setSelectedTargetDate: (date: string) => void;
   dailyLogs: any;
@@ -34,12 +36,13 @@ interface HabitPaneProps {
   setCalendarSubTab: (t: string) => void;
 }
 
-export default function HabitPane({ 
+export default function RoutinePane({
   habits, setHabits, 
   templates, setTemplates, 
   routineGoals, lifeGoals,
   activeTemplateId,
   habitFilterRoutineGoalId, setHabitFilterRoutineGoalId,
+  habitFilterLifeGoalId, setHabitFilterLifeGoalId,
   selectedTargetDate, setSelectedTargetDate, dailyLogs, toggleDailyGoal, dayMapping,
   isCalendarTab, activeRoutine, updateActiveRoutine, calendarSubTab, setCalendarSubTab
 }: HabitPaneProps) {
@@ -249,15 +252,7 @@ export default function HabitPane({
 
   // Removed inline editing handlers
 
-  const checkRoutineGoalAddressed = (goal: any) => {
-    const explicitlyReferenced = (habits || []).some(g => g.routineGoalId === goal.id);
-    if (explicitlyReferenced) return true;
-    const txt = goal.text.toLowerCase().trim();
-    if (!txt) return false;
-    const inGoals = (habits || []).some(g => g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
-    const inTimeline = templates?.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
-    return inGoals || inTimeline;
-  };
+
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
@@ -377,7 +372,7 @@ export default function HabitPane({
     return templates.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
   };
 
-  const openGoalCount = (habits || []).filter(g => !g.completed && !checkRoutineAddressed(g)).length;
+
 
   const confirmDeleteGoal = (id: string, taskName: string) => {
     setConfirmConfig({
@@ -463,6 +458,8 @@ export default function HabitPane({
           (txt && g.desc && g.desc.toLowerCase().trim() === txt)
         );
       }
+    } else if (habitFilterLifeGoalId) {
+      displayedRoutineGoals = displayedRoutineGoals.filter(g => g.lifeGoalId === habitFilterLifeGoalId);
     }
     if (sortByName) {
       displayedRoutineGoals.sort((a: any, b: any) => a.task.localeCompare(b.task));
@@ -520,10 +517,10 @@ export default function HabitPane({
   };
 
   return (
-    <div className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+    <div className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'}`} style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0 }}>
       <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', cursor: 'pointer', borderBottom: '1px solid var(--panel-border)' }}>
         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-           {effectiveDate ? <><Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18} color="var(--accent)" /> Habits</>}
+           {effectiveDate ? <><Target size={18} color="var(--accent)" /> Goals for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18} color="var(--accent)" /> Routine</>}
         </h2>
         <button className="accordion-icon icon-btn" style={{ padding: '4px' }}>
           <ChevronDown size={16} style={{ transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
@@ -548,7 +545,7 @@ export default function HabitPane({
             className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`} 
             onClick={() => setCalendarSubTab('mark_goals')}
           >
-            {isCalendarTab ? 'Mark Goals' : 'Goals'}
+            {isCalendarTab ? 'Mark Goals' : 'Habits'}
           </button>
           <button 
             className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`} 
@@ -565,7 +562,7 @@ export default function HabitPane({
                 
                 <button 
                   onClick={openAddRoutineGoal} className="secondary" 
-                  style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
+                  style={{ width: '100%', flexShrink: 0, marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
                 >
                   <Plus size={16} /> Add Goal
                 </button>
@@ -575,8 +572,11 @@ export default function HabitPane({
                     setSearchQuery={setSearchQuery}
                     sortByName={sortByName}
                     setSortByName={setSortByName}
-                    isFilterActive={!!habitFilterRoutineGoalId}
-                    onFilterClear={() => setHabitFilterRoutineGoalId && setHabitFilterRoutineGoalId(null)}
+                    isFilterActive={!!habitFilterRoutineGoalId || !!habitFilterLifeGoalId}
+                    onFilterClear={() => {
+                      if (setHabitFilterRoutineGoalId) setHabitFilterRoutineGoalId(null);
+                      if (setHabitFilterLifeGoalId) setHabitFilterLifeGoalId(null);
+                    }}
                   />
               </>
             )}
@@ -783,18 +783,42 @@ export default function HabitPane({
         )}
       </div>
 
-      {/* BOTTOM METRICS: Routine Insights */}
+      {/* BOTTOM METRICS: Habit Insights */}
       <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
           <Activity size={14} color="var(--accent)" />
-          Routine Insights:
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '20px' }}>
-          <Hourglass size={14} color="var(--text-secondary)" />
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Pending:</span>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff', whiteSpace: 'nowrap' }}>
-            {routineGoals.filter(g => !g.completed && !checkRoutineGoalAddressed(g)).length} Routine, {openGoalCount} Routine
-          </span>
+          {(() => {
+            let unallocatedMins = 24 * 60;
+            if (currentTemplate && currentTemplate.blocks) {
+                const intervals = (currentTemplate.blocks || []).map((b: any) => [b.startTime ?? 0, (b.startTime ?? 0) + (b.duration || 0)]);
+                    intervals.sort((a: number[], b: number[]) => a[0] - b[0]);
+
+                    let allocated = 0;
+                    let currentStart = -1;
+                    let currentEnd = -1;
+
+                    for (const [start, end] of intervals as [number, number][]) {
+                        if (currentEnd < start) {
+                            if (currentStart !== -1) {
+                                allocated += currentEnd - currentStart;
+                            }
+                            currentStart = start;
+                            currentEnd = end;
+                        } else {
+                            currentEnd = Math.max(currentEnd, end);
+                        }
+                    }
+
+                    if (currentStart !== -1) {
+                        allocated += currentEnd - currentStart;
+                    }
+
+                    unallocatedMins -= allocated;
+                }
+            const h = Math.floor(unallocatedMins / 60);
+            const m = unallocatedMins % 60;
+            return `Free Time: ${h}h ${m}m`;
+          })()}
         </div>
       </div>
 

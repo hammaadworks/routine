@@ -414,7 +414,7 @@ export default function MyDay({
     const sortedMobileGoals = sortHabits(habits);
 
     return (<div className="timeline-inner"
-                 style={{position: 'relative', flex: 1, width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0}}>
+                 style={{position: 'relative', flex: 1, width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0}}>
             <MyDayMaker
                 templates={templates}
                 activeTemplateId={activeTemplateId}

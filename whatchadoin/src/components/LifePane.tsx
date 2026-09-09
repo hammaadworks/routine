@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { Star, Plus, Pencil, Activity, Palette } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Star, Pencil, Activity, Palette, GripVertical, Plus } from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
@@ -22,9 +22,10 @@ interface LifePaneProps {
   setLifeGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
   routineGoals?: Goal[];
   setRoutineGoals?: React.Dispatch<React.SetStateAction<Goal[]>>;
-  habits?: Goal[];
-  setHabits?: React.Dispatch<React.SetStateAction<Goal[]>>;
+  habits?: any[];
+  setHabits?: React.Dispatch<React.SetStateAction<any[]>>;
   headerTabs?: React.ReactNode;
+  onLifeGoalBadgeClick?: (id: string) => void;
 }
 
 interface ConfirmConfig {
@@ -38,13 +39,41 @@ interface ConfirmConfig {
 export default function LifePane({ 
   lifeGoals, setLifeGoals,
   routineGoals, setRoutineGoals, 
-  habits, setHabits, headerTabs
+  habits, setHabits, headerTabs,
+  onLifeGoalBadgeClick
 }: LifePaneProps) {
   const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
   const [editingLifeGoalId, setEditingLifeGoalId] = useState<string | null>(null);
   const [lifeGoalForm, setLifeGoalForm] = useState({ text: '', color: '', desc: '' });
   const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
   const [colorError, setColorError] = useState('');
+  const [drawerLifeGoalId, setDrawerLifeGoalId] = useState<string | null>(null);
+
+  const dragItem = useRef<any>(null);
+  const dragOverItem = useRef<any>(null);
+
+  const handleDragStart = (_e: React.DragEvent, position: number) => {
+    dragItem.current = position;
+  };
+
+  const handleDragEnter = (_e: React.DragEvent, position: number) => {
+    dragOverItem.current = position;
+  };
+
+  const handleDragEnd = () => {
+    if (dragItem.current !== null && dragOverItem.current !== null) {
+      const newList = [...lifeGoals];
+      const draggedItemContent = newList[dragItem.current];
+      if (draggedItemContent) {
+        newList.splice(dragItem.current, 1);
+        newList.splice(dragOverItem.current, 0, draggedItemContent);
+        setLifeGoals(newList);
+      }
+    }
+    dragItem.current = null;
+    dragOverItem.current = null;
+  };
+
 
   useEffect(() => {
     const handleFab = () => openAddLifeGoal();
@@ -143,9 +172,12 @@ export default function LifePane({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', paddingTop: '16px', overflow: 'hidden', minHeight: 0 }}>
         {headerTabs}
         
+
+
         <button 
-          onClick={openAddLifeGoal} className="secondary" 
-          style={{ width: '100%', marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
+          onClick={openAddLifeGoal} 
+          className="secondary desktop-only-btn" 
+          style={{ width: '100%', flexShrink: 0, marginBottom: '16px', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
         >
           <Plus size={16} /> Add Life Goal
         </button>
@@ -159,15 +191,25 @@ export default function LifePane({
           onFilterClear={() => { setSearchQuery(''); setSortByName(false); }}
         />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, padding: '8px 12px 8px 4px', marginTop: '-8px' }}>
-          {displayedGoals.map(goal => {
+          {displayedGoals.map((goal, index) => {
             const linkedCount = getLinkedCount(goal);
             const hex = goal.color || '#eab308';
             const bgStyle = getCardBgStyle(hex);
 
             return (
-              <div key={goal.id} className={`item-card ${goal.completed ? 'scratched' : ''}`} style={{ cursor: 'default', position: 'relative', minHeight: '48px', padding: '10px 12px', display: 'flex', alignItems: 'center', ...bgStyle }}>
+              <div 
+                key={goal.id} 
+                className={`item-card ${goal.completed ? 'scratched' : ''}`} 
+                draggable={!searchQuery && !sortByName}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                style={{ cursor: (!searchQuery && !sortByName) ? 'grab' : 'default', position: 'relative', minHeight: '48px', padding: '10px 12px', display: 'flex', alignItems: 'center', ...bgStyle }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <GripVertical size={16} color="var(--text-secondary)" style={{ cursor: (!searchQuery && !sortByName) ? 'grab' : 'default', flexShrink: 0, opacity: 0.5 }} />
                     <input 
                       type="checkbox" 
                       className="checkbox-square" 
@@ -194,11 +236,19 @@ export default function LifePane({
                 </div>
                 
                   <div 
+                  onClick={() => {
+                    if (window.innerWidth >= 1400) {
+                      if (onLifeGoalBadgeClick) onLifeGoalBadgeClick(goal.id);
+                    } else {
+                      setDrawerLifeGoalId(goal.id);
+                    }
+                  }}
                   title="Total Linked Routine & Habits"
                   style={{
                   position: 'absolute',
                   top: '-8px',
                   right: '-8px',
+                  cursor: 'pointer',
                   background: linkedCount > 0 ? hex : '#fff',
                   color: '#000',
                   fontSize: '11px',
@@ -236,12 +286,7 @@ export default function LifePane({
       <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
           <Activity size={14} color="var(--accent)" />
-          Life Insights: 
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '20px' }}>
-          <Star size={14} color="var(--text-secondary)" />
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Active Life Goals:</span>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{lifeGoals.filter(g => !g.completed).length}</span>
+          Life Goals : {lifeGoals.filter(g => g.completed).length} / {lifeGoals.length}
         </div>
       </div>
 
@@ -341,6 +386,48 @@ export default function LifePane({
           onCancel={confirmConfig.onCancel}
           image={undefined}
         />
+      )}
+
+      {drawerLifeGoalId && (
+        <BaseModal
+          isOpen={!!drawerLifeGoalId}
+          onClose={() => setDrawerLifeGoalId(null)}
+          title={
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Linked Items
+            </span>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {(() => {
+              const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === drawerLifeGoalId);
+              const linkedHabits = (habits || []).filter(g => g.lifeGoalId === drawerLifeGoalId);
+              if (linkedRoutines.length === 0 && linkedHabits.length === 0) {
+                return <div style={{ color: 'var(--text-secondary)' }}>No items linked to this goal.</div>;
+              }
+              return (
+                <>
+                  {linkedRoutines.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>Routine Goals</div>
+                      {linkedRoutines.map(rg => (
+                        <div key={rg.id} style={{ padding: '8px', background: 'var(--surface-light)', borderRadius: '6px', marginBottom: '4px' }}>{rg.text}</div>
+                      ))}
+                    </div>
+                  )}
+                  {linkedHabits.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>Habits</div>
+                      {linkedHabits.map(h => (
+                        <div key={h.id} style={{ padding: '8px', background: 'var(--surface-light)', borderRadius: '6px', marginBottom: '4px' }}>{h.task}</div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </BaseModal>
       )}
 
     </div>

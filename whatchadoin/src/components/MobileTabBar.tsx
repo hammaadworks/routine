@@ -13,7 +13,7 @@ export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTa
         icon: CalendarDays,
         label: 'Schedule',
         default: true
-    }, {id: 'habits', icon: Zap, label: 'Habits'},];
+    }, {id: 'habits', icon: Zap, label: 'Routine'},];
 
     const handleFabClick = () => {
         if (activeTab === 'goals') window.dispatchEvent(new CustomEvent('fab:add-strategy'));

@@ -226,7 +226,7 @@ export default function SettingsModal({
                                         const parts = url.pathname.split('/').filter(Boolean);
                                         val = parts[parts.length - 1] || val;
                                     }
-                                } catch (err) {
+                                } catch (_err) {
                                 }
                                 setSyncForm({...syncForm, id: val});
                             }}
@@ -345,7 +345,7 @@ export default function SettingsModal({
                     </button>
 
                     <div style={{
-                        padding: '16px',
+                         padding: '16px',
                         background: 'rgba(239, 68, 68, 0.05)',
                         border: '1px solid rgba(239, 68, 68, 0.2)',
                         borderRadius: '8px',
