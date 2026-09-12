@@ -1,24 +1,39 @@
 
-import {CalendarDays, Target, Zap, Plus} from 'lucide-react';
+import {CalendarDays, Target, Zap, Plus, BookOpen} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
     onTabChange: (tabId: string) => void;
     showFab?: boolean;
+    isRoutineDrawerOpen?: boolean;
+    setIsRoutineDrawerOpen?: (open: boolean) => void;
+    activeLeftTab?: string;
 }
 
-export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTabBarProps) {
-    const tabs = [{id: 'goals', icon: Target, label: 'Goals'}, {
-        id: 'timeline',
-        icon: CalendarDays,
-        label: 'Schedule',
-        default: true
-    }, {id: 'habits', icon: Zap, label: 'Routine'},];
+export default function MobileTabBar({activeTab, onTabChange, showFab, isRoutineDrawerOpen, setIsRoutineDrawerOpen, activeLeftTab}: MobileTabBarProps) {
+    const tabs = [
+        {id: 'goals', icon: Target, label: 'Goals'},
+        {id: 'myday', icon: Zap, label: 'MyDay', default: true},
+        {id: 'calendar', icon: CalendarDays, label: 'Calendar'},
+        {id: 'plans', icon: BookOpen, label: 'Plans'}
+    ];
 
     const handleFabClick = () => {
-        if (activeTab === 'goals') window.dispatchEvent(new CustomEvent('fab:add-strategy'));
-        if (activeTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits'));
-        if (activeTab === 'timeline') {
+        if (isRoutineDrawerOpen) {
+            window.dispatchEvent(new CustomEvent('fab:add-habits'));
+            return;
+        }
+        if (activeTab === 'goals') {
+            if (activeLeftTab === 'money') {
+                window.dispatchEvent(new CustomEvent('fab:add-money'));
+            } else if (activeLeftTab === 'routine') {
+                window.dispatchEvent(new CustomEvent('fab:add-routine-goal'));
+            } else {
+                window.dispatchEvent(new CustomEvent('fab:add-strategy'));
+            }
+        }
+        if (activeTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits')); // legacy fallback
+        if (activeTab === 'myday' || activeTab === 'timeline') {
             window.dispatchEvent(new CustomEvent('fab:add-myday'));
         }
     };
@@ -42,6 +57,18 @@ export default function MobileTabBar({activeTab, onTabChange, showFab}: MobileTa
                     );
                 })}
             </div>
+            
+            <button
+                className="habits-drawer-btn"
+                onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(!isRoutineDrawerOpen)}
+                style={{
+                    background: isRoutineDrawerOpen ? 'var(--accent)' : 'var(--panel-bg)',
+                    borderColor: isRoutineDrawerOpen ? 'transparent' : 'var(--panel-border)'
+                }}
+            >
+                <Zap size={20} color={isRoutineDrawerOpen ? '#000' : 'var(--accent)'} />
+            </button>
+
             {showFab && (
                 <button
                     className="tab-btn-fab"

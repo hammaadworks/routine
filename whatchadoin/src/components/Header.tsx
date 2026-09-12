@@ -25,29 +25,41 @@ export default function Header({
                                    setAiDockState,
                                    setShowSettingsModal
                                }: HeaderProps) {
-    return (<header className="header" style={{
+
+    return (
+        <div className="header" style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '12px 24px',
             background: 'var(--panel-bg)',
-            border: '1px solid var(--panel-border)',
             borderRadius: '16px',
+            border: '1px solid var(--panel-border)',
             flexShrink: 0,
             flexWrap: 'wrap',
             gap: '12px'
         }}>
-            {/* Left: Identity */}
-            <h1 className="header-logo"
-                style={{display: 'flex', alignItems: 'center', gap: '12px', margin: 0, flex: 1, minWidth: 0}}>
+            {/* Left: Brand */}
+            <h1 style={{
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flex: 1,
+                minWidth: 0
+            }}>
                 <div style={{
+                    width: '32px',
+                    height: '32px',
                     background: 'var(--accent)',
-                    padding: '6px',
                     borderRadius: '8px',
                     display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#000',
                     flexShrink: 0
                 }}>
-                    <Command size={20} color="#000"/>
+                    <Command size={18}/>
                 </div>
                 <span style={{
                     fontSize: '20px',
@@ -68,6 +80,8 @@ export default function Header({
             {/* Right: Global Actions */}
             <div className="header-controls"
                  style={{display: 'flex', justifyContent: 'flex-end', gap: '12px', flex: 1, minWidth: 0}}>
+                
+
                 <button className="icon-btn" style={{
                     padding: '8px',
                     background: 'var(--accent)',
@@ -81,7 +95,6 @@ export default function Header({
                     <Bot size={16} color="#000"/> <span className="mobile-hidden"
                                                         style={{fontSize: '13px', fontWeight: '600', color: '#000'}}>AI Agent</span>
                 </button>
-
                 <button className="icon-btn" style={{
                     padding: '8px',
                     background: 'var(--bg)',
@@ -95,7 +108,7 @@ export default function Header({
                     <Settings size={18} color="var(--text-secondary)"/>
                 </button>
             </div>
-        </header>);
+        </div>);
 }
 
 

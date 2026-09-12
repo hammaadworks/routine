@@ -8,22 +8,30 @@ import PlansPane from './components/PlansPane';
 import CalendarPane from './components/CalendarPane';
 import ConfirmModal from './components/ConfirmModal';
 import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, ChevronDown, Clock, Star} from 'lucide-react';
+import {BookOpen, Calendar, ChevronDown, Clock, Star, Wallet} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
+import MoneyPane from './components/MoneyPane';
 import AIAgentApp from './components/AIAgentApp';
 import MobileTabBar from './components/MobileTabBar';
 import QuotesWidget from './components/QuotesWidget';
 import Header from './components/Header';
+import WalletModal from './components/WalletModal';
 import RoutineModal from './components/RoutineModal';
 import SettingsModal from './components/SettingsModal';
 import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
+import { useCurrency } from './hooks/useCurrency';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
+    const { formatCurrency } = useCurrency();
 
     const [lifeGoals, setLifeGoals] = useState<any[]>(() => {
         return JSON.parse(localStorage.getItem('whatchadoin_lifeGoals') || '[]');
+    });
+
+    const [moneyGoals, setMoneyGoals] = useState<any[]>(() => {
+        return JSON.parse(localStorage.getItem('whatchadoin_money_goals') || '[]');
     });
 
     const [activeRoutineId, setActiveRoutineId] = useState<string>(loadActiveRoutineId);
@@ -41,6 +49,8 @@ export default function App() {
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [isMidPaneExpanded, setIsMidPaneExpanded] = useState<boolean>(true);
     const [isLeftPaneExpanded, setIsLeftPaneExpanded] = useState<boolean>(false);
+    const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
+    const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
     const [aiDockState, setAiDockState] = useState<string>('closed'); // 'closed', 'right', 'bottom', 'popped_out'
 
     const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -108,6 +118,10 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem('whatchadoin_lifeGoals', JSON.stringify(lifeGoals));
     }, [lifeGoals]);
+
+    useEffect(() => {
+        localStorage.setItem('whatchadoin_money_goals', JSON.stringify(moneyGoals));
+    }, [moneyGoals]);
 
     useEffect(() => {
         localStorage.setItem('whatchadoin_routines', JSON.stringify(routines));
@@ -287,7 +301,13 @@ export default function App() {
                     setActiveRoutineId(newId);
                     setShowRoutineModal(false);
                 } else {
-                    throw new Error('Invalid backup file');
+                    setConfirmConfig({
+                        title: 'Import Failed',
+                        message: 'The selected file is not a valid whatchadoin backup.',
+                        isDanger: true,
+                        onConfirm: () => setConfirmConfig(null),
+                        onCancel: null
+                    });
                 }
             } catch {
                 setConfirmConfig({
@@ -332,7 +352,21 @@ export default function App() {
             }, '-=800');
     }, []);
 
+    const allWalletGoals = [
+        ...(lifeGoals || []).map((g: any) => ({ ...g, category: 'Life' })),
+        ...(routineGoals || []).map((g: any) => ({ ...g, category: 'Routine' })),
+        ...(moneyGoals || []).map((g: any) => ({ ...g, category: 'Money' }))
+    ].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
+
+    const walletTotal = allWalletGoals.reduce((sum, g) => sum + (g.cost || 0), 0);
+
     return (<div className={`layout dock-${aiDockState}`}>
+
+        <WalletModal 
+            isOpen={isWalletModalOpen} 
+            onClose={() => setIsWalletModalOpen(false)} 
+            allGoals={allWalletGoals} 
+        />
 
         {/* Main App Container */}
         <div className="main-app-wrapper"
@@ -344,16 +378,54 @@ export default function App() {
                 setAiDockState={setAiDockState as any}
                 setShowSettingsModal={setShowSettingsModal}
             />
+            
+            {walletTotal !== undefined && walletTotal > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px' }}>
+                    <button className="icon-btn" onClick={() => setIsWalletModalOpen(true)} style={{
+                        padding: '8px 16px',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: '#EAB308',
+                        fontWeight: 'bold',
+                        fontSize: '15px'
+                    }} title="Aspirational Wallet">
+                        <Wallet size={18} /> 
+                        <span>Aspirational Wallet:</span>
+                        {formatCurrency(walletTotal)}
+                    </button>
+                </div>
+            )}
 
             {/* Mobile Tab Bar */}
             <MobileTabBar 
                 activeTab={mobileTab} 
                 onTabChange={(tab) => {
                     setMobileTab(tab);
-                    if (tab === 'goals') setActiveLeftTab('life');
-                    if (tab === 'timeline') setActiveCenterTab('timeline');
+                    if (tab === 'goals') {
+                        setActiveLeftTab('life');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                    if (tab === 'myday') {
+                        setActiveCenterTab('timeline');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                    if (tab === 'calendar') {
+                        setActiveCenterTab('calendar');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                    if (tab === 'plans') {
+                        setActiveCenterTab('plans');
+                        setIsRoutineDrawerOpen(false);
+                    }
                 }} 
-                showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
+                showFab={!(mobileTab === 'myday' && activeCenterTab !== 'timeline') && !['calendar', 'plans'].includes(mobileTab)} 
+                isRoutineDrawerOpen={isRoutineDrawerOpen}
+                setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
+                activeLeftTab={activeLeftTab}
             />
 
             <main className={`main-content mobile-tab-${mobileTab}`}>
@@ -383,54 +455,58 @@ export default function App() {
                     <div style={{
                         display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
                     }}>
-                        {activeLeftTab === 'routine' ? (<RoutineGoalPane
-                            routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
-                            habits={habits} setHabits={setHabits as any}
-                            templates={templates} setTemplates={setTemplates as any}
-                            activeTemplateId={activeTemplateId} onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
-                            lifeGoals={lifeGoals}
-                            headerTabs={<div className="tabs" style={{
-                                marginBottom: '16px',
-                                borderBottom: '1px solid var(--panel-border)',
-                                background: 'transparent'
-                            }}>
-                                <button
-                                    className="tab"
-                                    onClick={() => setActiveLeftTab('life')}
-                                >
-                                    Life
-                                </button>
-                                <button
-                                    className="tab active"
-                                    onClick={() => setActiveLeftTab('routine')}
-                                >
-                                    Routine
-                                </button>
-                            </div>}
-                        />) : (<LifePane
-                            lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
-                            routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
-                            habits={habits} setHabits={setHabits as any}
-                            onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
-                            headerTabs={<div className="tabs" style={{
-                                marginBottom: '16px',
-                                borderBottom: '1px solid var(--panel-border)',
-                                background: 'transparent'
-                            }}>
-                                <button
-                                    className="tab active"
-                                    onClick={() => setActiveLeftTab('life')}
-                                >
-                                    Life
-                                </button>
-                                <button
-                                    className="tab"
-                                    onClick={() => setActiveLeftTab('routine')}
-                                >
-                                    Routine
-                                </button>
-                            </div>}
-                        />)}
+                        {(() => {
+                            const headerTabs = (
+                                <div className="tabs" style={{
+                                    marginBottom: '16px',
+                                    borderBottom: '1px solid var(--panel-border)',
+                                    background: 'transparent'
+                                }}>
+                                    <button
+                                        className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`}
+                                        onClick={() => setActiveLeftTab('life')}
+                                    >
+                                        Life
+                                    </button>
+                                    <button
+                                        className={`tab ${activeLeftTab === 'money' ? 'active' : ''}`}
+                                        onClick={() => setActiveLeftTab('money')}
+                                    >
+                                        Money
+                                    </button>
+                                    <button
+                                        className={`tab ${activeLeftTab === 'routine' ? 'active' : ''}`}
+                                        onClick={() => setActiveLeftTab('routine')}
+                                    >
+                                        Routine
+                                    </button>
+                                </div>
+                            );
+
+                            if (activeLeftTab === 'routine') {
+                                return <RoutineGoalPane
+                                    routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
+                                    habits={habits} setHabits={setHabits as any}
+                                    templates={templates} setTemplates={setTemplates as any}
+                                    activeTemplateId={activeTemplateId} onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
+                                    lifeGoals={lifeGoals}
+                                    headerTabs={headerTabs}
+                                />;
+                            }
+                            if (activeLeftTab === 'money') {
+                                return <MoneyPane
+                                    moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
+                                    headerTabs={headerTabs}
+                                />;
+                            }
+                            return <LifePane
+                                lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+                                routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
+                                habits={habits} setHabits={setHabits as any}
+                                onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
+                                headerTabs={headerTabs}
+                            />;
+                        })()}
                     </div>
                 </div>
 
@@ -524,6 +600,7 @@ export default function App() {
                     calendarSubTab={calendarSubTab}
                     setCalendarSubTab={setCalendarSubTab}
                     updateActiveRoutine={updateActiveRoutine}
+                    isRoutineDrawerOpen={isRoutineDrawerOpen}
                 />
             </main>
 

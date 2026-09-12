@@ -3,6 +3,8 @@ import {DatabaseBackup, Import, Settings} from 'lucide-react';
 import BaseModal from './BaseModal';
 import AIConfigEditor from './AIConfigEditor';
 import CopyBanner from './CopyBanner';
+import Dropdown from './Dropdown';
+import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
 
 interface SyncForm {
     token: string;
@@ -37,6 +39,7 @@ export default function SettingsModal({
                                           exportAllData,
                                           fileInputRef
                                       }: SettingsModalProps) {
+    const { currency, setCurrency } = useCurrency();
 
     return (<BaseModal
             isOpen={showSettingsModal}
@@ -98,6 +101,22 @@ export default function SettingsModal({
                     }}
                 >
                     Data Backup
+                </button>
+                <button
+                    onClick={() => setSettingsTab('general')}
+                    style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: settingsTab === 'general' ? '2px solid var(--accent)' : '2px solid transparent',
+                        color: settingsTab === 'general' ? '#fff' : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    General
                 </button>
             </div>
 
@@ -355,5 +374,39 @@ export default function SettingsModal({
                         </button>
                     </div>
                 </div>)}
+
+            {settingsTab === 'general' && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                    <div>
+                        <h3 style={{marginTop: 0, marginBottom: '8px', color: 'var(--text-primary)'}}>Localization & Preferences</h3>
+                        <p style={{fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                            Customize how money goals and amounts are displayed across the app.
+                        </p>
+                        
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                            <label style={{fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)'}}>
+                                Default Currency
+                            </label>
+                            <Dropdown
+                                options={CURRENCIES.map(c => ({ value: c.code, label: c.label }))}
+                                value={currency}
+                                onChange={(val) => setCurrency(val as string)}
+                                placeholder="Select currency..."
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
+                        <button
+                            type="button"
+                            onClick={() => setShowSettingsModal(false)}
+                            className="secondary"
+                            style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold'}}
+                        >
+                            Done
+                        </button>
+                    </div>
+                </div>
+            )}
         </BaseModal>);
 }

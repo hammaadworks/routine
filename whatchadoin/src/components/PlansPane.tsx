@@ -57,6 +57,11 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
   const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0]?.id || null : null);
   const [searchQuery, setSearchQuery] = useState('');
   
+  const [quickTasks, setQuickTasks] = useState<any[]>(() => {
+    return JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+  });
+  const [newQuickTask, setNewQuickTask] = useState('');
+
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionCoords, setMentionCoords] = useState({ top: 0, left: 0 });
@@ -89,6 +94,10 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     localStorage.setItem(`routine_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
     localStorage.setItem(`whatchadoin_life_plans_folders`, JSON.stringify(lFolders));
   }, [folders, activeRoutineId]);
+
+  useEffect(() => {
+    localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(quickTasks));
+  }, [quickTasks]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -262,7 +271,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     const cursor = target.selectionStart;
     const textBeforeCursor = val.slice(0, cursor);
     
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    const match = textBeforeCursor.match(/(?:^|\s)@(\S*)$/);
     if (match) {
       const query = match[1] || '';
       setMentionQuery(query);
@@ -293,7 +302,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
     const blocks = activeNote.content.split('\n\n');
     const blockContent = blocks[idx] || '';
     const textBeforeCursor = blockContent.slice(0, cursor);
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    const match = textBeforeCursor.match(/(?:^|\s)@(\S*)$/);
     
     if (match) {
       const matchLength = match[1]?.length || 0;
@@ -534,6 +543,64 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       {/* Editor Area */}
       {(!isMobile || activeNote) && (
       <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        
+        {/* Quick Tasks Widget */}
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', background: 'var(--panel-bg)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>Quick Tasks</h3>
+            <input 
+              type="text"
+              placeholder="+ Add Quick Task..."
+              value={newQuickTask}
+              onChange={(e) => setNewQuickTask(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newQuickTask.trim()) {
+                  setQuickTasks([{ id: Date.now().toString(), text: newQuickTask.trim(), completed: false }, ...quickTasks]);
+                  setNewQuickTask('');
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid var(--panel-border)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                outline: 'none'
+              }}
+            />
+            {quickTasks.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                {quickTasks.map(task => (
+                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input 
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => {
+                        setQuickTasks(quickTasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ 
+                      color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)', 
+                      textDecoration: task.completed ? 'line-through' : 'none',
+                      fontSize: '14px'
+                    }}>
+                      {task.text}
+                    </span>
+                    <button 
+                      onClick={() => setQuickTasks(quickTasks.filter(t => t.id !== task.id))}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '2px', marginLeft: 'auto', opacity: 0.7 }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {activeNote ? (
           <>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>

@@ -413,6 +413,8 @@ export default function MyDay({
 
     const sortedMobileGoals = sortHabits(habits);
 
+
+
     return (<div className="timeline-inner"
                  style={{position: 'relative', flex: 1, width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0}}>
             <MyDayMaker
@@ -430,15 +432,15 @@ export default function MyDay({
                 deleteTemplate={deleteTemplate}
             />
 
-            <div className="timeline-scroll">
-                <div
-                    className="timeline-grid"
-                    onDrop={handleDrop}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    style={{'--zoom': zoomLevel} as React.CSSProperties}
-                >
-                    {/* Hours Grid (12 AM to 11 PM) */}
+                <div className="timeline-scroll">
+                    <div
+                        className="timeline-grid"
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        style={{'--zoom': zoomLevel} as React.CSSProperties}
+                    >
+                        {/* Hours Grid (12 AM to 11 PM) */}
                     {Array.from({length: 24}).map((_, idx) => {
                         const i = idx;
                         const isNoon = i === 12;
@@ -728,6 +730,7 @@ export default function MyDay({
                 </div>
             </div>
 
+
             {/* Footer */}
             <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '0 16px', minHeight: '44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
@@ -880,7 +883,7 @@ export default function MyDay({
                                             if (t.id === activeTemplateId) {
                                                 let newBlocks = [...t.blocks];
                                                 // Find the end time of the last block, or use current time if empty
-                                                let startMinutes = 0;
+                                                let startMinutes;
                                                 if (newBlocks.length > 0) {
                                                     const lastBlock = newBlocks.reduce((prev, current) => 
                                                         (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current
