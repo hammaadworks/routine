@@ -228,8 +228,8 @@ export default function LifePane({
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
-                    <button className="icon-btn" onClick={() => openEditLifeGoal(goal)} style={{ padding: '4px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexShrink: 0, marginLeft: '8px' }}>
+                    <button className="icon-btn" onClick={() => openEditLifeGoal(goal)} style={{ padding: '8px', cursor: 'pointer' }}>
                       <Pencil size={14} />
                     </button>
                   </div>
@@ -283,7 +283,7 @@ export default function LifePane({
         </div>
       </div>
 
-      <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '0 16px', minHeight: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
           <Activity size={14} color="var(--accent)" />
           Life Goals : {lifeGoals.filter(g => g.completed).length} / {lifeGoals.length}
@@ -325,7 +325,7 @@ export default function LifePane({
               {colorError && <span style={{ color: '#ef4444', marginLeft: '8px' }}>{colorError}</span>}
             </label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {PRESET_COLORS.map(c => {
+              {PRESET_COLORS.slice(0, 8).map(c => {
                 const isSelected = lifeGoalForm.color && lifeGoalForm.color.toLowerCase() === c.toLowerCase();
                 return (
                   <button

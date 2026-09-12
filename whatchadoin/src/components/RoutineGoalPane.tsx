@@ -77,7 +77,7 @@ export default function RoutineGoalPane({
                                         }: RoutineGoalPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<string | null>(null);
-    const [routineGoalForm, setRoutineGoalForm] = useState({text: '', color: '', lifeGoalId: '', desc: ''});
+    const [routineGoalForm, setRoutineGoalForm] = useState({text: '', color: '', desc: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export default function RoutineGoalPane({
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || "#FF595E";
-        setRoutineGoalForm({text: '', color: randomColor, lifeGoalId: '', desc: ''});
+        setRoutineGoalForm({text: '', color: randomColor, desc: ''});
         setShowRoutineGoalModal(true);
     };
 
@@ -124,7 +124,7 @@ export default function RoutineGoalPane({
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || "#FF595E";
         setRoutineGoalForm({
-            text: goal.text, color: goalColor, lifeGoalId: goal.lifeGoalId || '', desc: goal.desc || ''
+            text: goal.text, color: goalColor, desc: goal.desc || ''
         });
         setShowRoutineGoalModal(true);
     };
@@ -149,12 +149,11 @@ export default function RoutineGoalPane({
                 ...g,
                 text: cleanText,
                 color: routineGoalForm.color,
-                lifeGoalId: routineGoalForm.lifeGoalId || "",
                 desc: routineGoalForm.desc || ""
             } : g));
 
             if (templates && setTemplates && habits) {
-                const linkedRoutineGoalIds = habits.filter((g: Habit) => g.routineGoalId === editingRoutineGoalId).map(g => g.id);
+                const linkedRoutineGoalIds = habits.filter((g: Habit) => g.routineGoalIds?.includes(editingRoutineGoalId) || g.routineGoalId === editingRoutineGoalId).map(g => g.id);
                 const updatedTemplates = templates.map((t: Template) => ({
                     ...t, blocks: t.blocks.map((b: TemplateBlock) => {
                         if (b.routineGoalId && linkedRoutineGoalIds.includes(b.routineGoalId)) {
@@ -171,7 +170,6 @@ export default function RoutineGoalPane({
                 text: cleanText,
                 color: routineGoalForm.color,
                 completed: false,
-                lifeGoalId: routineGoalForm.lifeGoalId || "",
                 desc: routineGoalForm.desc || ""
             }]);
         }
@@ -192,12 +190,15 @@ export default function RoutineGoalPane({
 
                 // 1. Unlink habits
                 if (habits && setHabits) {
-                    setHabits(habits.map((g: Habit) => g.routineGoalId === id ? {...g, routineGoalId: ''} : g));
+                    setHabits(habits.map((g: Habit) => {
+                        const newRIds = (g.routineGoalIds || (g.routineGoalId ? [g.routineGoalId] : [])).filter(rid => rid !== id);
+                        return { ...g, routineGoalIds: newRIds, routineGoalId: undefined };
+                    }));
                 }
 
                 // 2. Unlink (turn white) calendar blocks linked to those habits
                 if (templates && setTemplates && habits) {
-                    const linkedRoutineGoalIds = habits.filter((g: Habit) => g.routineGoalId === id).map(g => g.id);
+                    const linkedRoutineGoalIds = habits.filter((g: Habit) => g.routineGoalIds?.includes(id) || g.routineGoalId === id).map(g => g.id);
                     const updatedTemplates = templates.map((t: Template) => ({
                         ...t, blocks: t.blocks.map((b: TemplateBlock) => {
                             if (b.routineGoalId && linkedRoutineGoalIds.includes(b.routineGoalId)) {
@@ -337,9 +338,9 @@ export default function RoutineGoalPane({
                         </span>)}
                                     </div>
                                 </div>
-                                <div style={{display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px'}}>
+                                <div style={{display: 'flex', gap: '8px', flexShrink: 0, marginLeft: '8px'}}>
                                     <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)}
-                                            style={{padding: '4px'}}>
+                                            style={{padding: '8px', cursor: 'pointer'}}>
                                         <Pencil size={14}/>
                                     </button>
                                 </div>
@@ -404,9 +405,11 @@ export default function RoutineGoalPane({
                 flex: 'none',
                 background: 'rgba(0,0,0,0.3)',
                 borderTop: '1px solid var(--panel-border)',
-                padding: '12px 16px',
+                padding: '0 16px',
+                minHeight: '44px',
                 display: 'flex',
                 flexDirection: 'column',
+                justifyContent: 'center',
                 gap: '8px'
             }}>
                 <div style={{
@@ -448,29 +451,7 @@ export default function RoutineGoalPane({
                         />
                     </div>
 
-                    <div>
-                        <label style={{
-                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
-                        }}>
-                            Link to Life Goal <span style={{opacity: 0.5}}>(optional)</span>
-                        </label>
-                        <select
-                            value={routineGoalForm.lifeGoalId}
-                            onChange={(e) => setRoutineGoalForm({...routineGoalForm, lifeGoalId: e.target.value})}
-                            style={{
-                                width: '100%',
-                                padding: '12px 14px',
-                                fontSize: '14px',
-                                background: 'var(--bg)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '8px',
-                                color: '#fff'
-                            }}
-                        >
-                            <option value="">No Life Goal Linked</option>
-                            {(lifeGoals || []).map((lg: LifeGoal) => (<option key={lg.id} value={lg.id}>{lg.text}</option>))}
-                        </select>
-                    </div>
+
 
                     <div>
                         <label style={{
@@ -480,7 +461,7 @@ export default function RoutineGoalPane({
                             {colorError && <span style={{color: '#ef4444', marginLeft: '8px'}}>{colorError}</span>}
                         </label>
                         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
-                            {PRESET_COLORS.map(c => {
+                            {PRESET_COLORS.slice(0, 8).map(c => {
                                 const isSelected = routineGoalForm.color && routineGoalForm.color.toLowerCase() === c.toLowerCase();
                                 return (<button
                                     key={c}

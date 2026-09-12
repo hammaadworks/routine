@@ -351,6 +351,7 @@ export default function App() {
                 onTabChange={(tab) => {
                     setMobileTab(tab);
                     if (tab === 'goals') setActiveLeftTab('life');
+                    if (tab === 'timeline') setActiveCenterTab('timeline');
                 }} 
                 showFab={!(mobileTab === 'timeline' && activeCenterTab !== 'timeline')} 
             />

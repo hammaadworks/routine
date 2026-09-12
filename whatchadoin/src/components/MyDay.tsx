@@ -728,137 +728,191 @@ export default function MyDay({
                 </div>
             </div>
 
-            {/* Zoom Controls */}
-            <div style={{
-                position: 'absolute',
-                bottom: '24px',
-                right: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                background: 'var(--panel-bg)',
-                border: '1px solid var(--panel-border)',
-                borderRadius: '24px',
-                padding: '4px',
-                gap: '4px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                zIndex: 100
-            }}>
-                <button
-                    onClick={handleZoomOut}
-                    title="Zoom Out"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '50%',
-                        padding: '6px',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.color = 'var(--accent)';
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.color = 'var(--text-secondary)';
-                        e.currentTarget.style.background = 'transparent';
-                    }}
-                >
-                    <ZoomOut size={16}/>
-                </button>
-
-                <div style={{
-                    color: 'var(--text-secondary)',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    minWidth: '40px',
-                    pointerEvents: 'none',
-                    userSelect: 'none'
-                }}>
-                    {Math.round(zoomLevel * 100)}%
+            {/* Footer */}
+            <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '0 16px', minHeight: '44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  <Clock size={14} color="var(--accent)" />
+                  {(() => {
+                    let unallocatedMins = 24 * 60;
+                    if (activeTemplate && activeTemplate.blocks) {
+                        const intervals = (activeTemplate.blocks || []).map((b: any) => [b.startTime ?? 0, (b.startTime ?? 0) + (b.duration || 0)]);
+                        intervals.sort((a: number[], b: number[]) => (a[0] || 0) - (b[0] || 0));
+                        let allocated = 0;
+                        let currentStart = -1;
+                        let currentEnd = -1;
+                        for (const [start, end] of intervals as [number, number][]) {
+                            if (currentEnd < start) {
+                                if (currentStart !== -1) {
+                                    allocated += currentEnd - currentStart;
+                                }
+                                currentStart = start;
+                                currentEnd = end;
+                            } else {
+                                currentEnd = Math.max(currentEnd, end);
+                            }
+                        }
+                        if (currentStart !== -1) {
+                            allocated += currentEnd - currentStart;
+                        }
+                        unallocatedMins -= allocated;
+                    }
+                    const h = Math.floor(unallocatedMins / 60);
+                    const m = unallocatedMins % 60;
+                    return `Free Time: ${h}h ${m}m`;
+                  })()}
                 </div>
 
-                <button
-                    onClick={handleZoomIn}
-                    title="Zoom In"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '50%',
-                        padding: '6px',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.color = 'var(--accent)';
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.color = 'var(--text-secondary)';
-                        e.currentTarget.style.background = 'transparent';
-                    }}
-                >
-                    <ZoomIn size={16}/>
-                </button>
-
-
-            </div>
-
-            {/* Habits Tray (Mobile Goals) */}
-            {showMobileGoals && (<div className="habits-tray" style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '40%',
-                    background: 'var(--panel-bg)',
-                    borderTop: '1px solid var(--panel-border)',
-                    zIndex: 110,
-                    overflowY: 'auto',
-                    padding: '16px',
-                    boxShadow: '0 -10px 20px rgba(0,0,0,0.5)',
+                {/* Zoom Controls */}
+                <div style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
+                    alignItems: 'center',
+                    gap: '4px'
                 }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '8px',
-                        flexShrink: 0
-                    }}>
-                        <h3 style={{margin: 0, fontSize: '14px', color: 'var(--accent)'}}>Drag Goals to Timeline</h3>
-                        <button onClick={() => setShowMobileGoals(false)} style={{
+                    <button
+                        onClick={handleZoomOut}
+                        title="Zoom Out"
+                        style={{
                             background: 'transparent',
                             border: 'none',
+                            borderRadius: '50%',
+                            padding: '2px',
                             color: 'var(--text-secondary)',
-                            cursor: 'pointer'
-                        }}><X size={16}/></button>
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.color = 'var(--accent)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >
+                        <ZoomOut size={16}/>
+                    </button>
+
+                    <div style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        minWidth: '40px',
+                        pointerEvents: 'none',
+                        userSelect: 'none'
+                    }}>
+                        {Math.round(zoomLevel * 100)}%
                     </div>
-                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', flex: 1, alignContent: 'flex-start'}}>
-                        {sortedMobileGoals.length === 0 ? (<div style={{
+
+                    <button
+                        onClick={handleZoomIn}
+                        title="Zoom In"
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: '50%',
+                            padding: '2px',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.color = 'var(--accent)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >
+                        <ZoomIn size={16}/>
+                    </button>
+                </div>
+            </div>
+
+            {/* Habits Drawer (Mobile Goals) */}
+            <BaseModal
+                isOpen={showMobileGoals}
+                onClose={() => setShowMobileGoals(false)}
+                title="Habits"
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '16px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        Tap to add to schedule, or drag if on desktop.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignContent: 'flex-start' }}>
+                        {sortedMobileGoals.length === 0 ? (
+                            <div style={{
                                 color: 'var(--text-secondary)',
                                 fontSize: '12px',
                                 textAlign: 'center',
-                                width: '100%'
-                            }}>No goals/habits found.</div>) : (sortedMobileGoals.map(habit => (<div
+                                width: '100%',
+                                padding: '24px 0'
+                            }}>
+                                No goals/habits found.
+                            </div>
+                        ) : (
+                            sortedMobileGoals.map(habit => (
+                                <div
                                     key={habit.id}
                                     draggable
                                     onDragStart={(e) => {
                                         e.dataTransfer.setData('source', 'sidebar');
-                                        e.dataTransfer.setData('task', habit.name);
+                                        e.dataTransfer.setData('task', habit.task || habit.name);
                                         e.dataTransfer.setData('time', habit.time || '30m');
                                         e.dataTransfer.setData('color', habit.color || '#eab308');
-                                        e.dataTransfer.setData('routineGoalId', habit.routineGoalId || '');
+                                        e.dataTransfer.setData('routineGoalId', habit.id);
+                                        setShowMobileGoals(false);
+                                    }}
+                                    onClick={() => {
+                                        if (!activeTemplateId) return;
+                                        
+                                        // Tap to add logic for mobile (and desktop as shortcut)
+                                        const duration = parseDuration(habit.time || '30m');
+                                        
+                                        let updatedTemplates = templates.map((t: Template) => {
+                                            if (t.id === activeTemplateId) {
+                                                let newBlocks = [...t.blocks];
+                                                // Find the end time of the last block, or use current time if empty
+                                                let startMinutes = 0;
+                                                if (newBlocks.length > 0) {
+                                                    const lastBlock = newBlocks.reduce((prev, current) => 
+                                                        (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current
+                                                    );
+                                                    startMinutes = lastBlock.startTime + lastBlock.duration;
+                                                    // Snap to 15 mins
+                                                    startMinutes = Math.ceil(startMinutes / 15) * 15;
+                                                } else {
+                                                    const now = new Date();
+                                                    startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                                                }
+                                                
+                                                if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+                                                
+                                                newBlocks.push({
+                                                    id: Date.now().toString(),
+                                                    name: habit.task,
+                                                    startTime: startMinutes,
+                                                    duration: duration,
+                                                    color: habit.color || '#eab308',
+                                                    routineGoalId: habit.routineGoalId || ''
+                                                });
+                                                return {...t, blocks: newBlocks};
+                                            }
+                                            return t;
+                                        });
+
+                                        if (updateActiveRoutine) {
+                                            updateActiveRoutine({templates: updatedTemplates});
+                                        } else {
+                                            setTemplates(updatedTemplates);
+                                        }
                                         setShowMobileGoals(false);
                                     }}
                                     style={{
@@ -866,21 +920,21 @@ export default function MyDay({
                                         padding: '8px 12px',
                                         borderRadius: '8px',
                                         borderLeft: `4px solid ${habit.color || '#eab308'}`,
-                                        cursor: 'grab',
+                                        cursor: 'pointer', /* changed from grab to pointer to hint tapability */
                                         fontSize: '12px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px'
                                     }}
                                 >
-                                    <GripVertical size={14} color="var(--text-secondary)"/>
-                                    {habit.name} <span style={{
-                                    color: 'var(--text-secondary)',
-                                    fontSize: '10px'
-                                }}>({habit.time || '30m'})</span>
-                                </div>)))}
+                                    <GripVertical size={14} color="var(--text-secondary)" />
+                                    {habit.task} <span style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>({habit.time || '30m'})</span>
+                                </div>
+                            ))
+                        )}
                     </div>
-                </div>)}
+                </div>
+            </BaseModal>
 
             {/* Rename Modal */}
             <BaseModal

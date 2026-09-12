@@ -1,14 +1,14 @@
 // @ts-nocheck
 import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
-import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Target, Copy, ChevronDown, Star } from 'lucide-react';
+import { ListTodo, Plus, Clock, GripVertical, CheckCircle2, Pencil, Activity, Target, Copy, ChevronDown, Star, Palette } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import SearchSortBar from './SearchSortBar';
-import { parseDuration, getScheduledGoalsForDate, getAllGoalsForMention, getGoalColor, sortHabits } from '../utils';
+import { parseDuration, getScheduledGoalsForDate, getAllGoalsForMention, getGoalColor, sortHabits, getCardBgStyle } from '../utils';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
@@ -48,7 +48,7 @@ export default function RoutinePane({
 }: HabitPaneProps) {
   const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
   const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<any>(null);
-  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', routineGoalId: '', lifeGoalId: '', color: '' });
+  const [routineGoalForm, setRoutineGoalForm] = useState({ task: '', desc: '', timeValue: '', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortByName, setSortByName] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<any>(null);
@@ -256,7 +256,7 @@ export default function RoutinePane({
 
   const openAddRoutineGoal = () => {
     setEditingRoutineGoalId(null);
-    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', routineGoalId: '', lifeGoalId: '', color: '' });
+    setRoutineGoalForm({ task: '', desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: '' });
     setShowRoutineGoalModal(true);
   };
 
@@ -269,12 +269,16 @@ export default function RoutinePane({
 
   const openEditRoutineGoal = (goal: any) => {
     setEditingRoutineGoalId(goal.id);
+    
+    const rIds = Array.isArray(goal.routineGoalIds) ? goal.routineGoalIds : (goal.routineGoalId ? [goal.routineGoalId] : []);
+    const lIds = Array.isArray(goal.lifeGoalIds) ? goal.lifeGoalIds : (goal.lifeGoalId ? [goal.lifeGoalId] : []);
+    
     setRoutineGoalForm({ 
       task: goal.task || '', 
       desc: goal.desc || '', 
       timeValue: goal.time || '', 
-      routineGoalId: goal.routineGoalId || '',
-      lifeGoalId: goal.lifeGoalId || '',
+      routineGoalIds: rIds,
+      lifeGoalIds: lIds,
       color: goal.color || ''
     });
     setShowRoutineGoalModal(true);
@@ -303,8 +307,8 @@ export default function RoutinePane({
       task: routineGoalForm.task.trim(),
       desc: (routineGoalForm.desc || '').trim(),
       time: timeString,
-      routineGoalId: routineGoalForm.routineGoalId,
-      lifeGoalId: routineGoalForm.lifeGoalId,
+      routineGoalIds: routineGoalForm.routineGoalIds,
+      lifeGoalIds: routineGoalForm.lifeGoalIds,
       color: routineGoalForm.color
     };
 
@@ -314,7 +318,7 @@ export default function RoutinePane({
       
       if (oldGoal && templates && setTemplates) {
         const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
-        const newColor = getGoalColor(goalData, routineGoals, lifeGoals);
+        const newColors = getGoalColor(goalData, routineGoals, lifeGoals);
 
         const updatedTemplates = templates.map(t => ({
           ...t,
@@ -325,7 +329,7 @@ export default function RoutinePane({
                 name: goalData.task, 
                 duration: timeString ? parseDuration(timeString) : b.duration,
                 routineGoalId: String(editingRoutineGoalId),
-                color: newColor
+                color: newColors[0] || '#ffffff'
               };
             }
             return b;
@@ -349,13 +353,13 @@ export default function RoutinePane({
   };
 
   const handleDragStart = (e: any, goal: any) => {
-    const hex = getGoalColor(goal, routineGoals, lifeGoals);
+    const hexes = getGoalColor(goal, routineGoals, lifeGoals);
     
     e.dataTransfer.setData('source', 'sidebar');
     e.dataTransfer.setData('task', goal.task);
     e.dataTransfer.setData('desc', goal.desc || '');
     e.dataTransfer.setData('time', goal.time || '1:15');
-    e.dataTransfer.setData('color', hex);
+    e.dataTransfer.setData('color', hexes[0] || '#ffffff');
     e.dataTransfer.setData('routineGoalId', goal.id);
   };
 
@@ -452,14 +456,18 @@ export default function RoutinePane({
       const routineGoal = routineGoals?.find(sg => sg.id === habitFilterRoutineGoalId);
       if (routineGoal) {
         const txt = routineGoal.text.toLowerCase().trim();
-        displayedRoutineGoals = displayedRoutineGoals.filter(g => 
-          g.routineGoalId === habitFilterRoutineGoalId || 
+        displayedRoutineGoals = displayedRoutineGoals.filter(g => {
+          const rIds = Array.isArray(g.routineGoalIds) ? g.routineGoalIds : (g.routineGoalId ? [g.routineGoalId] : []);
+          return rIds.includes(habitFilterRoutineGoalId) || 
           (txt && g.task.toLowerCase().trim() === txt) || 
-          (txt && g.desc && g.desc.toLowerCase().trim() === txt)
-        );
+          (txt && g.desc && g.desc.toLowerCase().trim() === txt);
+        });
       }
     } else if (habitFilterLifeGoalId) {
-      displayedRoutineGoals = displayedRoutineGoals.filter(g => g.lifeGoalId === habitFilterLifeGoalId);
+      displayedRoutineGoals = displayedRoutineGoals.filter(g => {
+          const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
+          return lIds.includes(habitFilterLifeGoalId);
+      });
     }
     if (sortByName) {
       displayedRoutineGoals.sort((a: any, b: any) => a.task.localeCompare(b.task));
@@ -561,10 +569,10 @@ export default function RoutinePane({
               <>
                 
                 <button 
-                  onClick={openAddRoutineGoal} className="secondary" 
-                  style={{ width: '100%', flexShrink: 0, marginBottom: '16px', display: 'flex', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
+                  onClick={openAddRoutineGoal} className="secondary desktop-only-btn" 
+                  style={{ width: '100%', flexShrink: 0, marginBottom: '16px', justifyContent: 'center', gap: '8px', padding: '12px', borderStyle: 'dashed' }}
                 >
-                  <Plus size={16} /> Add Goal
+                  <Plus size={16} /> Add Habit
                 </button>
 
                   <SearchSortBar
@@ -585,10 +593,9 @@ export default function RoutinePane({
 
             {displayedRoutineGoals.map((goal) => {
           const isAddressed = checkRoutineAddressed(goal);
-          const hex = getGoalColor(goal, routineGoals, lifeGoals);
-          
-          const r = parseInt(hex.slice(1,3), 16) || 255, g = parseInt(hex.slice(3,5), 16) || 255, b = parseInt(hex.slice(5,7), 16) || 255;
-          const hasColor = goal.color;
+          const hexes = getGoalColor(goal, routineGoals, lifeGoals);
+          const hasColor = !!goal.color;
+          const bgStyle = getCardBgStyle(hexes, hasColor);
           
           const baseMins = goal.time ? parseDuration(goal.time) : 0;
           let scheduledMins = 0;
@@ -599,14 +606,6 @@ export default function RoutinePane({
           }
           const count = goalCounts[goal.id] || 0;
           const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
-          
-          const bgStyle = {
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-            border: `1px solid rgba(${r},${g},${b}, ${hasColor ? '0.3' : '0.1'})`,
-            borderLeft: `3px solid ${hex}`,
-            boxShadow: `0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)`,
-            borderRadius: '12px',
-          };
 
           const isCompletedForView = effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
           return (
@@ -624,7 +623,7 @@ export default function RoutinePane({
                   <input 
                     type="checkbox" 
                     className="checkbox-square" 
-                    style={{ flexShrink: 0, '--accent': hex } as React.CSSProperties}
+                    style={{ flexShrink: 0, '--accent': hexes[0] || '#ffffff' } as React.CSSProperties}
                     checked={effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false)} 
                     onChange={() => {
                       if (effectiveDate) {
@@ -640,7 +639,7 @@ export default function RoutinePane({
                         {goal.task}
                       </span>
                       {isAddressed && (
-                        <CheckCircle2 size={12} color={hex} style={{ flexShrink: 0 }} />
+                        <CheckCircle2 size={12} color={hexes[0] || '#ffffff'} style={{ flexShrink: 0 }} />
                       )}
                     </div>
                     
@@ -665,11 +664,11 @@ export default function RoutinePane({
                 </div>
                 
                 {!effectiveDate && (
-                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '4px' }}>
-                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '4px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '6px' }}>
+                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); duplicateGoal(goal); }} style={{ padding: '6px', cursor: 'pointer' }}>
                       <Copy size={14} />
                     </button>
-                    <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '4px' }}>
+                    <button className="icon-btn" onClick={() => openEditRoutineGoal(goal)} style={{ padding: '6px', cursor: 'pointer' }}>
                       <Pencil size={14} />
                     </button>
                   </div>
@@ -784,40 +783,15 @@ export default function RoutinePane({
       </div>
 
       {/* BOTTOM METRICS: Habit Insights */}
-      <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '0 16px', minHeight: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
           <Activity size={14} color="var(--accent)" />
           {(() => {
-            let unallocatedMins = 24 * 60;
+            let allocatedCount = 0;
             if (currentTemplate && currentTemplate.blocks) {
-                const intervals = (currentTemplate.blocks || []).map((b: any) => [b.startTime ?? 0, (b.startTime ?? 0) + (b.duration || 0)]);
-                    intervals.sort((a: number[], b: number[]) => a[0] - b[0]);
-
-                    let allocated = 0;
-                    let currentStart = -1;
-                    let currentEnd = -1;
-
-                    for (const [start, end] of intervals as [number, number][]) {
-                        if (currentEnd < start) {
-                            if (currentStart !== -1) {
-                                allocated += currentEnd - currentStart;
-                            }
-                            currentStart = start;
-                            currentEnd = end;
-                        } else {
-                            currentEnd = Math.max(currentEnd, end);
-                        }
-                    }
-
-                    if (currentStart !== -1) {
-                        allocated += currentEnd - currentStart;
-                    }
-
-                    unallocatedMins -= allocated;
-                }
-            const h = Math.floor(unallocatedMins / 60);
-            const m = unallocatedMins % 60;
-            return `Free Time: ${h}h ${m}m`;
+                allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.task)).length;
+            }
+            return `Allocated Habits : ${allocatedCount} / ${habits.length}`;
           })()}
         </div>
       </div>
@@ -833,119 +807,176 @@ export default function RoutinePane({
               <div style={{ background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px' }}>
                 <ListTodo size={20} color="var(--accent)" /> 
               </div>
-              {editingRoutineGoalId ? `Edit Goal` : `New Goal`}
+              {editingRoutineGoalId ? `Edit Habit` : `New Habit`}
             </div>
             <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
-              Define your objective and connect it to the bigger picture.
+              Define your habit and connect it to the bigger picture.
             </p>
           </div>
         }
       >
-        <form onSubmit={saveRoutineGoal} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <form onSubmit={saveRoutineGoal} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Task Core Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Objective Name</label>
-              <input 
-                type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
-                onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, task: e.target.value })} required
-                style={{ width: '100%', fontSize: '16px', padding: '12px 14px' }}
-              />
-            </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Habit Name</label>
+            <input 
+              type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
+              onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, task: e.target.value })} required
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Details / Notes <span style={{ opacity: 0.5 }}>(optional)</span></label>
+            <textarea 
+              placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
+              onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
+              style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
+            />
           </div>
 
-          {/* Execution details */}
-          <div className="form-row">
-            <div style={{ flex: '0 0 100px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <Clock size={14} color="var(--accent)" /> Duration
-              </label>
+          <div className="form-row" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 0 140px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>Duration</label>
               <input 
                 type="text" placeholder="1:20" value={String(routineGoalForm.timeValue)}
                 onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, timeValue: e.target.value })} 
-                style={{ width: '100%', padding: '12px 14px', fontSize: '16px', textAlign: 'center' }}
+                style={{ width: '100%' }}
               />
             </div>
-            
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <Target size={14} color="#3b82f6" /> Routine Link
-              </label>
-              <Dropdown
-                value={String(routineGoalForm.routineGoalId)}
-                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, routineGoalId: val })}
-                options={[
-                  { value: '', label: 'No Routine Goal Linked' },
-                  ...(routineGoals || []).map(sg => ({ value: sg.id, label: sg.text }))
-                ]}
-              />
-            </div>
-            
-            <div style={{ flex: 1 }}>
-              <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                <Star size={14} color="#eab308" /> Life Link
-              </label>
-              <Dropdown
-                value={String(routineGoalForm.lifeGoalId)}
-                onChange={(val) => setRoutineGoalForm({ ...routineGoalForm, lifeGoalId: val })}
-                options={[
-                  { value: '', label: 'No Life Goal Linked' },
-                  ...(lifeGoals || []).map(lg => ({ value: lg.id, label: lg.text }))
-                ]}
-              />
-            </div>
-          </div>
 
-          {/* Habit Color Picker */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Override Color
-            </label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <div 
-                onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: '' })}
-                style={{ 
-                  width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
-                  border: (!routineGoalForm.color || routineGoalForm.color === '') ? '2px solid white' : '1px solid var(--panel-border)',
-                  background: 'var(--panel-bg)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', color: 'var(--text-secondary)'
-                }}
-                title="Auto (inherit from links)"
-              >
-                Auto
-              </div>
-              {COLORS.map(c => (
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+                Override Color <span style={{ opacity: 0.5 }}>(optional)</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <div 
-                  key={c}
-                  onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: c })}
+                  onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: '' })}
                   style={{ 
-                    width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
-                    backgroundColor: c,
-                    border: routineGoalForm.color === c ? '2px solid white' : '2px solid transparent',
-                    boxShadow: routineGoalForm.color === c ? `0 0 10px ${c}` : 'none'
+                    width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer',
+                    border: (!routineGoalForm.color || routineGoalForm.color === '') ? '2px solid white' : '2px solid transparent',
+                    background: 'var(--panel-bg)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '9px', color: 'var(--text-secondary)',
+                    transition: 'transform 0.1s',
+                    transform: (!routineGoalForm.color || routineGoalForm.color === '') ? 'scale(1.1)' : 'scale(1)'
                   }}
-                />
-              ))}
+                  title="Auto (inherit from links)"
+                >
+                  Auto
+                </div>
+                {COLORS.slice(0, 7).map(c => {
+                  const isSelected = routineGoalForm.color && routineGoalForm.color.toLowerCase() === c.toLowerCase();
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setRoutineGoalForm({ ...routineGoalForm, color: c })}
+                      style={{ 
+                        width: '24px', height: '24px', borderRadius: '50%', padding: 0,
+                        background: c, border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
+                        cursor: 'pointer', transition: 'transform 0.1s',
+                        transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                      }}
+                    />
+                  );
+                })}
+                
+                <div style={{
+                  position: 'relative',
+                  width: '24px', height: '24px', borderRadius: '50%',
+                  background: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? routineGoalForm.color : 'rgba(255, 255, 255, 0.1)',
+                  border: `2px solid ${(routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? '#fff' : 'transparent'}`,
+                  cursor: 'pointer', transition: 'all 0.1s',
+                  transform: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? 'scale(1.1)' : 'scale(1)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? '#fff' : 'var(--text-secondary)'
+                }}>
+                  {!(routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) && <Palette size={12} />}
+                  <input 
+                    type="color"
+                    value={routineGoalForm.color ? routineGoalForm.color.toLowerCase() : '#ffffff'}
+                    onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, color: e.target.value })}
+                    style={{
+                      position: 'absolute', top: '-10px', left: '-10px', width: '44px', height: '44px',
+                      cursor: 'pointer', opacity: 0
+                    }}
+                    title="Custom Color"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Details / Notes */}
-          <div style={{ background: 'rgba(0,0,0,0.1)', padding: '16px', borderRadius: '12px', border: '1px solid var(--panel-border)' }}>
-            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Details / Notes <span style={{ opacity: 0.5, textTransform: 'none' }}>(optional)</span></label>
-            <input 
-              type="text" placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
-              onChange={(e) => setRoutineGoalForm({ ...routineGoalForm, desc: e.target.value })} 
-              style={{ width: '100%', fontSize: '16px', padding: '12px 14px' }}
-            />
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              Link to Daily Routines <span style={{ opacity: 0.5 }}>- Select routines this habit belongs to</span>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {(routineGoals || []).length === 0 && <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>No routine goals available</span>}
+              {(routineGoals || []).map(sg => {
+                const isSelected = (routineGoalForm.routineGoalIds || []).includes(sg.id);
+                const hex = sg.color || '#3b82f6';
+                return (
+                  <div 
+                    key={sg.id}
+                    onClick={() => {
+                      const current = routineGoalForm.routineGoalIds || [];
+                      const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
+                      setRoutineGoalForm({ ...routineGoalForm, routineGoalIds: next });
+                    }}
+                    style={{ 
+                      padding: '6px 12px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: isSelected ? '500' : 'normal',
+                      background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                      border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                      color: isSelected ? hex : 'var(--text-secondary)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {sg.text}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div>
+            <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+              Link to Life Goals <span style={{ opacity: 0.5 }}>- Select life goals this habit supports</span>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {(lifeGoals || []).length === 0 && <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>No life goals available</span>}
+              {(lifeGoals || []).map(lg => {
+                const isSelected = (routineGoalForm.lifeGoalIds || []).includes(lg.id);
+                const hex = lg.color || '#eab308';
+                return (
+                  <div 
+                    key={lg.id}
+                    onClick={() => {
+                      const current = routineGoalForm.lifeGoalIds || [];
+                      const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
+                      setRoutineGoalForm({ ...routineGoalForm, lifeGoalIds: next });
+                    }}
+                    style={{ 
+                      padding: '6px 12px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: isSelected ? '500' : 'normal',
+                      background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                      border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                      color: isSelected ? hex : 'var(--text-secondary)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {lg.text}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0' }}>
             {editingRoutineGoalId && (
-              <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', padding: '12px 0', fontSize: '14px', fontWeight: '500', background: '#ef4444', color: 'white', border: 'none' }}>Delete</button>
+              <button type="button" onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)} style={{ flex: '0 0 20%', background: '#ef4444', color: 'white', border: 'none', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Delete</button>
             )}
-            <button type="submit" style={{ flex: 1, padding: '12px 0', fontSize: '14px', fontWeight: 'bold', color: '#000', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
+            <button type="button" onClick={() => setShowRoutineGoalModal(false)} className="secondary" style={{ flex: editingRoutineGoalId ? '0 0 25%' : '0 0 30%', padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}>Cancel</button>
+            <button type="submit" className="primary" style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold' }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
           </div>
         </form>
       </BaseModal>

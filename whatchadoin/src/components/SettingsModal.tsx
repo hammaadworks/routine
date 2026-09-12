@@ -1,7 +1,8 @@
 import * as React from 'react';
-import {Copy, DatabaseBackup, Import, Settings} from 'lucide-react';
+import {DatabaseBackup, Import, Settings} from 'lucide-react';
 import BaseModal from './BaseModal';
 import AIConfigEditor from './AIConfigEditor';
+import CopyBanner from './CopyBanner';
 
 interface SyncForm {
     token: string;
@@ -36,7 +37,6 @@ export default function SettingsModal({
                                           exportAllData,
                                           fileInputRef
                                       }: SettingsModalProps) {
-    const [copied, setCopied] = React.useState(false);
 
     return (<BaseModal
             isOpen={showSettingsModal}
@@ -122,51 +122,10 @@ export default function SettingsModal({
                         }
                     }}
                 >
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--panel-border)'
-                    }}>
-            <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-              Setup another device? Copy this config.
-            </span>
-                        <button
-                            onClick={async () => {
-                                const text = `PAT=${syncForm.token || ''}\nGID=${syncForm.id || ''}\nFILE=${syncForm.filename || ''}`;
-                                try {
-                                    await navigator.clipboard.writeText(text);
-                                    setCopied(true);
-                                    setTimeout(() => setCopied(false), 2000);
-                                } catch (err) {
-                                    console.error('Clipboard write failed:', err);
-                                    alert('Failed to copy to clipboard. Your browser might be blocking it.');
-                                }
-                            }}
-                            style={{
-                                padding: '6px 12px',
-                                background: copied ? 'var(--success)' : 'var(--accent)',
-                                color: copied ? '#fff' : '#000',
-                                border: 'none',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                flexShrink: 0,
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                transform: copied ? 'scale(0.95)' : 'scale(1)'
-                            }}
-                            title="Copy Config"
-                        >
-                            {copied ? <span style={{fontSize: '12px'}}>Copied!</span> : <><Copy size={14}/> <span
-                                style={{fontSize: '12px'}}>Copy</span></>}
-                        </button>
-                    </div>
+                    <CopyBanner 
+                        title="Setup another device? Copy this config."
+                        textToCopy={`PAT=${syncForm.token || ''}\nGID=${syncForm.id || ''}\nFILE=${syncForm.filename || ''}`}
+                    />
                     <div>
                         <label style={{
                             fontSize: '12px',

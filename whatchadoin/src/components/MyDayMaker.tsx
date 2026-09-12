@@ -82,8 +82,7 @@ export default function MyDayMaker({
             <div
                 className="myday-maker-sticky"
                 style={{
-                    position: 'sticky',
-                    top: '46px',
+                    position: 'relative',
                     zIndex: 50,
                     background: 'rgba(20, 20, 20, 0.8)',
                     backdropFilter: 'blur(8px)',

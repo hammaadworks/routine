@@ -1,4 +1,6 @@
+
 import {Plus, Trash2} from 'lucide-react';
+import CopyBanner from './CopyBanner';
 
 export interface AIProfile {
     id: string;
@@ -52,8 +54,27 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
         });
     };
 
-    return (<div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+    return (<div 
+        style={{display: 'flex', flexDirection: 'column', gap: '16px'}}
+        onPaste={(e) => {
+            try {
+                const text = e.clipboardData.getData('text');
+                const parsed = JSON.parse(text);
+                if (parsed && parsed.profiles && Array.isArray(parsed.profiles)) {
+                    e.preventDefault();
+                    setConfig(parsed);
+                }
+            } catch (err) {
+                // Ignore non-JSON pastes or invalid configs
+            }
+        }}
+    >
+        <CopyBanner 
+            title="Setup another device? Copy AI config. (Paste here to restore)"
+            textToCopy={JSON.stringify(config)}
+        />
+
+        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                 <div style={{flex: 1}}>
                     <label style={{
                         display: 'block',
