@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
-import {Bot, Command, Settings} from 'lucide-react';
+import {Bot, Command, Settings, Wallet} from 'lucide-react';
 import RoutineSelector from './RoutineSelector';
+import { useCurrency } from '../hooks/useCurrency';
 
 interface Routine {
     id?: string;
@@ -16,6 +17,8 @@ interface HeaderProps {
     setShowRoutineModal: Dispatch<SetStateAction<boolean>>;
     setAiDockState: Dispatch<SetStateAction<'closed' | 'right'>>;
     setShowSettingsModal: Dispatch<SetStateAction<boolean>>;
+    walletTotal?: number;
+    onWalletClick?: () => void;
 }
 
 export default function Header({
@@ -23,8 +26,11 @@ export default function Header({
                                    setRoutineModalView,
                                    setShowRoutineModal,
                                    setAiDockState,
-                                   setShowSettingsModal
+                                   setShowSettingsModal,
+                                   walletTotal,
+                                   onWalletClick
                                }: HeaderProps) {
+    const { formatCurrency } = useCurrency();
 
     return (
         <div className="header" style={{
@@ -79,8 +85,27 @@ export default function Header({
 
             {/* Right: Global Actions */}
             <div className="header-controls"
-                 style={{display: 'flex', justifyContent: 'flex-end', gap: '12px', flex: 1, minWidth: 0}}>
+                 style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0}}>
                 
+                {walletTotal !== undefined && walletTotal > 0 && (
+                    <button className="icon-btn" onClick={onWalletClick} style={{
+                        padding: '6px 12px',
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '1px solid rgba(234, 179, 8, 0.3)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: '#EAB308',
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        flexShrink: 0
+                    }} title="Wallet Goal">
+                        <Wallet size={16} /> 
+                        <span className="mobile-hidden">Wallet Goal:</span>
+                        {formatCurrency(walletTotal)}
+                    </button>
+                )}
 
                 <button className="icon-btn" style={{
                     padding: '8px',

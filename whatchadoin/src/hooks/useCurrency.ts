@@ -12,6 +12,18 @@ export const CURRENCIES = [
     { code: 'CNY', label: 'Chinese Yuan (¥)' },
     { code: 'SGD', label: 'Singapore Dollar (S$)' },
     { code: 'NZD', label: 'New Zealand Dollar (NZ$)' },
+    { code: 'HKD', label: 'Hong Kong Dollar (HK$)' },
+    { code: 'KRW', label: 'South Korean Won (₩)' },
+    { code: 'BRL', label: 'Brazilian Real (R$)' },
+    { code: 'ZAR', label: 'South African Rand (R)' },
+    { code: 'MXN', label: 'Mexican Peso (Mex$)' },
+    { code: 'RUB', label: 'Russian Ruble (₽)' },
+    { code: 'TRY', label: 'Turkish Lira (₺)' },
+    { code: 'SEK', label: 'Swedish Krona (kr)' },
+    { code: 'NOK', label: 'Norwegian Krone (kr)' },
+    { code: 'DKK', label: 'Danish Krone (kr)' },
+    { code: 'THB', label: 'Thai Baht (฿)' },
+    { code: 'IDR', label: 'Indonesian Rupiah (Rp)' },
 ];
 
 export function useCurrency() {

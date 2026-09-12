@@ -62,22 +62,22 @@ export default function GoalForm({
             <div>
                 <label style={{
                     fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                }}>Goal Description <span style={{opacity: 0.5}}>(optional)</span></label>
-                <textarea
-                    placeholder="Add more details about this goal..." value={formData.desc}
-                    onChange={(e) => setFormData({...formData, desc: e.target.value})}
-                    style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
-                />
-            </div>
-            <div>
-                <label style={{
-                    fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                }}>Estimated Cost ($) {requireCost ? '' : <span style={{opacity: 0.5}}>(optional)</span>}</label>
+                }}>Estimated Cost {requireCost ? '' : <span style={{opacity: 0.5}}>(optional)</span>}</label>
                 <input
                     type="number" step="0.01" placeholder="e.g. 50" value={formData.cost || ''}
                     onChange={(e) => setFormData({...formData, cost: e.target.value})}
                     style={{width: '100%'}}
                     required={requireCost}
+                />
+            </div>
+            <div>
+                <label style={{
+                    fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
+                }}>Goal Description <span style={{opacity: 0.5}}>(optional)</span></label>
+                <textarea
+                    placeholder="Add more details about this goal..." value={formData.desc}
+                    onChange={(e) => setFormData({...formData, desc: e.target.value})}
+                    style={{width: '100%', minHeight: '120px', resize: 'vertical'}}
                 />
             </div>
             <div>
@@ -98,8 +98,8 @@ export default function GoalForm({
                                 setFormData({...formData, color: c});
                             }}
                             style={{
-                                width: '24px',
-                                height: '24px',
+                                width: '30px',
+                                height: '30px',
                                 borderRadius: '50%',
                                 padding: 0,
                                 background: c,

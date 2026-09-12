@@ -8,6 +8,7 @@ export interface SearchSortBarProps {
     isFilterActive?: boolean;
     onFilterClear?: () => void;
     placeholder?: string;
+    children?: React.ReactNode;
 }
 
 export default function SearchSortBar({
@@ -17,7 +18,8 @@ export default function SearchSortBar({
     setSortByName,
     isFilterActive,
     onFilterClear,
-    placeholder = "Find by name..."
+    placeholder = "Find by name...",
+    children
 }: SearchSortBarProps) {
     const isActive = isFilterActive || sortByName;
 
@@ -77,5 +79,6 @@ export default function SearchSortBar({
                         <path d="M10 18h4"></path>
                     </svg>)}
             </button>
+            {children}
         </div>);
 }

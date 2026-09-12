@@ -1,5 +1,5 @@
 
-import {CalendarDays, Target, Zap, Plus, BookOpen} from 'lucide-react';
+import {CalendarDays, Target, Zap, Plus, BookOpen, ListTodo} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
@@ -58,16 +58,14 @@ export default function MobileTabBar({activeTab, onTabChange, showFab, isRoutine
                 })}
             </div>
             
-            <button
-                className="habits-drawer-btn"
-                onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(!isRoutineDrawerOpen)}
-                style={{
-                    background: isRoutineDrawerOpen ? 'var(--accent)' : 'var(--panel-bg)',
-                    borderColor: isRoutineDrawerOpen ? 'transparent' : 'var(--panel-border)'
-                }}
-            >
-                <Zap size={20} color={isRoutineDrawerOpen ? '#000' : 'var(--accent)'} />
-            </button>
+            {!isRoutineDrawerOpen && (
+                <button
+                    className="habits-drawer-btn"
+                    onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(true)}
+                >
+                    <ListTodo size={24} color="#000" />
+                </button>
+            )}
 
             {showFab && (
                 <button

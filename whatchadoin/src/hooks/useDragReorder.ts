@@ -4,8 +4,10 @@ export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
     const dragItem = useRef<number | null>(null);
     const dragOverItem = useRef<number | null>(null);
 
-    const handleDragStart = (_e: React.DragEvent, position: number) => {
+    const handleDragStart = (e: React.DragEvent, position: number) => {
         dragItem.current = position;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', position.toString());
     };
 
     const handleDragEnter = (_e: React.DragEvent, position: number) => {

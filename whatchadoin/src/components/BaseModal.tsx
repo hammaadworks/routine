@@ -10,9 +10,10 @@ interface BaseModalProps {
     title?: React.ReactNode;
     children?: React.ReactNode;
     maxWidth?: string;
+    drawerMode?: 'mobile' | 'tablet' | 'none';
 }
 
-export default function BaseModal({isOpen = true, onClose, title, children, maxWidth = '400px'}: BaseModalProps) {
+export default function BaseModal({isOpen = true, onClose, title, children, maxWidth = '400px', drawerMode = 'mobile'}: BaseModalProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const [dragY, setDragY] = useState(0);
     const touchStartRef = useRef<number | null>(null);
@@ -47,8 +48,14 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
         };
     }, [isOpen, onClose]);
 
+    const isDrawerActive = () => {
+        if (drawerMode === 'none') return false;
+        if (drawerMode === 'tablet') return window.innerWidth < 1400;
+        return window.innerWidth <= 768;
+    };
+
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (window.innerWidth <= 768) {
+        if (isDrawerActive()) {
             touchStartRef.current = e.touches[0].clientY;
             if (contentRef.current) {
                 contentRef.current.style.transition = 'none';
@@ -87,7 +94,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
     if (!isOpen) return null;
 
     return createPortal(<div
-        className="modal-overlay"
+        className={`modal-overlay drawer-mode-${drawerMode}`}
         onClick={(e) => {
             if (e.target === e.currentTarget && onClose) onClose();
         }}
@@ -95,7 +102,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
     >
         <div
             ref={contentRef}
-            className="modal-content"
+            className={`modal-content drawer-mode-${drawerMode}`}
             onClick={e => e.stopPropagation()}
             style={{
                 maxWidth, touchAction: 'auto', transform: dragY > 0 ? `translateY(${dragY}px)` : undefined
@@ -107,7 +114,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
                 style={{
-                    display: window.innerWidth <= 768 ? 'flex' : 'none',
+                    display: isDrawerActive() ? 'flex' : 'none',
                     justifyContent: 'center',
                     paddingTop: '12px',
                     paddingBottom: '12px',
@@ -118,7 +125,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
                 <div style={{width: '40px', height: '5px', background: 'var(--panel-border)', borderRadius: '10px'}}/>
             </div>
             {(title || onClose) && (
-                <div className="modal-header" style={{paddingTop: window.innerWidth <= 768 ? '4px' : '16px'}}>
+                <div className="modal-header" style={{paddingTop: isDrawerActive() ? '4px' : '16px'}}>
                     <h2 className="modal-title">{title}</h2>
                     {onClose && (
                         <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Close modal">

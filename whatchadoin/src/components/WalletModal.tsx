@@ -12,7 +12,7 @@ export default function WalletModal({ isOpen, onClose, allGoals }: WalletModalPr
     if (!isOpen) return null;
 
     return (
-        <BaseModal title="Aspirational Wallet" onClose={onClose}>
+        <BaseModal title="Wallet Goal" onClose={onClose}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>All Cost Goals</h3>

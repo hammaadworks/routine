@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {useEffect, useRef, useState} from 'react';
-import {Plus} from 'lucide-react';
+import {Plus, Wallet} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
@@ -17,12 +17,16 @@ export interface MoneyGoal {
     color?: string;
     completed?: boolean;
     desc?: string;
+    type?: string;
 }
 
 interface MoneyPaneProps {
     moneyGoals: MoneyGoal[];
     setMoneyGoals: React.Dispatch<React.SetStateAction<MoneyGoal[]>>;
     headerTabs?: React.ReactNode;
+    allWalletGoals?: any[];
+    setLifeGoals?: React.Dispatch<React.SetStateAction<any[]>>;
+    setRoutineGoals?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 interface ConfirmConfig {
@@ -36,14 +40,20 @@ interface ConfirmConfig {
 export default function MoneyPane({
                                      moneyGoals,
                                      setMoneyGoals,
-                                     headerTabs
+                                     headerTabs,
+                                     allWalletGoals,
+                                     setLifeGoals,
+                                     setRoutineGoals
                                  }: MoneyPaneProps) {
     const [showMoneyGoalModal, setShowMoneyGoalModal] = useState(false);
     const [editingMoneyGoalId, setEditingMoneyGoalId] = useState<string | null>(null);
+    const [editingGoalType, setEditingGoalType] = useState<string>('money');
     const [moneyGoalForm, setMoneyGoalForm] = useState({text: '', color: '', cost: '', desc: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerMoneyGoalId, setDrawerMoneyGoalId] = useState<string | null>(null);
+    const [isWalletView, setIsWalletView] = useState(false);
+
 
     const dragItem = useRef<any>(null);
     const dragOverItem = useRef<any>(null);
@@ -57,6 +67,7 @@ export default function MoneyPane({
     };
 
     const handleDragEnd = () => {
+        if (isWalletView) return; // Disable drag and drop in wallet view
         if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current >= 0 && dragOverItem.current >= 0) {
             const newList = [...moneyGoals];
             const draggedItemContent = newList[dragItem.current];
@@ -73,8 +84,13 @@ export default function MoneyPane({
 
     useEffect(() => {
         const handleFab = () => openAddMoneyGoal();
+        const handleOpenWalletView = () => setIsWalletView(true);
         window.addEventListener('fab:add-money', handleFab);
-        return () => window.removeEventListener('fab:add-money', handleFab);
+        window.addEventListener('open-wallet-view', handleOpenWalletView);
+        return () => {
+            window.removeEventListener('fab:add-money', handleFab);
+            window.removeEventListener('open-wallet-view', handleOpenWalletView);
+        }
     }, []);
 
     const openAddMoneyGoal = () => {
@@ -85,6 +101,7 @@ export default function MoneyPane({
     };
 
     const openEditMoneyGoal = (goal: MoneyGoal) => {
+        if (goal.type && goal.type !== 'money') return; // Cannot edit life/routine goals from here
         setEditingMoneyGoalId(goal.id);
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
@@ -118,8 +135,14 @@ export default function MoneyPane({
         setShowMoneyGoalModal(false);
     };
 
-    const toggleMoney = (id: string) => {
-        setMoneyGoals(moneyGoals.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+    const toggleGoal = (id: string, type?: string) => {
+        if (type === 'life' && setLifeGoals) {
+            setLifeGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+        } else if (type === 'routine' && setRoutineGoals) {
+            setRoutineGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+        } else {
+            setMoneyGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+        }
     };
 
     const deleteMoneyGoal = (id: string, text: string) => {
@@ -138,9 +161,14 @@ export default function MoneyPane({
     const [searchQuery, setSearchQuery] = useState('');
     const [sortByName, setSortByName] = useState(false);
 
-    let displayedGoals = moneyGoals.filter(g => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
+    let baseGoals = isWalletView && allWalletGoals ? allWalletGoals : moneyGoals;
+    let displayedGoals = baseGoals.filter(g => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
+    
     if (sortByName) {
         displayedGoals.sort((a, b) => a.text.localeCompare(b.text));
+    } else if (isWalletView) {
+        // allWalletGoals is already sorted by cost in App.tsx, but filter might have messed up the order or we just rely on base order
+        displayedGoals.sort((a, b) => (b.cost || 0) - (a.cost || 0));
     }
 
 
@@ -176,50 +204,126 @@ export default function MoneyPane({
                     <Plus size={16}/> Add Money Goal
                 </button>
 
-                {moneyGoals.length > 0 && (
-                    <SearchSortBar
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        sortByName={sortByName}
-                        setSortByName={setSortByName}
-                        placeholder="Search money goals..."
-                    />
-                )}
+                <SearchSortBar
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    sortByName={sortByName}
+                    setSortByName={setSortByName}
+                    placeholder="Search money goals..."
+                    isFilterActive={searchQuery.length > 0 || sortByName}
+                    onFilterClear={() => {
+                        setSearchQuery('');
+                        setSortByName(false);
+                    }}
+                >
+                    <button
+                        className={`secondary ${isWalletView ? 'sort-active-glow' : ''}`}
+                        onClick={() => setIsWalletView(!isWalletView)}
+                        style={{
+                            padding: '8px 12px',
+                            background: isWalletView ? 'var(--accent)' : '',
+                            boxShadow: isWalletView ? '0 0 12px var(--accent)' : 'none',
+                            color: isWalletView ? '#000' : 'currentColor',
+                            borderColor: isWalletView ? 'var(--accent)' : ''
+                        }}
+                        title="Toggle Wallet Goal View"
+                    >
+                        <Wallet size={16} />
+                    </button>
+                </SearchSortBar>
 
-                <div className="custom-scrollbar"
-                     style={{flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                    {displayedGoals.map((g, index) => (
-                        <div
-                            key={g.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, index)}
-                            onDragEnter={(e) => handleDragEnter(e, index)}
-                            onDragEnd={handleDragEnd}
-                            onDragOver={(e) => e.preventDefault()}
-                        >
-                            <GoalCard
-                                goal={g}
-                                index={index}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    overflowY: 'auto',
+                    flex: 1,
+                    padding: '8px 12px 8px 4px',
+                    marginTop: '-8px'
+                }}>
+                    {(() => {
+                        const activeGoals = displayedGoals.filter((g: MoneyGoal) => !g.completed);
+                        const completedGoals = displayedGoals.filter((g: MoneyGoal) => g.completed);
+
+                        const renderGoal = (goal: MoneyGoal) => {
+                            const absoluteIndex = moneyGoals.findIndex((g: MoneyGoal) => g.id === goal.id);
+                            return (<GoalCard
+                                key={goal.id}
+                                goal={goal}
+                                index={absoluteIndex}
                                 linkedCount={0}
-                                draggable={!searchQuery && !sortByName}
+                                draggable={!searchQuery && !sortByName && !isWalletView}
                                 onDragStart={handleDragStart}
                                 onDragEnter={handleDragEnter}
                                 onDragEnd={handleDragEnd}
-                                onToggle={() => toggleMoney(g.id)}
-                                onEdit={() => openEditMoneyGoal(g)}
+                                onToggle={() => toggleGoal(goal.id, goal.type)}
+                                onEdit={() => openEditMoneyGoal(goal)}
                                 onBadgeClick={(id) => setDrawerMoneyGoalId(drawerMoneyGoalId === id ? null : id)}
-                            />
-                        </div>
-                    ))}
-                    {displayedGoals.length === 0 && (
+                            />);
+                        };
+
+                        return (<>
+                            {activeGoals.map(renderGoal)}
+                            {completedGoals.length > 0 && (
+                                <div style={{display: 'flex', alignItems: 'center', margin: '16px 0 8px 0'}}>
+                                    <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                    <span style={{
+                                        padding: '0 12px',
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        fontWeight: 500
+                                    }}>
+                                        Completed
+                                    </span>
+                                    <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                </div>)}
+                            {completedGoals.map(renderGoal)}
+                        </>);
+                    })()}
+                    {baseGoals.length === 0 && (
                         <div style={{
-                            textAlign: 'center',
-                            padding: '32px 0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '40px 20px',
                             color: 'var(--text-secondary)',
-                            fontSize: '0.9rem'
+                            textAlign: 'center',
+                            border: '1px dashed var(--panel-border)',
+                            borderRadius: '12px',
+                            marginTop: '8px'
                         }}>
-                            {searchQuery ? 'No money goals match your search.' : 'No money goals yet.'}
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#fff'}}>{isWalletView ? 'No goals with cost yet' : 'No money goals yet'}</div>
+                            <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>{isWalletView ? 'Add costs to your goals to see them here.' : 'Add goals you want to save money for.'}</div>
                         </div>
+                    )}
+                </div>
+            </div>
+
+            <div style={{
+                flex: 'none',
+                background: 'rgba(0,0,0,0.3)',
+                borderTop: '1px solid var(--panel-border)',
+                padding: '0 16px',
+                minHeight: '44px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: '8px'
+            }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
+                }}>
+                    {isWalletView ? (
+                        <>
+                            <Wallet size={14} color="var(--accent)"/>
+                            Wallet Goals : {baseGoals.filter(g => g.completed).length} / {baseGoals.length}
+                        </>
+                    ) : (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            Money Goals : {moneyGoals.filter(g => g.completed).length} / {moneyGoals.length}
+                        </>
                     )}
                 </div>
             </div>

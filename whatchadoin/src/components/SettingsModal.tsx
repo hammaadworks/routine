@@ -44,6 +44,7 @@ export default function SettingsModal({
     return (<BaseModal
             isOpen={showSettingsModal}
             onClose={() => setShowSettingsModal(false)}
+            drawerMode="tablet"
             title={<span style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
           <Settings size={18} color="var(--accent)"/> Settings
         </span>}
@@ -86,22 +87,7 @@ export default function SettingsModal({
                 >
                     AI Config
                 </button>
-                <button
-                    onClick={() => setSettingsTab('data')}
-                    style={{
-                        flex: 1,
-                        padding: '10px',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: settingsTab === 'data' ? '2px solid var(--accent)' : '2px solid transparent',
-                        color: settingsTab === 'data' ? '#fff' : 'var(--text-secondary)',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        whiteSpace: 'nowrap'
-                    }}
-                >
-                    Data Backup
-                </button>
+
                 <button
                     onClick={() => setSettingsTab('general')}
                     style={{
@@ -300,81 +286,6 @@ export default function SettingsModal({
                     </div>
                 </div>)}
 
-            {settingsTab === 'data' && (<div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                    <p style={{fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5}}>
-                        Export all your routines, plans, and goals, or restore from a previous full backup. This is
-                        useful for migrating to a new device without using Cloud Sync.
-                    </p>
-
-                    <button
-                        onClick={exportAllData}
-                        className="primary"
-                        style={{
-                            padding: '12px',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            gap: '8px',
-                            borderRadius: '8px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        <DatabaseBackup size={16}/> Export All Data
-                    </button>
-
-                    <div style={{
-                         padding: '16px',
-                        background: 'rgba(239, 68, 68, 0.05)',
-                        border: '1px solid rgba(239, 68, 68, 0.2)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px'
-                    }}>
-                        <h4 style={{
-                            margin: 0,
-                            color: 'var(--danger)',
-                            fontSize: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}>
-                            <Import size={16}/> Import Full Backup
-                        </h4>
-                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', margin: 0}}>
-                            Warning: Importing a full backup will <b>permanently replace</b> all your current routines
-                            and plans.
-                        </p>
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="secondary"
-                            style={{
-                                padding: '10px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: '8px',
-                                borderRadius: '6px',
-                                color: 'var(--danger)',
-                                border: '1px solid rgba(239, 68, 68, 0.4)'
-                            }}
-                        >
-                            Select Backup File...
-                        </button>
-                    </div>
-
-                    <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
-                        <button
-                            type="button"
-                            onClick={() => setShowSettingsModal(false)}
-                            className="secondary"
-                            style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold'}}
-                        >
-                            Done
-                        </button>
-                    </div>
-                </div>)}
-
             {settingsTab === 'general' && (
                 <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
                     <div>
@@ -393,6 +304,71 @@ export default function SettingsModal({
                                 onChange={(val) => setCurrency(val as string)}
                                 placeholder="Select currency..."
                             />
+                        </div>
+                    </div>
+
+                    <div style={{borderTop: '1px solid var(--panel-border)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                        <h3 style={{marginTop: 0, marginBottom: '0px', color: 'var(--text-primary)'}}>Data Backup & Restore</h3>
+                        <p style={{fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5}}>
+                            Export all your routines, plans, and goals, or restore from a previous full backup. This is
+                            useful for migrating to a new device without using Cloud Sync.
+                        </p>
+
+                        <button
+                            onClick={exportAllData}
+                            className="primary"
+                            style={{
+                                padding: '12px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '8px',
+                                borderRadius: '8px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            <DatabaseBackup size={16}/> Export All Data
+                        </button>
+
+                        <div style={{
+                             padding: '16px',
+                            background: 'rgba(239, 68, 68, 0.05)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                        }}>
+                            <h4 style={{
+                                margin: 0,
+                                color: 'var(--danger)',
+                                fontSize: '14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                                <Import size={16}/> Import Full Backup
+                            </h4>
+                            <p style={{fontSize: '12px', color: 'var(--text-secondary)', margin: 0}}>
+                                Warning: Importing a full backup will <b>permanently replace</b> all your current routines
+                                and plans.
+                            </p>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="secondary"
+                                style={{
+                                    padding: '10px',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    borderRadius: '6px',
+                                    color: 'var(--danger)',
+                                    border: '1px solid rgba(239, 68, 68, 0.4)'
+                                }}
+                            >
+                                Select Backup File...
+                            </button>
                         </div>
                     </div>
 

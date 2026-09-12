@@ -47,6 +47,7 @@ export default function GoalCard({
             onDragEnter={(e) => onDragEnter(e, index)}
             onDragEnd={onDragEnd}
             onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => e.preventDefault()}
             style={{
                 cursor: draggable ? 'grab' : 'default',
                 position: 'relative',

@@ -127,7 +127,7 @@ body {
         height: auto !important;
         min-height: 100vh;
         overflow: visible !important;
-        padding: 16px;
+        padding: 16px 16px calc(100px + env(safe-area-inset-bottom, 20px)) 16px;
         flex-direction: column !important;
     }
 
@@ -220,11 +220,17 @@ body {
     gap: 16px;
 }
 
+@media (max-width: 1200px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+}
+
 
 @media (max-width: 768px) {
     .layout {
         gap: 8px;
-        padding: 8px 8px calc(80px + env(safe-area-inset-bottom, 20px)) 8px;
+        padding: 8px 8px calc(100px + env(safe-area-inset-bottom, 20px)) 8px;
     }
 
     .header {
@@ -809,9 +815,11 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 24px;
         padding: 8px 16px;
-        position: relative;
-        width: 100%;
-        z-index: 10;
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+        left: 16px;
+        right: 16px;
+        z-index: 100;
     }
 
     .mobile-tab-bar .tab-btn {
@@ -880,9 +888,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 @media (max-width: 1400px) {
     .tab-btn-fab {
         position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 20px) + 40px);
+        bottom: calc(env(safe-area-inset-bottom, 16px) + 160px);
         right: 32px;
-        z-index: 99;
+        z-index: 101;
         width: 56px;
         height: 56px;
         border-radius: 28px;
@@ -913,20 +921,20 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
     .habits-drawer-btn {
         position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 20px) + 110px);
+        bottom: calc(env(safe-area-inset-bottom, 16px) + 90px);
         right: 32px;
-        z-index: 99;
-        width: 48px;
-        height: 48px;
-        border-radius: 24px;
-        background: var(--panel-bg);
-        border: 1px solid var(--panel-border);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        z-index: 101;
+        width: 56px;
+        height: 56px;
+        border-radius: 28px;
+        background: #ffffff;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
         display: flex;
         justify-content: center;
         align-items: center;
         cursor: pointer;
-        transition: transform 0.2s, background 0.2s;
+        transition: transform 0.2s;
     }
     
     .habits-drawer-btn:active {
@@ -934,15 +942,26 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 }
 
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
 /* Bottom Sheets for Mobile Modals */
 @media (max-width: 768px) {
-    .modal-overlay {
+    .modal-overlay.drawer-mode-mobile,
+    .modal-overlay.drawer-mode-tablet {
         align-items: flex-end !important; /* Push to bottom */
         padding: 0 !important;
         overscroll-behavior: none !important;
     }
 
-    .modal-content {
+    .modal-content.drawer-mode-mobile,
+    .modal-content.drawer-mode-tablet {
         width: 100% !important;
         max-width: 100% !important;
         border-radius: 24px 24px 0 0 !important; /* Round top corners only */
@@ -958,20 +977,44 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         overscroll-behavior: none !important;
     }
 
-    .modal-body {
+    .modal-content.drawer-mode-mobile .modal-body,
+    .modal-content.drawer-mode-tablet .modal-body {
         flex: 1 !important;
         max-height: none !important;
         height: auto !important;
         overflow-y: auto !important;
     }
+}
 
-    @keyframes slideUp {
-        from {
-            transform: translateY(100%);
-        }
-        to {
-            transform: translateY(0);
-        }
+/* Bottom Sheets for Tablet Modals */
+@media (min-width: 769px) and (max-width: 1399px) {
+    .modal-overlay.drawer-mode-tablet {
+        align-items: flex-end !important;
+        padding: 0 !important;
+        overscroll-behavior: none !important;
+    }
+
+    .modal-content.drawer-mode-tablet {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 24px 24px 0 0 !important;
+        border-bottom: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        margin: 0 !important;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        height: 80vh !important;
+        min-height: 80vh !important;
+        max-height: 80vh !important;
+        padding-bottom: env(safe-area-inset-bottom, 20px) !important;
+        overscroll-behavior: none !important;
+    }
+
+    .modal-content.drawer-mode-tablet .modal-body {
+        flex: 1 !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow-y: auto !important;
     }
 }
 
@@ -1052,8 +1095,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         position: fixed !important;
         top: 0;
         bottom: 0;
-        right: -100% !important;
-        width: 100% !important;
+        right: -50% !important;
+        width: 50% !important;
+        max-width: 50vw !important;
         z-index: 100 !important;
         transition: right 0.3s ease !important;
         background: var(--bg-primary) !important;
@@ -1063,6 +1107,14 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     
     .pane.right-pane.drawer-open {
         right: 0 !important;
+    }
+}
+
+@media (max-width: 599px) {
+    .pane.right-pane {
+        right: -100% !important;
+        width: 100% !important;
+        max-width: none !important;
     }
 }
 

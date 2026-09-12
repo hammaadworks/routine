@@ -12,7 +12,8 @@ import {
     Palette,
     Pencil,
     Plus,
-    Target
+    Target,
+    X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
@@ -54,6 +55,7 @@ interface HabitPaneProps {
     calendarSubTab?: string;
     setCalendarSubTab?: (tab: string) => void;
     isRoutineDrawerOpen?: boolean;
+    setIsRoutineDrawerOpen?: (open: boolean) => void;
 }
 
 export default function RoutinePane({
@@ -78,7 +80,8 @@ export default function RoutinePane({
                                         updateActiveRoutine,
                                         calendarSubTab,
                                         setCalendarSubTab,
-                                        isRoutineDrawerOpen
+                                        isRoutineDrawerOpen,
+                                        setIsRoutineDrawerOpen
                                     }: HabitPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<any>(null);
@@ -573,6 +576,26 @@ export default function RoutinePane({
             overflow: 'hidden',
             minHeight: 0
         }}>
+            {isRoutineDrawerOpen && (
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                }}>
+                    <h2 style={{margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <ListTodo size={20} color="var(--accent)" />
+                        Habits
+                    </h2>
+                    <button
+                        className="icon-btn"
+                        onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(false)}
+                        style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
+            )}
             {isCalendarTab && effectiveDate && (<button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
