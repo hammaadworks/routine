@@ -159,14 +159,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
     const milestones = activeRoutine.milestones || {};
 
     return (<div style={{display: 'flex', height: '100%', flex: 1, overflow: 'hidden'}}>
-            <div style={{
-                padding: '24px',
-                overflowY: 'auto',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '32px'
-            }}>
+            <div className="calendar-scroll-container">
                 {months.map((m) => {
                     let doneDays = 0;
                     let totalDays = 0;

@@ -23,6 +23,9 @@ interface GoalCardProps {
     onToggle: (id: string) => void;
     onEdit: (goal: Goal) => void;
     onBadgeClick: (id: string) => void;
+    isDragOver?: boolean;
+    isDragging?: boolean;
+    dropDirection?: 'up' | 'down';
 }
 
 export default function GoalCard({
@@ -35,13 +38,16 @@ export default function GoalCard({
                                      onDragEnd,
                                      onToggle,
                                      onEdit,
-                                     onBadgeClick
+                                     onBadgeClick,
+                                     isDragOver,
+                                     isDragging,
+                                     dropDirection
                                  }: GoalCardProps) {
     const hex = goal.color || '#eab308';
     const bgStyle = getCardBgStyle(hex);
 
     return (<div
-            className={`item-card ${goal.completed ? 'scratched' : ''}`}
+            className={`item-card ${goal.completed ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`}
             draggable={draggable}
             onDragStart={(e) => onDragStart(e, index)}
             onDragEnter={(e) => onDragEnter(e, index)}
@@ -54,7 +60,13 @@ export default function GoalCard({
                 minHeight: '48px',
                 padding: '10px 12px',
                 display: 'flex',
-                alignItems: 'center', ...bgStyle
+                alignItems: 'center',
+                opacity: isDragging ? 0.4 : 1,
+                borderTop: isDragOver && dropDirection === 'up' ? `2px solid ${hex}` : 'none',
+                borderBottom: isDragOver && dropDirection === 'down' ? `2px solid ${hex}` : 'none',
+                transform: isDragOver && dropDirection === 'up' ? 'translateY(2px)' : (isDragOver && dropDirection === 'down' ? 'translateY(-2px)' : 'none'),
+                transition: 'border 0.2s, transform 0.2s, opacity 0.2s',
+                ...bgStyle
             }}
         >
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>

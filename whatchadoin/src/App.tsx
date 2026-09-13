@@ -6,9 +6,10 @@ import RoutinePane from './components/RoutinePane';
 import MyDay from './components/MyDay';
 import PlansPane from './components/PlansPane';
 import CalendarPane from './components/CalendarPane';
+import TasksPane from './components/TasksPane';
 import ConfirmModal from './components/ConfirmModal';
 import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, ChevronDown, Clock, Star, Wallet} from 'lucide-react';
+import {BookOpen, Calendar, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
 import MoneyPane from './components/MoneyPane';
@@ -20,11 +21,9 @@ import WalletModal from './components/WalletModal';
 import RoutineModal from './components/RoutineModal';
 import SettingsModal from './components/SettingsModal';
 import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
-import { useCurrency } from './hooks/useCurrency';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
-    const { formatCurrency } = useCurrency();
 
     const [lifeGoals, setLifeGoals] = useState<any[]>(() => {
         return JSON.parse(localStorage.getItem('whatchadoin_lifeGoals') || '[]');
@@ -37,7 +36,7 @@ export default function App() {
     const [activeRoutineId, setActiveRoutineId] = useState<string>(loadActiveRoutineId);
 
     const [activeCenterTab, setActiveCenterTab] = useState<string>('timeline');
-    const [mobileTab, setMobileTab] = useState<string>('timeline'); // 'strategy' | 'timeline' | 'habits'
+    const [mobileTab, setMobileTab] = useState<string>('myday'); // 'strategy' | 'timeline' | 'habits' | 'myday'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
     const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
@@ -52,6 +51,27 @@ export default function App() {
     const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
     const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
     const [aiDockState, setAiDockState] = useState<string>('closed'); // 'closed', 'right', 'bottom', 'popped_out'
+
+    useEffect(() => {
+        if (isRoutineDrawerOpen) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, [isRoutineDrawerOpen]);
+
+    useEffect(() => {
+        const closeDrawer = () => setIsRoutineDrawerOpen(false);
+        window.addEventListener('close-routine-drawer', closeDrawer);
+        return () => window.removeEventListener('close-routine-drawer', closeDrawer);
+    }, []);
+
 
     const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
     const [settingsTab, setSettingsTab] = useState<string>('sync'); // 'sync' | 'ai'
@@ -178,10 +198,7 @@ export default function App() {
                         });
                     } else {
                         channel.postMessage({
-                            type: 'TOOL_RESULT',
-                            callId,
-                            status: 'error',
-                            error: `Unknown tool: ${tool}`
+                            type: 'TOOL_RESULT', callId, status: 'error', error: `Unknown tool: ${tool}`
                         });
                         return;
                     }
@@ -352,20 +369,28 @@ export default function App() {
             }, '-=800');
     }, []);
 
-    const allWalletGoals = [
-        ...(lifeGoals || []).map((g: any) => ({ ...g, category: 'Life' })),
-        ...(routineGoals || []).map((g: any) => ({ ...g, category: 'Routine' })),
-        ...(moneyGoals || []).map((g: any) => ({ ...g, category: 'Money' }))
-    ].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
+    const allWalletGoals = [...(lifeGoals || []).map((g: any) => ({
+        ...g,
+        category: 'Life',
+        type: 'life'
+    })), ...(routineGoals || []).map((g: any) => ({
+        ...g,
+        category: 'Routine',
+        type: 'routine'
+    })), ...(moneyGoals || []).map((g: any) => ({
+        ...g,
+        category: 'Money',
+        type: 'money'
+    }))].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
 
-    const walletTotal = allWalletGoals.reduce((sum, g) => sum + (g.cost || 0), 0);
+    const walletTotal = allWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
 
     return (<div className={`layout dock-${aiDockState}`}>
 
-        <WalletModal 
-            isOpen={isWalletModalOpen} 
-            onClose={() => setIsWalletModalOpen(false)} 
-            allGoals={allWalletGoals} 
+        <WalletModal
+            isOpen={isWalletModalOpen}
+            onClose={() => setIsWalletModalOpen(false)}
+            allGoals={allWalletGoals}
         />
 
         {/* Main App Container */}
@@ -377,32 +402,19 @@ export default function App() {
                 setShowRoutineModal={setShowRoutineModal}
                 setAiDockState={setAiDockState as any}
                 setShowSettingsModal={setShowSettingsModal}
+                walletTotal={walletTotal}
+                onWalletClick={() => {
+                    setActiveLeftTab('money');
+                    setMobileTab('goals');
+                    setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('open-wallet-view'));
+                    }, 10);
+                }}
             />
-            
-            {walletTotal !== undefined && walletTotal > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 8px' }}>
-                    <button className="icon-btn" onClick={() => setIsWalletModalOpen(true)} style={{
-                        padding: '8px 16px',
-                        background: 'rgba(234, 179, 8, 0.1)',
-                        border: '1px solid rgba(234, 179, 8, 0.3)',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#EAB308',
-                        fontWeight: 'bold',
-                        fontSize: '15px'
-                    }} title="Aspirational Wallet">
-                        <Wallet size={18} /> 
-                        <span>Aspirational Wallet:</span>
-                        {formatCurrency(walletTotal)}
-                    </button>
-                </div>
-            )}
 
             {/* Mobile Tab Bar */}
-            <MobileTabBar 
-                activeTab={mobileTab} 
+            <MobileTabBar
+                activeTab={mobileTab}
                 onTabChange={(tab) => {
                     setMobileTab(tab);
                     if (tab === 'goals') {
@@ -416,13 +428,22 @@ export default function App() {
                     if (tab === 'calendar') {
                         setActiveCenterTab('calendar');
                         setIsRoutineDrawerOpen(false);
+                        const d = new Date();
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        setSelectedTargetDate(`${y}-${m}-${day}`);
                     }
                     if (tab === 'plans') {
                         setActiveCenterTab('plans');
                         setIsRoutineDrawerOpen(false);
                     }
-                }} 
-                showFab={!(mobileTab === 'myday' && activeCenterTab !== 'timeline') && !['calendar', 'plans'].includes(mobileTab)} 
+                    if (tab === 'tasks') {
+                        setActiveCenterTab('tasks');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                }}
+                showFab={!['calendar', 'tasks'].includes(mobileTab)}
                 isRoutineDrawerOpen={isRoutineDrawerOpen}
                 setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                 activeLeftTab={activeLeftTab}
@@ -456,8 +477,7 @@ export default function App() {
                         display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
                     }}>
                         {(() => {
-                            const headerTabs = (
-                                <div className="tabs" style={{
+                            const headerTabs = (<div className="tabs" style={{
                                     marginBottom: '16px',
                                     borderBottom: '1px solid var(--panel-border)',
                                     background: 'transparent'
@@ -480,15 +500,15 @@ export default function App() {
                                     >
                                         Routine
                                     </button>
-                                </div>
-                            );
+                                </div>);
 
                             if (activeLeftTab === 'routine') {
                                 return <RoutineGoalPane
                                     routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
                                     habits={habits} setHabits={setHabits as any}
                                     templates={templates} setTemplates={setTemplates as any}
-                                    activeTemplateId={activeTemplateId} onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
+                                    activeTemplateId={activeTemplateId}
+                                    onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
                                     lifeGoals={lifeGoals}
                                     headerTabs={headerTabs}
                                 />;
@@ -497,6 +517,9 @@ export default function App() {
                                 return <MoneyPane
                                     moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
                                     headerTabs={headerTabs}
+                                    allWalletGoals={allWalletGoals}
+                                    setLifeGoals={setLifeGoals}
+                                    setRoutineGoals={setRoutineGoals as any}
                                 />;
                             }
                             return <LifePane
@@ -523,22 +546,29 @@ export default function App() {
                         zIndex: 90
                     }}>
                         <button
+                            className={`tab ${activeCenterTab === 'tasks' ? 'active' : ''}`}
+                            onClick={() => { setActiveCenterTab('tasks'); setMobileTab('tasks'); }}
+                            style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
+                        >
+                            <ListTodo size={16}/> Tasks
+                        </button>
+                        <button
                             className={`tab ${activeCenterTab === 'timeline' ? 'active' : ''}`}
-                            onClick={() => setActiveCenterTab('timeline')}
+                            onClick={() => { setActiveCenterTab('timeline'); setMobileTab('myday'); }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <Clock size={16}/> My Day
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'calendar' ? 'active' : ''}`}
-                            onClick={() => setActiveCenterTab('calendar')}
+                            onClick={() => { setActiveCenterTab('calendar'); setMobileTab('calendar'); }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <Calendar size={16}/> Calendar
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'plans' ? 'active' : ''}`}
-                            onClick={() => setActiveCenterTab('plans')}
+                            onClick={() => { setActiveCenterTab('plans'); setMobileTab('plans'); }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <BookOpen size={16}/> Plans
@@ -567,7 +597,7 @@ export default function App() {
                             habits={habits}
                             lifeGoals={lifeGoals}
                             activeRoutineId={activeRoutineId}
-                        />) : (<CalendarPane
+                        />) : activeCenterTab === 'tasks' ? (<TasksPane/>) : (<CalendarPane
                             activeRoutine={activeRoutine}
                             setCalendarSubTab={setCalendarSubTab}
                             routineGoals={routineGoals}
@@ -580,7 +610,12 @@ export default function App() {
                         />)}
                     </div>
                 </div>
-
+                {isRoutineDrawerOpen && (
+                    <div 
+                        className="mobile-drawer-overlay" 
+                        onClick={() => setIsRoutineDrawerOpen(false)}
+                    />
+                )}
                 <RoutinePane
                     habits={habits} setHabits={setHabits as any}
                     templates={templates} setTemplates={setTemplates as any}
@@ -601,8 +636,10 @@ export default function App() {
                     setCalendarSubTab={setCalendarSubTab}
                     updateActiveRoutine={updateActiveRoutine}
                     isRoutineDrawerOpen={isRoutineDrawerOpen}
+                    setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                 />
             </main>
+
 
             {/* Routine Modal */}
             <RoutineModal

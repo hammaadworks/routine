@@ -295,10 +295,18 @@ export default function RoutinePane({
     };
 
     useEffect(() => {
-        const handleFab = () => openAddRoutineGoal();
+        const handleFab = () => {
+            if (calendarSubTab === 'milestones') {
+                setEditingMilestoneIdx(null);
+                setMilestoneForm({date: '', tag: '', title: '', desc: ''});
+                setShowMilestoneModal(true);
+            } else {
+                openAddRoutineGoal();
+            }
+        };
         window.addEventListener('fab:add-habits', handleFab);
         return () => window.removeEventListener('fab:add-habits', handleFab);
-    }, []);
+    }, [calendarSubTab]);
 
 
     const openEditRoutineGoal = (goal: any) => {
@@ -673,138 +681,189 @@ export default function RoutinePane({
                     paddingRight: '4px'
                 }}>
 
-                    {displayedRoutineGoals.map((goal) => {
-                        const isAddressed = checkRoutineAddressed(goal);
-                        const hexes = getGoalColor(goal, routineGoals, lifeGoals);
-                        const hasColor = !!goal.color;
-                        const bgStyle = getCardBgStyle(hexes, hasColor);
+                    {(() => {
+                        const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
+                        const activeGoals = displayedRoutineGoals.filter(g => !getIsCompleted(g));
+                        const completedGoals = displayedRoutineGoals.filter(g => getIsCompleted(g));
+                        
+                        const renderGoal = (goal: any) => {
+                            const isAddressed = checkRoutineAddressed(goal);
+                            const hexes = getGoalColor(goal, routineGoals, lifeGoals);
+                            const hasColor = !!goal.color;
+                            const bgStyle = getCardBgStyle(hexes, hasColor);
 
-                        const baseMins = goal.time ? parseDuration(goal.time) : 0;
-                        let scheduledMins = 0;
-                        if (currentTemplate) {
-                            currentTemplate.blocks.forEach((b: any) => {
-                                if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
-                            });
-                        }
-                        const count = goalCounts[goal.id] || 0;
-                        const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
+                            const baseMins = goal.time ? parseDuration(goal.time) : 0;
+                            let scheduledMins = 0;
+                            if (currentTemplate) {
+                                currentTemplate.blocks.forEach((b: any) => {
+                                    if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
+                                });
+                            }
+                            const count = goalCounts[goal.id] || 0;
+                            const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
 
-                        const isCompletedForView = effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
-                        return (<div
-                            key={goal.id}
-                            className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
-                            draggable={true}
-                            onDragStart={(e) => handleDragStart(e, goal)}
-                            style={{
-                                display: 'flex', alignItems: 'center', height: '52px', padding: '0 12px', ...bgStyle
-                            }}
-                            title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
-                        >
-                            <div style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'
-                            }}>
+                            const isCompletedForView = getIsCompleted(goal);
+                            return (<div
+                                key={goal.id}
+                                className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
+                                draggable={!effectiveDate}
+                                onDragStart={!effectiveDate ? (e) => handleDragStart(e, goal) : undefined}
+                                onClick={() => {
+                                    if (!effectiveDate) {
+                                        window.dispatchEvent(new CustomEvent('myday-add-habit-mobile', { detail: goal }));
+                                    }
+                                }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', height: '52px', padding: '0 12px', ...bgStyle
+                                }}
+                                title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
+                            >
                                 <div style={{
-                                    display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'
                                 }}>
-                                    <GripVertical size={16} color="var(--text-secondary)"
-                                                  style={{cursor: 'grab', flexShrink: 0, opacity: 0.5}}/>
-                                    {effectiveDate ? (<input
-                                        type="checkbox"
-                                        className="checkbox-square"
-                                        style={{
-                                            flexShrink: 0, '--accent': hexes[0] || '#ffffff'
-                                        } as React.CSSProperties}
-                                        checked={((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false)}
-                                        onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
-                                    />) : (<div style={{width: '16px', flexShrink: 0}}/>)}
                                     <div style={{
-                                        flex: 1,
-                                        minWidth: 0,
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '2px',
-                                        justifyContent: 'center'
+                                        display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                                     }}>
-                                        <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                      <span className="item-title" style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          color: '#fff',
-                          fontSize: '13px',
-                          fontWeight: '600'
-                      }}>
-                        {goal.task}
-                      </span>
-                                            {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
-                                                                           style={{flexShrink: 0}}/>)}
-                                        </div>
-
+                                        {!effectiveDate && (
+                                            <GripVertical size={16} color="var(--text-secondary)" style={{cursor: 'grab', flexShrink: 0, opacity: 0.5}}/>
+                                        )}
+                                        {effectiveDate ? (<input
+                                            type="checkbox"
+                                            className="checkbox-square"
+                                            style={{
+                                                flexShrink: 0, '--accent': hexes[0] || '#ffffff'
+                                            } as React.CSSProperties}
+                                            checked={isCompletedForView}
+                                            onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
+                                        />) : (<div style={{width: '16px', flexShrink: 0}}/>)}
                                         <div style={{
+                                            flex: 1,
+                                            minWidth: 0,
                                             display: 'flex',
-                                            flexWrap: 'nowrap',
-                                            gap: '6px',
-                                            alignItems: 'center',
-                                            overflow: 'hidden'
+                                            flexDirection: 'column',
+                                            gap: '2px',
+                                            justifyContent: 'center'
                                         }}>
-                                            {goal.time && (<div style={{
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                          <span className="item-title" style={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              color: '#fff',
+                              fontSize: '13px',
+                              fontWeight: '600'
+                          }}>
+                            {goal.task}
+                          </span>
+                                                {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
+                                                                               style={{flexShrink: 0}}/>)}
+                                            </div>
+
+                                            <div style={{
                                                 display: 'flex',
+                                                flexWrap: 'nowrap',
+                                                gap: '6px',
                                                 alignItems: 'center',
-                                                gap: '3px',
-                                                color: 'var(--text-secondary)',
-                                                fontSize: '11px',
-                                                whiteSpace: 'nowrap'
+                                                overflow: 'hidden'
                                             }}>
-                                                <Clock size={10}/> {goal.time}
-                                            </div>)}
-                                            {(goalCounts[goal.id] || 0) > 1 && (<div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                padding: '2px 6px',
-                                                background: 'rgba(255,255,255,0.1)',
-                                                borderRadius: '4px',
-                                                color: 'var(--text-secondary)',
-                                                fontSize: '10px',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                x{goalCounts[goal.id] || 0}
-                                            </div>)}
-                                            {timeDiff !== 0 && (<div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                padding: '2px 6px',
-                                                background: timeDiff > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                borderRadius: '4px',
-                                                color: timeDiff > 0 ? '#4ade80' : '#f87171',
-                                                fontSize: '10px',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {timeDiff > 0 ? '+' : ''}{timeDiff}m
-                                            </div>)}
+                                                {goal.time && (<div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px',
+                                                    color: 'var(--text-secondary)',
+                                                    fontSize: '11px',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    <Clock size={10}/> {goal.time}
+                                                </div>)}
+                                                {(goalCounts[goal.id] || 0) > 1 && (<div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '2px 6px',
+                                                    background: 'rgba(255,255,255,0.1)',
+                                                    borderRadius: '4px',
+                                                    color: 'var(--text-secondary)',
+                                                    fontSize: '10px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    x{goalCounts[goal.id] || 0}
+                                                </div>)}
+                                                {timeDiff !== 0 && (<div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '2px 6px',
+                                                    background: timeDiff > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                    borderRadius: '4px',
+                                                    color: timeDiff > 0 ? '#4ade80' : '#f87171',
+                                                    fontSize: '10px',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {timeDiff > 0 ? '+' : ''}{timeDiff}m
+                                                </div>)}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div style={{
-                                    display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '6px', alignItems: 'center'
-                                }}>
-                                    {!effectiveDate && (<>
-                                        <button className="icon-btn" onClick={(e) => {
-                                            e.stopPropagation();
-                                            duplicateGoal(goal);
-                                        }} style={{padding: '6px', cursor: 'pointer'}}>
-                                            <Copy size={14}/>
-                                        </button>
-                                        <button className="icon-btn"
-                                                onClick={() => openEditRoutineGoal(goal)}
-                                                style={{padding: '6px', cursor: 'pointer'}}>
-                                            <Pencil size={14}/>
-                                        </button>
-                                    </>)}
+                                    <div style={{
+                                        display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '6px', alignItems: 'center'
+                                    }}>
+                                        {!effectiveDate && (<>
+                                            <button className="icon-btn" onClick={(e) => {
+                                                e.stopPropagation();
+                                                duplicateGoal(goal);
+                                            }} style={{padding: '6px', cursor: 'pointer'}}>
+                                                <Copy size={14}/>
+                                            </button>
+                                            <button className="icon-btn"
+                                                    onClick={() => openEditRoutineGoal(goal)}
+                                                    style={{padding: '6px', cursor: 'pointer'}}>
+                                                <Pencil size={14}/>
+                                            </button>
+                                        </>)}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>);
-                    })}
+                            </div>);
+                        };
+
+                        return (
+                            <>
+                                {activeGoals.map(renderGoal)}
+                                {completedGoals.length > 0 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 8px 0', justifyContent: 'space-between' }}>
+                                      <span style={{ 
+                                        padding: '0 12px 0 0', 
+                                        fontSize: '12px', 
+                                        color: 'var(--text-secondary)',
+                                        fontWeight: 500
+                                      }}>
+                                        Completed
+                                      </span>
+                                      <div style={{ flex: 1, height: '1px', background: 'var(--panel-border)' }}></div>
+                                      {!effectiveDate && (
+                                        <button 
+                                           onClick={() => {
+                                              setConfirmConfig({
+                                                title: 'Delete All Completed',
+                                                message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
+                                                isDanger: true,
+                                                onConfirm: () => {
+                                                  setHabits(habits.filter((g: any) => !g.completed));
+                                                  setConfirmConfig(null);
+                                                },
+                                                onCancel: () => setConfirmConfig(null)
+                                              });
+                                           }}
+                                           className="icon-btn"
+                                           style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', fontWeight: 500, opacity: 0.8 }}>
+                                           Delete all
+                                        </button>
+                                      )}
+                                  </div>
+                                )}
+                                {completedGoals.map(renderGoal)}
+                            </>
+                        );
+                    })()}
                     {(habits || []).length === 0 && (<div style={{
                         display: 'flex',
                         flexDirection: 'column',

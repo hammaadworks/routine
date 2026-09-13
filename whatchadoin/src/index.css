@@ -115,7 +115,7 @@ body {
 
 .main-content {
     display: grid;
-    grid-template-columns: 20fr 60fr 20fr;
+    grid-template-columns: 25fr 50fr 25fr;
     gap: 16px;
     flex: 1;
     min-height: 0;
@@ -150,21 +150,7 @@ body {
         overflow-y: visible;
     }
 
-    .main-content > :nth-child(3) {
-        order: 1;
-    }
 
-    /* right pane (RoutinePane) */
-    .main-content > :nth-child(2) {
-        order: 2;
-    }
-
-    /* mid pane (timeline-area) */
-    .main-content > :nth-child(1) {
-        order: 3;
-    }
-
-    /* left pane (RoutineGoalPane) */
     .panel, .timeline-area {
         min-height: 400px;
         padding: 16px;
@@ -230,7 +216,7 @@ body {
 @media (max-width: 768px) {
     .layout {
         gap: 8px;
-        padding: 8px 8px calc(100px + env(safe-area-inset-bottom, 20px)) 8px;
+        padding: 8px 8px env(safe-area-inset-bottom, 20px) 8px;
     }
 
     .header {
@@ -282,6 +268,69 @@ body {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-scroll-container {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.tasks-pane-container {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+}
+
+.tasks-grid {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+}
+
+@media (min-width: 769px) {
+    .tasks-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 993px) {
+    .tasks-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1401px) {
+    .tasks-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (min-width: 2048px) {
+    .tasks-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1400px) {
+    .calendar-scroll-container {
+        padding: 4px;
+        gap: 16px;
+    }
+    
+    .tasks-pane-container {
+        padding: 4px;
+        overflow: visible;
+        flex: none;
+        height: auto;
+    }
 }
 
 .panel {
@@ -815,11 +864,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 24px;
         padding: 8px 16px;
-        position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
-        left: 16px;
-        right: 16px;
-        z-index: 100;
+        flex: none;
+        margin: 0 8px; /* Optional: adds a little margin if layout gap isn't enough */
     }
 
     .mobile-tab-bar .tab-btn {
@@ -851,7 +897,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     .main-content.mobile-tab-goals .timeline-area,
     .main-content.mobile-tab-myday .left-pane,
     .main-content.mobile-tab-calendar .left-pane,
-    .main-content.mobile-tab-plans .left-pane {
+    .main-content.mobile-tab-plans .left-pane,
+    .main-content.mobile-tab-tasks .left-pane {
         display: none !important;
     }
 
@@ -878,7 +925,36 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 /* Responsive FAB */
 .tab-btn-fab {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+    right: 24px;
+    z-index: 101;
+    width: 48px;
+    height: 48px;
+    border-radius: 24px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.tab-btn-fab:active {
+    transform: scale(0.95);
+}
+
+.tab-btn-fab .fab-label {
     display: none;
+}
+
+.tab-btn-fab .fab-icon {
+    width: 24px;
+    height: 24px;
+    stroke: #000;
 }
 
 .habits-drawer-btn {
@@ -886,50 +962,17 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 }
 
 @media (max-width: 1400px) {
-    .tab-btn-fab {
-        position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 16px) + 160px);
-        right: 32px;
-        z-index: 101;
-        width: 56px;
-        height: 56px;
-        border-radius: 28px;
-        background: var(--accent);
-        color: #000;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        transition: transform 0.2s, background 0.2s;
-    }
-
-    .tab-btn-fab:active {
-        transform: scale(0.95);
-    }
-
-    .tab-btn-fab .fab-label {
-        display: none;
-    }
-
-    .tab-btn-fab .fab-icon {
-        width: 24px;
-        height: 24px;
-        stroke: #000;
-    }
-
     .habits-drawer-btn {
         position: fixed;
-        bottom: calc(env(safe-area-inset-bottom, 16px) + 90px);
-        right: 32px;
+        bottom: calc(env(safe-area-inset-bottom, 16px) + 80px);
+        right: 24px;
         z-index: 101;
-        width: 56px;
-        height: 56px;
-        border-radius: 28px;
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
         background: #ffffff;
         border: none;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1062,7 +1105,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .main-app-wrapper {
-        padding-bottom: calc(100px + env(safe-area-inset-bottom, 20px)) !important;
+        padding-bottom: env(safe-area-inset-bottom, 20px) !important;
     }
 }
 
@@ -1090,19 +1133,31 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     /* Hide native Center Tabs on mobile */
     .timeline-area .tabs { display: none !important; }
 
-    /* Right pane as a slide-over drawer */
+    /* Right pane as a slide-over drawer on mobile */
     .pane.right-pane {
         position: fixed !important;
         top: 0;
         bottom: 0;
-        right: -50% !important;
-        width: 50% !important;
-        max-width: 50vw !important;
+        right: -85% !important;
+        width: 85% !important;
+        max-width: 400px !important;
         z-index: 100 !important;
         transition: right 0.3s ease !important;
-        background: var(--bg-primary) !important;
+        background: var(--bg) !important;
         border-left: 1px solid var(--panel-border);
-        box-shadow: -4px 0 16px rgba(0,0,0,0.5);
+        box-shadow: -4px 0 16px rgba(0,0,0,0.5) !important;
+        flex: none !important;
+        height: 100dvh !important;
+        overflow-y: auto !important;
+        overscroll-behavior-y: contain !important;
+    }
+    
+    .mobile-drawer-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0,0,0,0.5) !important;
+        z-index: 99 !important;
+        touch-action: none !important;
     }
     
     .pane.right-pane.drawer-open {
@@ -1110,13 +1165,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 }
 
-@media (max-width: 599px) {
-    .pane.right-pane {
-        right: -100% !important;
-        width: 100% !important;
-        max-width: none !important;
-    }
-}
 
 @media (max-width: 1399px) {
     .mobile-only-flex {

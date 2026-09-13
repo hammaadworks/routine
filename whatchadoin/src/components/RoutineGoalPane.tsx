@@ -93,7 +93,7 @@ export default function RoutineGoalPane({
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
 
-    const {handleDragStart, handleDragEnter, handleDragEnd} = useDragReorder(routineGoals, setRoutineGoals as any);
+    const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(routineGoals, setRoutineGoals as any);
 
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
@@ -268,6 +268,12 @@ export default function RoutineGoalPane({
 
                         const renderGoal = (goal: any) => {
                             const absoluteIndex = routineGoals.findIndex((g: any) => g.id === goal.id);
+                            const isDragging = dragItemIndex === absoluteIndex;
+                            const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
+                            let dropDirection: 'up' | 'down' | undefined = undefined;
+                            if (isDragOver && dragItemIndex !== null) {
+                                dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
+                            }
                             return (<GoalCard
                                 key={goal.id}
                                 goal={goal}
@@ -286,24 +292,43 @@ export default function RoutineGoalPane({
                                         setDrawerRoutineGoalId(id);
                                     }
                                 }}
+                                isDragging={isDragging}
+                                isDragOver={isDragOver}
+                                dropDirection={dropDirection}
                             />);
                         };
 
                         return (<>
                             {activeGoals.map(renderGoal)}
                             {completedGoals.length > 0 && (
-                                <div style={{display: 'flex', alignItems: 'center', margin: '16px 0 8px 0'}}>
-                                    <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
-                                    <span style={{
-                                        padding: '0 12px',
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        fontWeight: 500
-                                    }}>
-                                            Completed
-                                        </span>
-                                    <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
-                                </div>)}
+                                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 8px 0', justifyContent: 'space-between' }}>
+                                  <span style={{ 
+                                    padding: '0 12px 0 0', 
+                                    fontSize: '12px', 
+                                    color: 'var(--text-secondary)',
+                                    fontWeight: 500
+                                  }}>
+                                    Completed
+                                  </span>
+                                  <div style={{ flex: 1, height: '1px', background: 'var(--panel-border)' }}></div>
+                                  <button 
+                                     onClick={() => {
+                                        setConfirmConfig({
+                                          title: 'Delete All Completed',
+                                          message: 'Are you sure you want to delete all completed routine goals? This cannot be undone.',
+                                          isDanger: true,
+                                          onConfirm: () => {
+                                            setRoutineGoals(routineGoals.filter((g: any) => !g.completed));
+                                            setConfirmConfig(null);
+                                          },
+                                          onCancel: () => setConfirmConfig(null)
+                                        });
+                                     }}
+                                     className="icon-btn"
+                                     style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', fontWeight: 500, opacity: 0.8 }}>
+                                     Delete all
+                                  </button>
+                              </div>)}
                             {completedGoals.map(renderGoal)}
                         </>);
                     })()}

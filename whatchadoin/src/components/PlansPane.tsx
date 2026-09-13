@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
-import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, SquarePen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search, ChevronLeft } from 'lucide-react';
+import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search, ChevronLeft } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import { getAllGoalsForMention } from '../utils';
 
@@ -57,10 +57,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
   const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0]?.id || null : null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [quickTasks, setQuickTasks] = useState<any[]>(() => {
-    return JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
-  });
-  const [newQuickTask, setNewQuickTask] = useState('');
+
 
   const [showMentionMenu, setShowMentionMenu] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -96,8 +93,15 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
   }, [folders, activeRoutineId]);
 
   useEffect(() => {
-    localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(quickTasks));
-  }, [quickTasks]);
+    const handleFabAddPlan = () => {
+      // By default create a routine note, unless they are currently looking at a life folder
+      createNote(null, false);
+    };
+    window.addEventListener('fab:add-plan', handleFabAddPlan);
+    return () => window.removeEventListener('fab:add-plan', handleFabAddPlan);
+  }, [folders, notes]); // createNote uses these states, wait we should just use a ref or not pass dependencies if we can, but createNote needs current state. Actually createNote doesn't rely on current state for anything other than folders to check isLife, and setNotes which uses a spread, but wait, setNotes in React will use closure values if not using functional update. We should just call createNote.
+
+
 
   const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -149,7 +153,10 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
   };
 
   const createNote = (folderId: string | null = null, isLife = false) => {
-    if (folderId) isLife = folders.find(f => f.id === folderId)?.isLife || false;
+    if (folderId) {
+      const folder = folders.find(f => f.id === folderId);
+      if (folder) isLife = folder.isLife;
+    }
     const newNote: Note = {
       id: Date.now().toString(),
       title: 'Untitled Note',
@@ -158,8 +165,11 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       createdAt: new Date().toISOString(),
       isLife
     };
-    setNotes([...notes, newNote]);
+    setNotes(prev => [...prev, newNote]);
     setActiveNoteId(newNote.id);
+    if (isMobile) {
+      setIsDocBarCollapsed(true);
+    }
   };
 
   const updateActiveNote = (updates: Partial<Note>) => {
@@ -470,19 +480,30 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       {!isDocBarCollapsed && (
         <div className="plans-sidebar" style={{ borderRight: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>Life Notes</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button className="icon-btn" onClick={() => createFolder(null, true)} style={{ padding: '4px' }} title="New Life Folder">
-                  <FolderPlus size={14} />
-                </button>
-                <button className="icon-btn" onClick={() => createNote(null, true)} style={{ padding: '4px' }} title="New Life Note">
-                  <SquarePen size={14} />
-                </button>
-                <button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)} style={{ padding: '4px', display: 'flex', color: 'var(--text-secondary)' }} title="Close sidebar">
-                  <PanelLeftClose size={16} />
-                </button>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <button 
+                onClick={() => createNote(null, false)}
+                style={{ 
+                  flex: 1, 
+                  background: 'var(--accent)', 
+                  color: '#000', 
+                  border: 'none', 
+                  padding: '8px 12px', 
+                  borderRadius: '6px', 
+                  fontWeight: 'bold', 
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <FilePlus size={16} /> New Plan
+              </button>
+              <button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)} style={{ padding: '8px', display: 'flex', color: 'var(--text-secondary)' }} title="Close sidebar">
+                <PanelLeftClose size={18} />
+              </button>
             </div>
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -505,6 +526,20 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
             </div>
           </div>
           <div className="plans-sidebar-content" style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            {(!searchQuery) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 12px', marginBottom: '8px', marginTop: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Life Notes</h3>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button className="icon-btn" onClick={() => createFolder(null, true)} style={{ padding: '4px' }} title="New Life Folder">
+                    <FolderPlus size={12} />
+                  </button>
+                  <button className="icon-btn" onClick={() => createNote(null, true)} style={{ padding: '4px' }} title="New Life Note">
+                    <FilePlus size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+            
             {renderTree(null, 0, true)}
             
             {(!searchQuery) && (
@@ -544,63 +579,6 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       {(!isMobile || activeNote) && (
       <div className="plans-editor-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         
-        {/* Quick Tasks Widget */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', background: 'var(--panel-bg)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)' }}>Quick Tasks</h3>
-            <input 
-              type="text"
-              placeholder="+ Add Quick Task..."
-              value={newQuickTask}
-              onChange={(e) => setNewQuickTask(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newQuickTask.trim()) {
-                  setQuickTasks([{ id: Date.now().toString(), text: newQuickTask.trim(), completed: false }, ...quickTasks]);
-                  setNewQuickTask('');
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid var(--panel-border)',
-                borderRadius: '6px',
-                color: 'var(--text-primary)',
-                outline: 'none'
-              }}
-            />
-            {quickTasks.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                {quickTasks.map(task => (
-                  <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input 
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => {
-                        setQuickTasks(quickTasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
-                      }}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <span style={{ 
-                      color: task.completed ? 'var(--text-secondary)' : 'var(--text-primary)', 
-                      textDecoration: task.completed ? 'line-through' : 'none',
-                      fontSize: '14px'
-                    }}>
-                      {task.text}
-                    </span>
-                    <button 
-                      onClick={() => setQuickTasks(quickTasks.filter(t => t.id !== task.id))}
-                      style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '2px', marginLeft: 'auto', opacity: 0.7 }}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         {activeNote ? (
           <>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', gap: '16px' }}>

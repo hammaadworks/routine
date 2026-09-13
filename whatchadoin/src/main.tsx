@@ -4,6 +4,15 @@ import './index.css'
 import App from './App'
 import AIAgentApp from './components/AIAgentApp'
 import { initSync } from './sync'
+import { polyfill } from "mobile-drag-drop";
+import { scrollBehaviourDragImageTranslateOverride } from "mobile-drag-drop/scroll-behaviour";
+import "mobile-drag-drop/default.css";
+
+polyfill({
+    dragImageTranslateOverride: scrollBehaviourDragImageTranslateOverride
+});
+
+window.addEventListener('touchmove', function() {}, {passive: false});
 
 initSync(() => {
   window.location.reload();

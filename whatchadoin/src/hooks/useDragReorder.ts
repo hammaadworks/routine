@@ -1,37 +1,37 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 
 export function useDragReorder<T>(items: T[], setItems: (items: T[]) => void) {
-    const dragItem = useRef<number | null>(null);
-    const dragOverItem = useRef<number | null>(null);
+    const [dragItemIndex, setDragItemIndex] = useState<number | null>(null);
+    const [dragOverItemIndex, setDragOverItemIndex] = useState<number | null>(null);
 
     const handleDragStart = (e: React.DragEvent, position: number) => {
-        dragItem.current = position;
+        setDragItemIndex(position);
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', position.toString());
     };
 
     const handleDragEnter = (_e: React.DragEvent, position: number) => {
-        dragOverItem.current = position;
+        setDragOverItemIndex(position);
     };
 
     const handleDragEnd = () => {
         if (
-            dragItem.current !== null && 
-            dragOverItem.current !== null &&
-            dragItem.current >= 0 &&
-            dragOverItem.current >= 0
+            dragItemIndex !== null && 
+            dragOverItemIndex !== null &&
+            dragItemIndex >= 0 &&
+            dragOverItemIndex >= 0
         ) {
             const newList = [...items];
-            const draggedItemContent = newList[dragItem.current];
+            const draggedItemContent = newList[dragItemIndex];
             if (draggedItemContent) {
-                newList.splice(dragItem.current, 1);
-                newList.splice(dragOverItem.current, 0, draggedItemContent);
+                newList.splice(dragItemIndex, 1);
+                newList.splice(dragOverItemIndex, 0, draggedItemContent);
                 setItems(newList);
             }
         }
-        dragItem.current = null;
-        dragOverItem.current = null;
+        setDragItemIndex(null);
+        setDragOverItemIndex(null);
     };
 
-    return { handleDragStart, handleDragEnter, handleDragEnd };
+    return { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex };
 }

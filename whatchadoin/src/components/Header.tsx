@@ -87,7 +87,7 @@ export default function Header({
             <div className="header-controls"
                  style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0}}>
                 
-                {walletTotal !== undefined && walletTotal > 0 && (
+                {walletTotal !== undefined && (
                     <button className="icon-btn" onClick={onWalletClick} style={{
                         padding: '6px 12px',
                         background: 'rgba(234, 179, 8, 0.1)',

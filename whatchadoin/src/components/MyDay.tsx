@@ -154,7 +154,9 @@ export interface MyDayProps {
     setActiveTemplateId: React.Dispatch<React.SetStateAction<string>>;
     dayMapping: Record<string, string>;
     setDayMapping: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    updateActiveRoutine?: (updates: Partial<{templates: Template[], activeTemplateId: string, dayMapping: Record<string, string>}>) => void;
+    updateActiveRoutine?: (updates: Partial<{
+        templates: Template[], activeTemplateId: string, dayMapping: Record<string, string>
+    }>) => void;
     habits: Habit[];
 }
 
@@ -239,15 +241,66 @@ export default function MyDay({
         e.preventDefault();
         if (!newTemplateName.trim()) return;
         const cleanName = newTemplateName.trim();
-        createAndSetTemplate({ id: Date.now().toString(), name: cleanName, blocks: [] });
+        createAndSetTemplate({id: Date.now().toString(), name: cleanName, blocks: []});
         setNewTemplateName('');
     };
 
     useEffect(() => {
         const handleFab = () => setShowMobileGoals(prev => !prev);
+
+        const handleMobileAdd = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const habit = customEvent.detail;
+            if (!activeTemplateId) return;
+
+            const duration = parseDuration(habit.time || '30m');
+            let startMinutes = 0;
+
+            setTemplates(currentTemplates => {
+                const updatedTemplates = currentTemplates.map((t: Template) => {
+                    if (t.id === activeTemplateId) {
+                        let newBlocks = [...t.blocks];
+                        if (newBlocks.length > 0) {
+                            const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
+                            startMinutes = lastBlock.startTime + lastBlock.duration;
+                            startMinutes = Math.ceil(startMinutes / 15) * 15;
+                        } else {
+                            const now = new Date();
+                            startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                        }
+                        if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+
+                        newBlocks.push({
+                            id: Date.now().toString(),
+                            name: habit.task,
+                            startTime: startMinutes,
+                            duration: duration,
+                            color: habit.color || '#eab308',
+                            routineGoalId: habit.id || ''
+                        });
+                        return {...t, blocks: newBlocks};
+                    }
+                    return t;
+                });
+
+                if (updateActiveRoutine) {
+                    updateActiveRoutine({templates: updatedTemplates});
+                }
+
+                return updatedTemplates;
+            });
+
+            // Close the routine drawer
+            window.dispatchEvent(new CustomEvent('close-routine-drawer'));
+        };
+
         window.addEventListener('fab:add-myday', handleFab);
-        return () => window.removeEventListener('fab:add-myday', handleFab);
-    }, []);
+        window.addEventListener('myday-add-habit-mobile', handleMobileAdd);
+        return () => {
+            window.removeEventListener('fab:add-myday', handleFab);
+            window.removeEventListener('myday-add-habit-mobile', handleMobileAdd);
+        };
+    }, [activeTemplateId, templates, updateActiveRoutine]);
 
     const handleNewClick = () => {
         setShowNewTemplateModal(true);
@@ -260,9 +313,11 @@ export default function MyDay({
             return;
         }
         const cleanName = editingTemplateName.trim();
-        const updatedTemplates = templates.map((t: Template) => t.id === activeTemplateId ? {...t, name: cleanName} : t);
+        const updatedTemplates = templates.map((t: Template) => t.id === activeTemplateId ? {
+            ...t, name: cleanName
+        } : t);
         if (updateActiveRoutine) {
-            updateActiveRoutine({ templates: updatedTemplates });
+            updateActiveRoutine({templates: updatedTemplates});
         } else {
             setTemplates(updatedTemplates);
         }
@@ -271,7 +326,7 @@ export default function MyDay({
 
     const duplicateTemplate = () => {
         if (!activeTemplate) return;
-        createAndSetTemplate({ ...activeTemplate, id: Date.now().toString(), name: `${activeTemplate.name} (Copy)` });
+        createAndSetTemplate({...activeTemplate, id: Date.now().toString(), name: `${activeTemplate.name} (Copy)`});
     };
 
     const deleteTemplate = () => {
@@ -391,8 +446,10 @@ export default function MyDay({
         setDragHoverMins(startMinutes);
     };
 
-    const handleDragLeave = () => {
-        setDragHoverMins(null);
+    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setDragHoverMins(null);
+        }
     };
 
 
@@ -414,328 +471,347 @@ export default function MyDay({
     const sortedMobileGoals = sortHabits(habits);
 
 
-
     return (<div className="timeline-inner"
-                 style={{position: 'relative', flex: 1, width: '100%', display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0}}>
-            <MyDayMaker
-                templates={templates}
-                activeTemplateId={activeTemplateId}
-                setActiveTemplateId={setActiveTemplateId}
-                activeTemplate={activeTemplate}
-                dayMapping={dayMapping}
-                setDayMapping={setDayMapping}
-                days={days}
-                handleNewClick={handleNewClick}
-                setIsEditingTemplateName={setIsEditingTemplateName}
-                setEditingTemplateName={setEditingTemplateName}
-                duplicateTemplate={duplicateTemplate}
-                deleteTemplate={deleteTemplate}
-            />
+                 style={{
+                     position: 'relative',
+                     flex: 1,
+                     width: '100%',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     minWidth: 0,
+                     minHeight: 0
+                 }}>
+        <MyDayMaker
+            templates={templates}
+            activeTemplateId={activeTemplateId}
+            setActiveTemplateId={setActiveTemplateId}
+            activeTemplate={activeTemplate}
+            dayMapping={dayMapping}
+            setDayMapping={setDayMapping}
+            days={days}
+            handleNewClick={handleNewClick}
+            setIsEditingTemplateName={setIsEditingTemplateName}
+            setEditingTemplateName={setEditingTemplateName}
+            duplicateTemplate={duplicateTemplate}
+            deleteTemplate={deleteTemplate}
+        />
 
-                <div className="timeline-scroll">
-                    <div
-                        className="timeline-grid"
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        style={{'--zoom': zoomLevel} as React.CSSProperties}
+        <div className="timeline-scroll">
+            <div
+                className="timeline-grid"
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                style={{'--zoom': zoomLevel} as React.CSSProperties}
+            >
+                {/* Hours Grid (12 AM to 11 PM) */}
+                {Array.from({length: 24}).map((_, idx) => {
+                    const i = idx;
+                    const isNoon = i === 12;
+                    const displayTime = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
+                    return (<div key={i} className="time-slot">
+                        <div className="time-label" style={{
+                            fontWeight: isNoon ? 'bold' : 'normal',
+                            color: isNoon ? 'var(--accent)' : 'var(--text-secondary)'
+                        }}>
+                            {displayTime}
+                        </div>
+                        {isNoon && (<div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '1px',
+                            backgroundImage: 'linear-gradient(to right, var(--danger, #ef4444) 30%, transparent 30%)',
+                            backgroundSize: '15px 1px',
+                            backgroundRepeat: 'repeat-x',
+                            boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)',
+                            zIndex: 1
+                        }}/>)}
+                        {(i === 4 || i === 20) && (<div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '1px',
+                            backgroundImage: 'linear-gradient(to right, #a855f7 30%, transparent 30%)',
+                            backgroundSize: '15px 1px',
+                            backgroundRepeat: 'repeat-x',
+                            boxShadow: '0 0 10px rgba(168, 85, 247, 0.5)',
+                            zIndex: 1
+                        }}/>)}
+                        {(i === 8 || i === 16) && (<div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '1px',
+                            backgroundImage: 'linear-gradient(to right, #0ea5e9 30%, transparent 30%)',
+                            backgroundSize: '15px 1px',
+                            backgroundRepeat: 'repeat-x',
+                            boxShadow: '0 0 10px rgba(14, 165, 233, 0.5)',
+                            zIndex: 1
+                        }}/>)}
+                        {/* Subtle 30m grid line */}
+                        <div style={{
+                            position: 'absolute',
+                            top: `${30 * zoomLevel}px`,
+                            left: 0,
+                            right: 0,
+                            borderBottom: '1px dotted rgba(255,255,255,0.03)'
+                        }}/>
+                    </div>);
+                })}
+
+                {/* Current Time Indicator */}
+                {currentTimeMins >= 0 && currentTimeMins <= 1440 && (<div
+                    style={{
+                        position: 'absolute',
+                        top: `${(currentTimeMins) * zoomLevel}px`,
+                        left: '-60px',
+                        right: 0,
+                        borderBottom: '2px solid var(--accent)',
+                        boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)',
+                        zIndex: 15,
+                        pointerEvents: 'none'
+                    }}
+                >
+                    <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: '-4px',
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: 'var(--accent)',
+                        boxShadow: '0 0 10px rgba(234, 179, 8, 0.8)'
+                    }}/>
+                    <div style={{
+                        position: 'absolute',
+                        left: '12px',
+                        top: '-8px',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        color: '#000',
+                        background: 'var(--accent)',
+                        padding: '1px 4px',
+                        borderRadius: '4px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                        whiteSpace: 'nowrap'
+                    }}>
+                        {formatTime(currentTimeMins)}
+                    </div>
+                </div>)}
+
+                {/* Hover Phantom Indicator */}
+                {dragHoverMins !== null && (<div
+                    style={{
+                        position: 'absolute',
+                        top: `${(dragHoverMins) * zoomLevel}px`,
+                        left: '10px',
+                        right: '20px',
+                        height: `${30 * zoomLevel}px`,
+                        background: 'rgba(234, 179, 8, 0.1)',
+                        border: '2px dashed var(--accent)',
+                        borderRadius: '6px',
+                        zIndex: 20,
+                        pointerEvents: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '0 12px'
+                    }}
+                >
+                    <span style={{
+                        fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)'
+                    }}>Drop to schedule at {formatTime(dragHoverMins)}</span>
+                </div>)}
+
+                {/* Overlapping GCal-style Blocks */}
+                {laidOutBlocks.map(block => {
+                    const hex = block.color || '#ffffff';
+                    return (<div
+                        key={block.id}
+                        className="time-block"
+                        draggable
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData('source', 'timeline');
+                            e.dataTransfer.setData('blockId', block.originalId || block.id);
+                        }}
+                        style={{
+                            top: `${(block.startTime) * zoomLevel}px`,
+                            height: `${block.duration * zoomLevel}px`,
+                            left: `calc(10px + ${block.left}%)`, // Removed 0.9 scaling to fill the gap
+                            width: `calc(${block.width}% - 14px)`,
+                            backgroundColor: `rgba(${hexToRgb(hex)}, 0.15)`,
+                            borderLeftColor: hex,
+                            borderLeftWidth: '4px',
+                            borderLeftStyle: 'solid',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            position: 'absolute',
+                            padding: block.duration <= 60 ? '4px 8px' : '8px',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: block.duration <= 60 ? 'row' : 'column',
+                            alignItems: block.duration <= 60 ? 'center' : 'flex-start',
+                            gap: block.duration <= 60 ? '8px' : '0',
+                            opacity: block.isWrapSecond ? 0.9 : 1
+                        }}
                     >
-                        {/* Hours Grid (12 AM to 11 PM) */}
-                    {Array.from({length: 24}).map((_, idx) => {
-                        const i = idx;
-                        const isNoon = i === 12;
-                        const displayTime = i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`;
-                        return (<div key={i} className="time-slot">
-                                <div className="time-label" style={{
-                                    fontWeight: isNoon ? 'bold' : 'normal',
-                                    color: isNoon ? 'var(--accent)' : 'var(--text-secondary)'
-                                }}>
-                                    {displayTime}
-                                </div>
-                                {isNoon && (<div style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: '1px',
-                                        backgroundImage: 'linear-gradient(to right, var(--danger, #ef4444) 30%, transparent 30%)',
-                                        backgroundSize: '15px 1px',
-                                        backgroundRepeat: 'repeat-x',
-                                        boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)',
-                                        zIndex: 1
-                                    }}/>)}
-                                {(i === 4 || i === 20) && (<div style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: '1px',
-                                        backgroundImage: 'linear-gradient(to right, #a855f7 30%, transparent 30%)',
-                                        backgroundSize: '15px 1px',
-                                        backgroundRepeat: 'repeat-x',
-                                        boxShadow: '0 0 10px rgba(168, 85, 247, 0.5)',
-                                        zIndex: 1
-                                    }}/>)}
-                                {(i === 8 || i === 16) && (<div style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: '1px',
-                                        backgroundImage: 'linear-gradient(to right, #0ea5e9 30%, transparent 30%)',
-                                        backgroundSize: '15px 1px',
-                                        backgroundRepeat: 'repeat-x',
-                                        boxShadow: '0 0 10px rgba(14, 165, 233, 0.5)',
-                                        zIndex: 1
-                                    }}/>)}
-                                {/* Subtle 30m grid line */}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: `${30 * zoomLevel}px`,
-                                    left: 0,
-                                    right: 0,
-                                    borderBottom: '1px dotted rgba(255,255,255,0.03)'
-                                }}/>
-                            </div>);
-                    })}
-
-                    {/* Current Time Indicator */}
-                    {currentTimeMins >= 0 && currentTimeMins <= 1440 && (<div
-                            style={{
-                                position: 'absolute',
-                                top: `${(currentTimeMins) * zoomLevel}px`,
-                                left: '-60px',
-                                right: 0,
-                                borderBottom: '2px solid var(--accent)',
-                                boxShadow: '0 0 10px rgba(234, 179, 8, 0.5)',
-                                zIndex: 15,
-                                pointerEvents: 'none'
-                            }}
+                        <div className="time-block-title" style={{
+                            color: hex,
+                            fontWeight: '600',
+                            fontSize: '13px',
+                            marginBottom: block.duration <= 60 ? '0' : '2px',
+                            paddingRight: block.duration <= 60 ? '0' : '16px',
+                            whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            flex: block.duration <= 60 ? 1 : 'none',
+                            minWidth: 0
+                        }}
                         >
-                            <div style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: '-4px',
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                background: 'var(--accent)',
-                                boxShadow: '0 0 10px rgba(234, 179, 8, 0.8)'
-                            }}/>
-                            <div style={{
-                                position: 'absolute',
-                                left: '12px',
-                                top: '-8px',
-                                fontSize: '10px',
-                                fontWeight: 'bold',
-                                color: '#000',
-                                background: 'var(--accent)',
-                                padding: '1px 4px',
-                                borderRadius: '4px',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                {formatTime(currentTimeMins)}
-                            </div>
-                        </div>)}
-
-                    {/* Hover Phantom Indicator */}
-                    {dragHoverMins !== null && (<div
-                            style={{
-                                position: 'absolute',
-                                top: `${(dragHoverMins) * zoomLevel}px`,
-                                left: '10px',
-                                right: '20px',
-                                height: `${30 * zoomLevel}px`,
-                                background: 'rgba(234, 179, 8, 0.1)',
-                                border: '2px dashed var(--accent)',
-                                borderRadius: '6px',
-                                zIndex: 20,
-                                pointerEvents: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '0 12px'
-                            }}
-                        >
-                            <span style={{fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)'}}>Drop to schedule at {formatTime(dragHoverMins)}</span>
-                        </div>)}
-
-                    {/* Overlapping GCal-style Blocks */}
-                    {laidOutBlocks.map(block => {
-                        const hex = block.color || '#ffffff';
-                        return (<div
-                                key={block.id}
-                                className="time-block"
-                                draggable
-                                onDragStart={(e) => {
-                                    e.dataTransfer.setData('source', 'timeline');
-                                    e.dataTransfer.setData('blockId', block.originalId);
+                            {block.name}
+                        </div>
+                        <div className="time-block-meta" style={{
+                            color: `rgba(${hexToRgb(hex)}, 0.8)`,
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            flexShrink: 0
+                        }}>
+                            <Clock
+                                size={10}
+                                color="#fff"
+                                style={{cursor: 'pointer'}}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const nextSibling = e.currentTarget.nextElementSibling as HTMLInputElement;
+                                    if (nextSibling && nextSibling.showPicker) nextSibling.showPicker();
+                                }}
+                            />
+                            <input
+                                type="time"
+                                value={formatTime24(block.startTime)}
+                                onChange={(e) => {
+                                    const newMins = parseTime(e.target.value);
+                                    if (newMins !== null && !isNaN(newMins)) {
+                                        const updatedTemplates = templates.map((t: Template) => {
+                                            if (t.id === activeTemplateId) {
+                                                return {
+                                                    ...t,
+                                                    blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
+                                                        ...b, startTime: newMins
+                                                    } : b)
+                                                };
+                                            }
+                                            return t;
+                                        });
+                                        if (updateActiveRoutine) {
+                                            updateActiveRoutine({templates: updatedTemplates});
+                                        } else {
+                                            setTemplates(updatedTemplates);
+                                        }
+                                    }
                                 }}
                                 style={{
-                                    top: `${(block.startTime) * zoomLevel}px`,
-                                    height: `${block.duration * zoomLevel}px`,
-                                    left: `calc(10px + ${block.left}%)`, // Removed 0.9 scaling to fill the gap
-                                    width: `calc(${block.width}% - 14px)`,
-                                    backgroundColor: `rgba(${hexToRgb(hex)}, 0.15)`,
-                                    borderLeftColor: hex,
-                                    borderLeftWidth: '4px',
-                                    borderLeftStyle: 'solid',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                    position: 'absolute',
-                                    padding: block.duration <= 60 ? '4px 8px' : '8px',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    display: 'flex',
-                                    flexDirection: block.duration <= 60 ? 'row' : 'column',
-                                    alignItems: block.duration <= 60 ? 'center' : 'flex-start',
-                                    gap: block.duration <= 60 ? '8px' : '0',
-                                    opacity: block.isWrapSecond ? 0.9 : 1
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'inherit',
+                                    fontSize: 'inherit',
+                                    fontFamily: 'inherit',
+                                    padding: 0,
+                                    outline: 'none',
+                                    cursor: 'pointer'
                                 }}
-                            >
-                                <div className="time-block-title" style={{
-                                    color: hex,
-                                    fontWeight: '600',
-                                    fontSize: '13px',
-                                    marginBottom: block.duration <= 60 ? '0' : '2px',
-                                    paddingRight: block.duration <= 60 ? '0' : '16px',
-                                    whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    flex: block.duration <= 60 ? 1 : 'none',
-                                    minWidth: 0
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            <span>-</span>
+                            <input
+                                type="time"
+                                value={formatTime24((block.startTime + block.duration) % 1440)}
+                                onChange={(e) => {
+                                    const newEndMins = parseTime(e.target.value);
+                                    if (newEndMins !== null && !isNaN(newEndMins)) {
+                                        let newDuration = newEndMins - block.startTime;
+                                        if (newDuration < 0) newDuration += 1440;
+                                        const updatedTemplates = templates.map((t: Template) => {
+                                            if (t.id === activeTemplateId) {
+                                                return {
+                                                    ...t,
+                                                    blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
+                                                        ...b, duration: newDuration
+                                                    } : b)
+                                                };
+                                            }
+                                            return t;
+                                        });
+                                        if (updateActiveRoutine) {
+                                            updateActiveRoutine({templates: updatedTemplates});
+                                        } else {
+                                            setTemplates(updatedTemplates);
+                                        }
+                                    }
                                 }}
-                                >
-                                    {block.name}
-                                </div>
-                                <div className="time-block-meta" style={{
-                                    color: `rgba(${hexToRgb(hex)}, 0.8)`,
-                                    fontSize: '11px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    flexShrink: 0
-                                }}>
-                                    <Clock
-                                        size={10}
-                                        color="#fff"
-                                        style={{cursor: 'pointer'}}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const nextSibling = e.currentTarget.nextElementSibling as HTMLInputElement; if (nextSibling && nextSibling.showPicker) nextSibling.showPicker();
-                                        }}
-                                    />
-                                    <input
-                                        type="time"
-                                        value={formatTime24(block.actualStartTime)}
-                                        onChange={(e) => {
-                                            const newMins = parseTime(e.target.value);
-                                            if (newMins !== null && !isNaN(newMins)) {
-                                                const updatedTemplates = templates.map((t: Template) => {
-                                                    if (t.id === activeTemplateId) {
-                                                        return {
-                                                            ...t,
-                                                            blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                                ...b,
-                                                                startTime: newMins
-                                                            } : b)
-                                                        };
-                                                    }
-                                                    return t;
-                                                });
-                                                if (updateActiveRoutine) {
-                                                    updateActiveRoutine({templates: updatedTemplates});
-                                                } else {
-                                                    setTemplates(updatedTemplates);
-                                                }
-                                            }
-                                        }}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: 'inherit',
-                                            fontSize: 'inherit',
-                                            fontFamily: 'inherit',
-                                            padding: 0,
-                                            outline: 'none',
-                                            cursor: 'pointer'
-                                        }}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                    <span>-</span>
-                                    <input
-                                        type="time"
-                                        value={formatTime24((block.actualStartTime + block.actualDuration) % 1440)}
-                                        onChange={(e) => {
-                                            const newEndMins = parseTime(e.target.value);
-                                            if (newEndMins !== null && !isNaN(newEndMins)) {
-                                                let newDuration = newEndMins - block.actualStartTime;
-                                                if (newDuration < 0) newDuration += 1440;
-                                                const updatedTemplates = templates.map((t: Template) => {
-                                                    if (t.id === activeTemplateId) {
-                                                        return {
-                                                            ...t,
-                                                            blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                                ...b,
-                                                                duration: newDuration
-                                                            } : b)
-                                                        };
-                                                    }
-                                                    return t;
-                                                });
-                                                if (updateActiveRoutine) {
-                                                    updateActiveRoutine({templates: updatedTemplates});
-                                                } else {
-                                                    setTemplates(updatedTemplates);
-                                                }
-                                            }
-                                        }}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: 'inherit',
-                                            fontSize: 'inherit',
-                                            fontFamily: 'inherit',
-                                            padding: 0,
-                                            outline: 'none',
-                                            cursor: 'pointer'
-                                        }}
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </div>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        deleteBlock(block.originalId);
-                                    }}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '4px',
-                                        right: '4px',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: hex,
-                                        cursor: 'pointer',
-                                        opacity: 0.6,
-                                        padding: '2px'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
-                                >
-                                    <X size={14}/>
-                                </button>
-                            </div>);
-                    })}
-                </div>
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'inherit',
+                                    fontSize: 'inherit',
+                                    fontFamily: 'inherit',
+                                    padding: 0,
+                                    outline: 'none',
+                                    cursor: 'pointer'
+                                }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                deleteBlock(block.originalId);
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: '4px',
+                                right: '4px',
+                                background: 'transparent',
+                                border: 'none',
+                                color: hex,
+                                cursor: 'pointer',
+                                opacity: 0.6,
+                                padding: '2px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                        >
+                            <X size={14}/>
+                        </button>
+                    </div>);
+                })}
             </div>
+        </div>
 
 
-            {/* Footer */}
-            <div style={{ flex: 'none', background: 'rgba(0,0,0,0.3)', borderTop: '1px solid var(--panel-border)', padding: '0 16px', minHeight: '44px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  <Clock size={14} color="var(--accent)" />
-                  {(() => {
+        {/* Footer */}
+        <div style={{
+            flex: 'none',
+            background: 'rgba(0,0,0,0.3)',
+            borderTop: '1px solid var(--panel-border)',
+            padding: '0 16px',
+            minHeight: '44px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+        }}>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
+            }}>
+                <Clock size={14} color="var(--accent)"/>
+                {(() => {
                     let unallocatedMins = 24 * 60;
                     if (activeTemplate && activeTemplate.blocks) {
                         const intervals = (activeTemplate.blocks || []).map((b: any) => [b.startTime ?? 0, (b.startTime ?? 0) + (b.duration || 0)]);
@@ -762,234 +838,228 @@ export default function MyDay({
                     const h = Math.floor(unallocatedMins / 60);
                     const m = unallocatedMins % 60;
                     return `Free Time: ${h}h ${m}m`;
-                  })()}
-                </div>
-
-                {/* Zoom Controls */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}>
-                    <button
-                        onClick={handleZoomOut}
-                        title="Zoom Out"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            borderRadius: '50%',
-                            padding: '2px',
-                            color: 'var(--text-secondary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => {
-                            e.currentTarget.style.color = 'var(--accent)';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                            e.currentTarget.style.background = 'transparent';
-                        }}
-                    >
-                        <ZoomOut size={16}/>
-                    </button>
-
-                    <div style={{
-                        color: 'var(--text-secondary)',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        minWidth: '40px',
-                        pointerEvents: 'none',
-                        userSelect: 'none'
-                    }}>
-                        {Math.round(zoomLevel * 100)}%
-                    </div>
-
-                    <button
-                        onClick={handleZoomIn}
-                        title="Zoom In"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            borderRadius: '50%',
-                            padding: '2px',
-                            color: 'var(--text-secondary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => {
-                            e.currentTarget.style.color = 'var(--accent)';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                            e.currentTarget.style.background = 'transparent';
-                        }}
-                    >
-                        <ZoomIn size={16}/>
-                    </button>
-                </div>
+                })()}
             </div>
 
-            {/* Habits Drawer (Mobile Goals) */}
-            <BaseModal
-                isOpen={showMobileGoals}
-                onClose={() => setShowMobileGoals(false)}
-                title="Habits"
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '16px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        Tap to add to schedule, or drag if on desktop.
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignContent: 'flex-start' }}>
-                        {sortedMobileGoals.length === 0 ? (
-                            <div style={{
-                                color: 'var(--text-secondary)',
-                                fontSize: '12px',
-                                textAlign: 'center',
-                                width: '100%',
-                                padding: '24px 0'
-                            }}>
-                                No goals/habits found.
-                            </div>
-                        ) : (
-                            sortedMobileGoals.map(habit => (
-                                <div
-                                    key={habit.id}
-                                    draggable
-                                    onDragStart={(e) => {
-                                        e.dataTransfer.setData('source', 'sidebar');
-                                        e.dataTransfer.setData('task', habit.task || habit.name);
-                                        e.dataTransfer.setData('time', habit.time || '30m');
-                                        e.dataTransfer.setData('color', habit.color || '#eab308');
-                                        e.dataTransfer.setData('routineGoalId', habit.id);
-                                        setShowMobileGoals(false);
-                                    }}
-                                    onClick={() => {
-                                        if (!activeTemplateId) return;
-                                        
-                                        // Tap to add logic for mobile (and desktop as shortcut)
-                                        const duration = parseDuration(habit.time || '30m');
-                                        
-                                        let updatedTemplates = templates.map((t: Template) => {
-                                            if (t.id === activeTemplateId) {
-                                                let newBlocks = [...t.blocks];
-                                                // Find the end time of the last block, or use current time if empty
-                                                let startMinutes;
-                                                if (newBlocks.length > 0) {
-                                                    const lastBlock = newBlocks.reduce((prev, current) => 
-                                                        (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current
-                                                    );
-                                                    startMinutes = lastBlock.startTime + lastBlock.duration;
-                                                    // Snap to 15 mins
-                                                    startMinutes = Math.ceil(startMinutes / 15) * 15;
-                                                } else {
-                                                    const now = new Date();
-                                                    startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-                                                }
-                                                
-                                                if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
-                                                
-                                                newBlocks.push({
-                                                    id: Date.now().toString(),
-                                                    name: habit.task,
-                                                    startTime: startMinutes,
-                                                    duration: duration,
-                                                    color: habit.color || '#eab308',
-                                                    routineGoalId: habit.routineGoalId || ''
-                                                });
-                                                return {...t, blocks: newBlocks};
-                                            }
-                                            return t;
-                                        });
+            {/* Zoom Controls */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '4px'
+            }}>
+                <button
+                    onClick={handleZoomOut}
+                    title="Zoom Out"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '50%',
+                        padding: '2px',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.color = 'var(--accent)';
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.color = 'var(--text-secondary)';
+                        e.currentTarget.style.background = 'transparent';
+                    }}
+                >
+                    <ZoomOut size={16}/>
+                </button>
 
-                                        if (updateActiveRoutine) {
-                                            updateActiveRoutine({templates: updatedTemplates});
-                                        } else {
-                                            setTemplates(updatedTemplates);
-                                        }
-                                        setShowMobileGoals(false);
-                                    }}
-                                    style={{
-                                        background: 'rgba(255,255,255,0.05)',
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        borderLeft: `4px solid ${habit.color || '#eab308'}`,
-                                        cursor: 'pointer', /* changed from grab to pointer to hint tapability */
-                                        fontSize: '12px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}
-                                >
-                                    <GripVertical size={14} color="var(--text-secondary)" />
-                                    {habit.task} <span style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>({habit.time || '30m'})</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                <div style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    minWidth: '40px',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                }}>
+                    {Math.round(zoomLevel * 100)}%
                 </div>
-            </BaseModal>
 
-            {/* Rename Modal */}
-            <BaseModal
-                isOpen={isEditingTemplateName}
-                onClose={() => setIsEditingTemplateName(false)}
-                title="Rename Template"
-            >
-                <form onSubmit={saveTemplateName}>
-                    <input type="text" value={editingTemplateName}
-                           onChange={e => setEditingTemplateName(e.target.value)}
-                           style={{width: '100%', marginBottom: '16px'}}
-                           autoFocus />
-                    <div style={{display: 'flex', gap: '8px'}}>
-                        <button type="submit" style={{flex: 1, color: '#000'}}>Save</button>
-                        <button type="button" className="secondary" onClick={() => setIsEditingTemplateName(false)}
-                                style={{flex: 1}}>Cancel
-                        </button>
-                    </div>
-                </form>
-            </BaseModal>
+                <button
+                    onClick={handleZoomIn}
+                    title="Zoom In"
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '50%',
+                        padding: '2px',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.color = 'var(--accent)';
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.color = 'var(--text-secondary)';
+                        e.currentTarget.style.background = 'transparent';
+                    }}
+                >
+                    <ZoomIn size={16}/>
+                </button>
+            </div>
+        </div>
 
-            {/* New Template Modal */}
-            <BaseModal
-                isOpen={showNewTemplateModal}
-                onClose={() => setShowNewTemplateModal(false)}
-                title="Create New Schedule"
-            >
-                <form onSubmit={(e) => { addTemplate(e); setShowNewTemplateModal(false); }}>
-                    <input type="text" value={newTemplateName}
-                           onChange={e => setNewTemplateName(e.target.value)}
-                           placeholder="e.g. Vacation Day"
-                           style={{width: '100%', marginBottom: '16px'}}
-                           autoFocus />
-                    <div style={{display: 'flex', gap: '8px'}}>
-                        <button type="submit" style={{flex: 1, color: '#000'}} disabled={!newTemplateName.trim()}>Create</button>
-                        <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)}
-                                style={{flex: 1}}>Cancel
-                        </button>
-                    </div>
-                </form>
-            </BaseModal>
+        {/* Habits Drawer (Mobile Goals) */}
+        <BaseModal
+            isOpen={showMobileGoals}
+            onClose={() => setShowMobileGoals(false)}
+            title="Habits"
+        >
+            <div style={{display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '16px'}}>
+                <p style={{margin: 0, fontSize: '12px', color: 'var(--text-secondary)'}}>
+                    Tap to add to schedule, or drag if on desktop.
+                </p>
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', alignContent: 'flex-start'}}>
+                    {sortedMobileGoals.length === 0 ? (<div style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '12px',
+                        textAlign: 'center',
+                        width: '100%',
+                        padding: '24px 0'
+                    }}>
+                        No goals/habits found.
+                    </div>) : (sortedMobileGoals.map(habit => (<div
+                        key={habit.id}
+                        draggable
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData('source', 'sidebar');
+                            e.dataTransfer.setData('task', habit.task || habit.name);
+                            e.dataTransfer.setData('time', habit.time || '30m');
+                            e.dataTransfer.setData('color', habit.color || '#eab308');
+                            e.dataTransfer.setData('routineGoalId', habit.id);
+                            setShowMobileGoals(false);
+                        }}
+                        onClick={() => {
+                            if (!activeTemplateId) return;
 
-            {/* Confirm Modal */}
-            {confirmConfig && (
-                <ConfirmModal
-                  onCancel={confirmConfig.onCancel}
-                  onConfirm={confirmConfig.onConfirm}
-                  title={confirmConfig.title}
-                  message={confirmConfig.message}
-                  isDanger={confirmConfig.isDanger}
-                  confirmText={confirmConfig.confirmText}
-                />
-            )}
-        </div>);
+                            // Tap to add logic for mobile (and desktop as shortcut)
+                            const duration = parseDuration(habit.time || '30m');
+
+                            let updatedTemplates = templates.map((t: Template) => {
+                                if (t.id === activeTemplateId) {
+                                    let newBlocks = [...t.blocks];
+                                    // Find the end time of the last block, or use current time if empty
+                                    let startMinutes;
+                                    if (newBlocks.length > 0) {
+                                        const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
+                                        startMinutes = lastBlock.startTime + lastBlock.duration;
+                                        // Snap to 15 mins
+                                        startMinutes = Math.ceil(startMinutes / 15) * 15;
+                                    } else {
+                                        const now = new Date();
+                                        startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                                    }
+
+                                    if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+
+                                    newBlocks.push({
+                                        id: Date.now().toString(),
+                                        name: habit.task,
+                                        startTime: startMinutes,
+                                        duration: duration,
+                                        color: habit.color || '#eab308',
+                                        routineGoalId: habit.routineGoalId || ''
+                                    });
+                                    return {...t, blocks: newBlocks};
+                                }
+                                return t;
+                            });
+
+                            if (updateActiveRoutine) {
+                                updateActiveRoutine({templates: updatedTemplates});
+                            } else {
+                                setTemplates(updatedTemplates);
+                            }
+                            setShowMobileGoals(false);
+                        }}
+                        style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            borderLeft: `4px solid ${habit.color || '#eab308'}`,
+                            cursor: 'pointer', /* changed from grab to pointer to hint tapability */
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}
+                    >
+                        <GripVertical size={14} color="var(--text-secondary)"/>
+                        {habit.task} <span style={{
+                        color: 'var(--text-secondary)', fontSize: '10px'
+                    }}>({habit.time || '30m'})</span>
+                    </div>)))}
+                </div>
+            </div>
+        </BaseModal>
+
+        {/* Rename Modal */}
+        <BaseModal
+            isOpen={isEditingTemplateName}
+            onClose={() => setIsEditingTemplateName(false)}
+            title="Rename Template"
+        >
+            <form onSubmit={saveTemplateName}>
+                <input type="text" value={editingTemplateName}
+                       onChange={e => setEditingTemplateName(e.target.value)}
+                       style={{width: '100%', marginBottom: '16px'}}
+                       autoFocus/>
+                <div style={{display: 'flex', gap: '8px'}}>
+                    <button type="submit" style={{flex: 1, color: '#000'}}>Save</button>
+                    <button type="button" className="secondary" onClick={() => setIsEditingTemplateName(false)}
+                            style={{flex: 1}}>Cancel
+                    </button>
+                </div>
+            </form>
+        </BaseModal>
+
+        {/* New Template Modal */}
+        <BaseModal
+            isOpen={showNewTemplateModal}
+            onClose={() => setShowNewTemplateModal(false)}
+            title="Create New Schedule"
+        >
+            <form onSubmit={(e) => {
+                addTemplate(e);
+                setShowNewTemplateModal(false);
+            }}>
+                <input type="text" value={newTemplateName}
+                       onChange={e => setNewTemplateName(e.target.value)}
+                       placeholder="e.g. Vacation Day"
+                       style={{width: '100%', marginBottom: '16px'}}
+                       autoFocus/>
+                <div style={{display: 'flex', gap: '8px'}}>
+                    <button type="submit" style={{flex: 1, color: '#000'}} disabled={!newTemplateName.trim()}>Create
+                    </button>
+                    <button type="button" className="secondary" onClick={() => setShowNewTemplateModal(false)}
+                            style={{flex: 1}}>Cancel
+                    </button>
+                </div>
+            </form>
+        </BaseModal>
+
+        {/* Confirm Modal */}
+        {confirmConfig && (<ConfirmModal
+            onCancel={confirmConfig.onCancel}
+            onConfirm={confirmConfig.onConfirm}
+            title={confirmConfig.title}
+            message={confirmConfig.message}
+            isDanger={confirmConfig.isDanger}
+            confirmText={confirmConfig.confirmText}
+        />)}
+    </div>);
 }
