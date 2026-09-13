@@ -21,6 +21,7 @@ import WalletModal from './components/WalletModal';
 import RoutineModal from './components/RoutineModal';
 import SettingsModal from './components/SettingsModal';
 import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
+import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
@@ -212,7 +213,16 @@ export default function App() {
         return () => channel.close();
     }, [routines, activeRoutineId, activeRoutine, lifeGoals, activeCenterTab, activeLeftTab, updateActiveRoutine]);
 
-
+    useWebMCPIntegration({
+        setLifeGoals,
+        updateActiveRoutine,
+        activeRoutine,
+        setActiveCenterTab,
+        setActiveLeftTab,
+        setMobileTab,
+        lifeGoals,
+        moneyGoals
+    });
     const setRoutineGoals = (goals: any[]) => updateActiveRoutine({routineGoals: goals});
     const setHabits = (goals: any[]) => updateActiveRoutine({habits: goals});
     const setTemplates = (templates: any[]) => updateActiveRoutine({templates: templates});
@@ -370,17 +380,11 @@ export default function App() {
     }, []);
 
     const allWalletGoals = [...(lifeGoals || []).map((g: any) => ({
-        ...g,
-        category: 'Life',
-        type: 'life'
+        ...g, category: 'Life', type: 'life'
     })), ...(routineGoals || []).map((g: any) => ({
-        ...g,
-        category: 'Routine',
-        type: 'routine'
+        ...g, category: 'Routine', type: 'routine'
     })), ...(moneyGoals || []).map((g: any) => ({
-        ...g,
-        category: 'Money',
-        type: 'money'
+        ...g, category: 'Money', type: 'money'
     }))].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
 
     const walletTotal = allWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
@@ -478,29 +482,29 @@ export default function App() {
                     }}>
                         {(() => {
                             const headerTabs = (<div className="tabs" style={{
-                                    marginBottom: '16px',
-                                    borderBottom: '1px solid var(--panel-border)',
-                                    background: 'transparent'
-                                }}>
-                                    <button
-                                        className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`}
-                                        onClick={() => setActiveLeftTab('life')}
-                                    >
-                                        Life
-                                    </button>
-                                    <button
-                                        className={`tab ${activeLeftTab === 'money' ? 'active' : ''}`}
-                                        onClick={() => setActiveLeftTab('money')}
-                                    >
-                                        Money
-                                    </button>
-                                    <button
-                                        className={`tab ${activeLeftTab === 'routine' ? 'active' : ''}`}
-                                        onClick={() => setActiveLeftTab('routine')}
-                                    >
-                                        Routine
-                                    </button>
-                                </div>);
+                                marginBottom: '16px',
+                                borderBottom: '1px solid var(--panel-border)',
+                                background: 'transparent'
+                            }}>
+                                <button
+                                    className={`tab ${activeLeftTab === 'life' ? 'active' : ''}`}
+                                    onClick={() => setActiveLeftTab('life')}
+                                >
+                                    Life
+                                </button>
+                                <button
+                                    className={`tab ${activeLeftTab === 'money' ? 'active' : ''}`}
+                                    onClick={() => setActiveLeftTab('money')}
+                                >
+                                    Money
+                                </button>
+                                <button
+                                    className={`tab ${activeLeftTab === 'routine' ? 'active' : ''}`}
+                                    onClick={() => setActiveLeftTab('routine')}
+                                >
+                                    Routine
+                                </button>
+                            </div>);
 
                             if (activeLeftTab === 'routine') {
                                 return <RoutineGoalPane
@@ -547,28 +551,40 @@ export default function App() {
                     }}>
                         <button
                             className={`tab ${activeCenterTab === 'tasks' ? 'active' : ''}`}
-                            onClick={() => { setActiveCenterTab('tasks'); setMobileTab('tasks'); }}
+                            onClick={() => {
+                                setActiveCenterTab('tasks');
+                                setMobileTab('tasks');
+                            }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <ListTodo size={16}/> Tasks
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'timeline' ? 'active' : ''}`}
-                            onClick={() => { setActiveCenterTab('timeline'); setMobileTab('myday'); }}
+                            onClick={() => {
+                                setActiveCenterTab('timeline');
+                                setMobileTab('myday');
+                            }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <Clock size={16}/> My Day
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'calendar' ? 'active' : ''}`}
-                            onClick={() => { setActiveCenterTab('calendar'); setMobileTab('calendar'); }}
+                            onClick={() => {
+                                setActiveCenterTab('calendar');
+                                setMobileTab('calendar');
+                            }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <Calendar size={16}/> Calendar
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'plans' ? 'active' : ''}`}
-                            onClick={() => { setActiveCenterTab('plans'); setMobileTab('plans'); }}
+                            onClick={() => {
+                                setActiveCenterTab('plans');
+                                setMobileTab('plans');
+                            }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <BookOpen size={16}/> Plans
@@ -612,12 +628,10 @@ export default function App() {
                         />)}
                     </div>
                 </div>
-                {isRoutineDrawerOpen && (
-                    <div 
-                        className="mobile-drawer-overlay" 
+                {isRoutineDrawerOpen && (<div
+                        className="mobile-drawer-overlay"
                         onClick={() => setIsRoutineDrawerOpen(false)}
-                    />
-                )}
+                    />)}
                 <RoutinePane
                     habits={habits} setHabits={setHabits as any}
                     templates={templates} setTemplates={setTemplates as any}

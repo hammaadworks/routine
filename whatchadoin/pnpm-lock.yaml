@@ -32,6 +32,9 @@ importers:
       textarea-caret:
         specifier: ^3.1.0
         version: 3.1.0
+      use-webmcp-tool:
+        specifier: ^0.3.0
+        version: 0.3.0(react@19.2.8)
     devDependencies:
       '@types/animejs':
         specifier: ^3.1.13
@@ -1052,6 +1055,11 @@ packages:
   unist-util-visit@5.1.0:
     resolution: {integrity: sha512-m+vIdyeCOpdr/QeQCu2EzxX/ohgS8KbnPDgFni4dQsfSCtpz8UqDyY5GjRru8PDKuYn7Fq19j1CQ+nJSsGKOzg==}
 
+  use-webmcp-tool@0.3.0:
+    resolution: {integrity: sha512-iwO5KbSdDzcV33PSCZw4baclCD3tEU4drdXAeeKfTCM/+F5t+LAug14UXbYKD3K3tWxBiYCuDuWXmm/q1ZSDjw==}
+    peerDependencies:
+      react: '>=18'
+
   vfile-location@5.0.3:
     resolution: {integrity: sha512-5yXvWDEgqeiYiBe1lbxYF7UMAIm/IcopxMHrMQDq3nvKcjPKIhZklUKL+AE7J7uApI4kwe2snsK+eI6UTj9EHg==}
 
@@ -1106,6 +1114,9 @@ packages:
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
+
+  webmcp-types@0.1.7:
+    resolution: {integrity: sha512-70YszESbCx+ozBejmBPTSc0hMyXim+/Kpj8UOZsHd36ANcYqIfkDbMBTTn5y+tQzQYUYN1x2R+5PseKJtVaLqA==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -2325,6 +2336,11 @@ snapshots:
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
 
+  use-webmcp-tool@0.3.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
+      webmcp-types: 0.1.7
+
   vfile-location@5.0.3:
     dependencies:
       '@types/unist': 3.0.3
@@ -2352,5 +2368,7 @@ snapshots:
       fsevents: 2.3.3
 
   web-namespaces@2.0.1: {}
+
+  webmcp-types@0.1.7: {}
 
   zwitch@2.0.4: {}

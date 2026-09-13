@@ -586,30 +586,24 @@ export default function RoutinePane({
                 }}/>
             </button>
         </div>
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            padding: '24px',
-            paddingTop: '16px',
-            overflow: 'hidden',
-            minHeight: 0
+        <div className="routine-pane-content" style={{
+            display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
         }}>
             {isRoutineDrawerOpen && (<div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
-                }}>
-                    <h2 style={{margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <ListTodo size={20} color="var(--accent)"/>
-                        Habits
-                    </h2>
-                    <button
-                        className="icon-btn"
-                        onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(false)}
-                        style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
-                    >
-                        <X size={18}/>
-                    </button>
-                </div>)}
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
+            }}>
+                <h2 style={{margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <ListTodo size={20} color="var(--accent)"/>
+                    Habits
+                </h2>
+                <button
+                    className="icon-btn"
+                    onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(false)}
+                    style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
+                >
+                    <X size={18}/>
+                </button>
+            </div>)}
             {isCalendarTab && effectiveDate && (<button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
@@ -767,7 +761,10 @@ export default function RoutinePane({
                             {goal.task}
                           </span>
                                                 {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
-                                                                               style={{flexShrink: 0, marginTop: '2px'}}/>)}
+                                                                               style={{
+                                                                                   flexShrink: 0,
+                                                                                   marginTop: '2px'
+                                                                               }}/>)}
                                             </div>
 
                                             <div style={{
@@ -841,13 +838,13 @@ export default function RoutinePane({
                         };
 
                         return (<>
-                                {activeGoals.map(renderGoal)}
-                                {completedGoals.length > 0 && (<div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        margin: '16px 0 8px 0',
-                                        justifyContent: 'space-between'
-                                    }}>
+                            {activeGoals.map(renderGoal)}
+                            {completedGoals.length > 0 && (<div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                margin: '16px 0 8px 0',
+                                justifyContent: 'space-between'
+                            }}>
                                       <span style={{
                                           padding: '0 12px 0 0',
                                           fontSize: '12px',
@@ -856,36 +853,36 @@ export default function RoutinePane({
                                       }}>
                                         Completed
                                       </span>
-                                        <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
-                                        {!effectiveDate && (<button
-                                                onClick={() => {
-                                                    setConfirmConfig({
-                                                        title: 'Delete All Completed',
-                                                        message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
-                                                        isDanger: true,
-                                                        onConfirm: () => {
-                                                            setHabits(habits.filter((g: any) => !g.completed));
-                                                            setConfirmConfig(null);
-                                                        },
-                                                        onCancel: () => setConfirmConfig(null)
-                                                    });
-                                                }}
-                                                className="icon-btn"
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--danger)',
-                                                    fontSize: '12px',
-                                                    cursor: 'pointer',
-                                                    padding: '4px 8px',
-                                                    fontWeight: 500,
-                                                    opacity: 0.8
-                                                }}>
-                                                Delete all
-                                            </button>)}
-                                    </div>)}
-                                {completedGoals.map(renderGoal)}
-                            </>);
+                                <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                {!effectiveDate && (<button
+                                    onClick={() => {
+                                        setConfirmConfig({
+                                            title: 'Delete All Completed',
+                                            message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
+                                            isDanger: true,
+                                            onConfirm: () => {
+                                                setHabits(habits.filter((g: any) => !g.completed));
+                                                setConfirmConfig(null);
+                                            },
+                                            onCancel: () => setConfirmConfig(null)
+                                        });
+                                    }}
+                                    className="icon-btn"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--danger)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        fontWeight: 500,
+                                        opacity: 0.8
+                                    }}>
+                                    Delete all
+                                </button>)}
+                            </div>)}
+                            {completedGoals.map(renderGoal)}
+                        </>);
                     })()}
                     {(habits || []).length === 0 && (<div style={{
                         display: 'flex',
@@ -915,7 +912,13 @@ export default function RoutinePane({
                 {!effectiveDate && (<button
                     onClick={() => {
                         setEditingMilestoneIdx(null);
-                        setMilestoneForm({date: new Date().toISOString().split('T')[0], tag: '', title: '', desc: '', done: false});
+                        setMilestoneForm({
+                            date: new Date().toISOString().split('T')[0],
+                            tag: '',
+                            title: '',
+                            desc: '',
+                            done: false
+                        });
                         setShowMilestoneModal(true);
                     }}
                     className="secondary desktop-only-btn"
@@ -950,11 +953,11 @@ export default function RoutinePane({
                             const blockDate = new Date(dateStr);
                             blockDate.setHours(0, 0, 0, 0);
                             const isPast = blockDate < todayDate;
-                            
+
                             const diffTime = blockDate.getTime() - todayDate.getTime();
                             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
-                            
+
                             const validBlocks = blocks.filter(b => b.trim());
                             const isAllDone = validBlocks.length > 0 && validBlocks.every(b => {
                                 const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
@@ -962,7 +965,7 @@ export default function RoutinePane({
                                 const title = titleMatchWithTag ? titleMatchWithTag[2] : (titleMatchWithoutTag ? titleMatchWithoutTag[1] : b);
                                 return title.startsWith('[x] ');
                             });
-                            
+
                             let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
                             let multiColors: string[] = [];
                             const tagsMatch = contentStr.match(/@([^\s*]+)/g);
@@ -1029,13 +1032,14 @@ export default function RoutinePane({
                                                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
                                             })}
                                         </span>
-                                        {isAllDone ? (
-                                            <CheckCircle2 size={16} color="var(--success, #22c55e)" />
-                                        ) : (
-                                            <span style={{fontSize: '12px', color: diffDays < 0 ? '#ef4444' : 'var(--accent)', fontWeight: 'normal'}}>
+                                        {isAllDone ? (<CheckCircle2 size={16} color="var(--success, #22c55e)"/>) : (
+                                            <span style={{
+                                                fontSize: '12px',
+                                                color: diffDays < 0 ? '#ef4444' : 'var(--accent)',
+                                                fontWeight: 'normal'
+                                            }}>
                                                 {diffStr}
-                                            </span>
-                                        )}
+                                            </span>)}
                                     </div>
                                     <button
                                         className="icon-btn"
@@ -1090,9 +1094,9 @@ export default function RoutinePane({
                     if (calendarSubTab === 'milestones') {
                         const count = Object.keys(activeRoutine?.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '').length;
                         return (<>
-                                <Target size={14} color="var(--accent)"/>
-                                <span>Total Milestones : {count}</span>
-                            </>);
+                            <Target size={14} color="var(--accent)"/>
+                            <span>Total Milestones : {count}</span>
+                        </>);
                     }
 
                     let allocatedCount = 0;
@@ -1100,9 +1104,9 @@ export default function RoutinePane({
                         allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.task)).length;
                     }
                     return (<>
-                            <Activity size={14} color="var(--accent)"/>
-                            <span>Allocated Habits : {allocatedCount} / {habits.length}</span>
-                        </>);
+                        <Activity size={14} color="var(--accent)"/>
+                        <span>Allocated Habits : {allocatedCount} / {habits.length}</span>
+                    </>);
                 })()}
             </div>
         </div>
@@ -1428,8 +1432,17 @@ export default function RoutinePane({
                         </div>
                     </div>
                     <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
-                        <input type="checkbox" id="milestone-done" checked={milestoneForm.done} onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{width: '18px', height: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--accent)'}} />
-                        <label htmlFor="milestone-done" style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark as Done</label>
+                        <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
+                               onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{
+                            width: '18px',
+                            height: '18px',
+                            margin: 0,
+                            cursor: 'pointer',
+                            accentColor: 'var(--accent)'
+                        }}/>
+                        <label htmlFor="milestone-done"
+                               style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark
+                            as Done</label>
                     </div>
                     <div style={{position: 'relative'}}>
                         <label style={{
