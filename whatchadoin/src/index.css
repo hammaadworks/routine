@@ -1228,8 +1228,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 }
 
 .routine-pane-content {
-    padding: 24px;
-    padding-top: 16px;
+    padding: 16px 24px 24px;
 }
 
 @media (max-width: 1400px) {
@@ -1239,7 +1238,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
     .routine-pane-content {
         padding: 12px !important;
-        padding-top: 12px !important;
     }
 }
 
@@ -1285,6 +1283,12 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 @media (max-width: 1400px) {
     /* Hide the Allocated Habits footer on the calendar tab to save space for the actual list */
     .main-content.mobile-tab-calendar .right-pane > div:last-child:not(.routine-pane-content) {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .plans-editor-wrapper.empty-state {
         display: none !important;
     }
 }

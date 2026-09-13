@@ -33,6 +33,20 @@ const hexToRgb = (hex: string) => {
     return `${r}, ${g}, ${b}`;
 };
 
+const calculateNextStartTime = (blocks: any[]) => {
+    let startMinutes;
+    if (blocks.length > 0) {
+        const lastBlock = blocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
+        startMinutes = lastBlock.startTime + lastBlock.duration;
+        startMinutes = Math.ceil(startMinutes / 15) * 15;
+    } else {
+        const now = new Date();
+        startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+    }
+    if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+    return startMinutes;
+};
+
 function getLayout(blocks: any[]) {
     if (!blocks || blocks.length === 0) return [];
 
@@ -264,15 +278,7 @@ export default function MyDay({
                 const updatedTemplates = currentTemplates.map((t: Template) => {
                     if (t.id === activeTemplateId) {
                         let newBlocks = [...t.blocks];
-                        if (newBlocks.length > 0) {
-                            const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
-                            startMinutes = lastBlock.startTime + lastBlock.duration;
-                            startMinutes = Math.ceil(startMinutes / 15) * 15;
-                        } else {
-                            const now = new Date();
-                            startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-                        }
-                        if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+                        startMinutes = calculateNextStartTime(newBlocks);
 
                         newBlocks.push({
                             id: Date.now().toString(),
@@ -702,81 +708,81 @@ export default function MyDay({
                                 }}
                             />
                             <input name="auto_field_14"
-                                type="time"
-                                value={formatTime24(block.startTime)}
-                                onChange={(e) => {
-                                    const newMins = parseTime(e.target.value);
-                                    if (newMins !== null && !isNaN(newMins)) {
-                                        const updatedTemplates = templates.map((t: Template) => {
-                                            if (t.id === activeTemplateId) {
-                                                return {
-                                                    ...t,
-                                                    blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                        ...b, startTime: newMins
-                                                    } : b)
-                                                };
-                                            }
-                                            return t;
-                                        });
-                                        if (updateActiveRoutine) {
-                                            updateActiveRoutine({templates: updatedTemplates});
-                                        } else {
-                                            setTemplates(updatedTemplates);
-                                        }
-                                    }
-                                }}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'inherit',
-                                    fontSize: 'inherit',
-                                    fontFamily: 'inherit',
-                                    padding: 0,
-                                    outline: 'none',
-                                    cursor: 'pointer'
-                                }}
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
+                                   type="time"
+                                   value={formatTime24(block.startTime)}
+                                   onChange={(e) => {
+                                       const newMins = parseTime(e.target.value);
+                                       if (newMins !== null && !isNaN(newMins)) {
+                                           const updatedTemplates = templates.map((t: Template) => {
+                                               if (t.id === activeTemplateId) {
+                                                   return {
+                                                       ...t,
+                                                       blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
+                                                           ...b, startTime: newMins
+                                                       } : b)
+                                                   };
+                                               }
+                                               return t;
+                                           });
+                                           if (updateActiveRoutine) {
+                                               updateActiveRoutine({templates: updatedTemplates});
+                                           } else {
+                                               setTemplates(updatedTemplates);
+                                           }
+                                       }
+                                   }}
+                                   style={{
+                                       background: 'transparent',
+                                       border: 'none',
+                                       color: 'inherit',
+                                       fontSize: 'inherit',
+                                       fontFamily: 'inherit',
+                                       padding: 0,
+                                       outline: 'none',
+                                       cursor: 'pointer'
+                                   }}
+                                   onPointerDown={(e) => e.stopPropagation()}
+                                   onClick={(e) => e.stopPropagation()}
                             />
                             <span>-</span>
                             <input name="auto_field_15"
-                                type="time"
-                                value={formatTime24((block.startTime + block.duration) % 1440)}
-                                onChange={(e) => {
-                                    const newEndMins = parseTime(e.target.value);
-                                    if (newEndMins !== null && !isNaN(newEndMins)) {
-                                        let newDuration = newEndMins - block.startTime;
-                                        if (newDuration < 0) newDuration += 1440;
-                                        const updatedTemplates = templates.map((t: Template) => {
-                                            if (t.id === activeTemplateId) {
-                                                return {
-                                                    ...t,
-                                                    blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                        ...b, duration: newDuration
-                                                    } : b)
-                                                };
-                                            }
-                                            return t;
-                                        });
-                                        if (updateActiveRoutine) {
-                                            updateActiveRoutine({templates: updatedTemplates});
-                                        } else {
-                                            setTemplates(updatedTemplates);
-                                        }
-                                    }
-                                }}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: 'inherit',
-                                    fontSize: 'inherit',
-                                    fontFamily: 'inherit',
-                                    padding: 0,
-                                    outline: 'none',
-                                    cursor: 'pointer'
-                                }}
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={(e) => e.stopPropagation()}
+                                   type="time"
+                                   value={formatTime24((block.startTime + block.duration) % 1440)}
+                                   onChange={(e) => {
+                                       const newEndMins = parseTime(e.target.value);
+                                       if (newEndMins !== null && !isNaN(newEndMins)) {
+                                           let newDuration = newEndMins - block.startTime;
+                                           if (newDuration < 0) newDuration += 1440;
+                                           const updatedTemplates = templates.map((t: Template) => {
+                                               if (t.id === activeTemplateId) {
+                                                   return {
+                                                       ...t,
+                                                       blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
+                                                           ...b, duration: newDuration
+                                                       } : b)
+                                                   };
+                                               }
+                                               return t;
+                                           });
+                                           if (updateActiveRoutine) {
+                                               updateActiveRoutine({templates: updatedTemplates});
+                                           } else {
+                                               setTemplates(updatedTemplates);
+                                           }
+                                       }
+                                   }}
+                                   style={{
+                                       background: 'transparent',
+                                       border: 'none',
+                                       color: 'inherit',
+                                       fontSize: 'inherit',
+                                       fontFamily: 'inherit',
+                                       padding: 0,
+                                       outline: 'none',
+                                       cursor: 'pointer'
+                                   }}
+                                   onPointerDown={(e) => e.stopPropagation()}
+                                   onClick={(e) => e.stopPropagation()}
                             />
                         </div>
                         <button
@@ -925,9 +931,9 @@ export default function MyDay({
 
         {/* Habits Drawer (Mobile Goals) */}
         {showMobileGoals && (<div
-                className="mobile-drawer-overlay hide-on-desktop"
-                onClick={() => setShowMobileGoals(false)}
-            />)}
+            className="mobile-drawer-overlay hide-on-desktop"
+            onClick={() => setShowMobileGoals(false)}
+        />)}
         <div className={`panel pane right-pane hide-on-desktop ${showMobileGoals ? 'drawer-open' : ''}`}
              style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
             <div className="panel-header" style={{
@@ -992,19 +998,7 @@ export default function MyDay({
                                 let updatedTemplates = templates.map((t: Template) => {
                                     if (t.id === activeTemplateId) {
                                         let newBlocks = [...t.blocks];
-                                        // Find the end time of the last block, or use current time if empty
-                                        let startMinutes;
-                                        if (newBlocks.length > 0) {
-                                            const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
-                                            startMinutes = lastBlock.startTime + lastBlock.duration;
-                                            // Snap to 15 mins
-                                            startMinutes = Math.ceil(startMinutes / 15) * 15;
-                                        } else {
-                                            const now = new Date();
-                                            startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-                                        }
-
-                                        if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+                                        const startMinutes = calculateNextStartTime(newBlocks);
 
                                         newBlocks.push({
                                             id: Date.now().toString(),
@@ -1040,7 +1034,12 @@ export default function MyDay({
                                 boxSizing: 'border-box'
                             }}
                         >
-                            <span style={{flex: 1, wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.4}}>{habit.task}</span> 
+                            <span style={{
+                                flex: 1,
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                                lineHeight: 1.4
+                            }}>{habit.task}</span>
                             <span style={{
                                 color: 'var(--text-secondary)', fontSize: '10px', flexShrink: 0
                             }}>({habit.time || '30m'})</span>

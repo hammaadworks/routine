@@ -70,7 +70,7 @@ export const exportLocalData = () => {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key === null) continue;
-    if (key !== null && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+    if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
       data[key] = localStorage.getItem(key);
     }
   }
@@ -89,7 +89,7 @@ export const importLocalData = (jsonStr: string) => {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
     if (key === null) continue;
-      if (key !== null && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+      if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
         if (!data.hasOwnProperty(key)) {
           keysToRemove.push(key);
         }

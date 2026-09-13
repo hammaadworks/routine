@@ -93,7 +93,9 @@ export default function RoutineGoalPane({
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
 
-    const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(routineGoals, setRoutineGoals as any);
+    const {
+        handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex
+    } = useDragReorder(routineGoals, setRoutineGoals as any);
 
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
@@ -114,10 +116,7 @@ export default function RoutineGoalPane({
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#1982C4';
         setRoutineGoalForm({
-            text: goal.text,
-            color: goalColor,
-            desc: goal.desc || '',
-            cost: goal.cost ? String(goal.cost) : ''
+            text: goal.text, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : ''
         });
         setShowRoutineGoalModal(true);
     };
@@ -300,35 +299,48 @@ export default function RoutineGoalPane({
 
                         return (<>
                             {activeGoals.map(renderGoal)}
-                            {completedGoals.length > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 8px 0', justifyContent: 'space-between' }}>
-                                  <span style={{ 
-                                    padding: '0 12px 0 0', 
-                                    fontSize: '12px', 
-                                    color: 'var(--text-secondary)',
-                                    fontWeight: 500
+                            {completedGoals.length > 0 && (<div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                margin: '16px 0 8px 0',
+                                justifyContent: 'space-between'
+                            }}>
+                                  <span style={{
+                                      padding: '0 12px 0 0',
+                                      fontSize: '12px',
+                                      color: 'var(--text-secondary)',
+                                      fontWeight: 500
                                   }}>
                                     Completed
                                   </span>
-                                  <div style={{ flex: 1, height: '1px', background: 'var(--panel-border)' }}></div>
-                                  <button 
-                                     onClick={() => {
+                                <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                <button
+                                    onClick={() => {
                                         setConfirmConfig({
-                                          title: 'Delete All Completed',
-                                          message: 'Are you sure you want to delete all completed routine goals? This cannot be undone.',
-                                          isDanger: true,
-                                          onConfirm: () => {
-                                            setRoutineGoals(routineGoals.filter((g: any) => !g.completed));
-                                            setConfirmConfig(null);
-                                          },
-                                          onCancel: () => setConfirmConfig(null)
+                                            title: 'Delete All Completed',
+                                            message: 'Are you sure you want to delete all completed routine goals? This cannot be undone.',
+                                            isDanger: true,
+                                            onConfirm: () => {
+                                                setRoutineGoals(routineGoals.filter((g: any) => !g.completed));
+                                                setConfirmConfig(null);
+                                            },
+                                            onCancel: () => setConfirmConfig(null)
                                         });
-                                     }}
-                                     className="icon-btn"
-                                     style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', fontWeight: 500, opacity: 0.8 }}>
-                                     Delete all
-                                  </button>
-                              </div>)}
+                                    }}
+                                    className="icon-btn"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--danger)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        fontWeight: 500,
+                                        opacity: 0.8
+                                    }}>
+                                    Delete all
+                                </button>
+                            </div>)}
                             {completedGoals.map(renderGoal)}
                         </>);
                     })()}
