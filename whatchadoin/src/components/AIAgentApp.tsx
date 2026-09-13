@@ -283,7 +283,7 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
 
         <div style={{ padding: '24px', borderTop: '1px solid var(--panel-border)', background: 'var(--bg)' }}>
           <div style={{ display: 'flex', gap: '12px', maxWidth: '800px', margin: '0 auto' }}>
-            <input 
+            <input name="auto_field_2" 
               type="text" 
               value={input} 
               onChange={e => setInput(e.target.value)} 

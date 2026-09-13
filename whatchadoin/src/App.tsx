@@ -597,7 +597,7 @@ export default function App() {
                         </button>
                     </div>
 
-                    <div className="mid-pane-content" style={{flex: 1, display: 'flex', overflow: 'hidden'}}>
+                    <div className="mid-pane-content" style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
                         {activeCenterTab === 'timeline' ? (<MyDay
                             templates={templates}
                             setTemplates={setTemplates as any}
@@ -731,6 +731,6 @@ export default function App() {
             <AIAgentApp isDocked={true}/>
         </div>)}
 
-        <input type="file" ref={fileInputRef} accept=".json" style={{display: 'none'}} onChange={importRoutine}/>
+        <input name="auto_field_1" type="file" ref={fileInputRef} accept=".json" style={{display: 'none'}} onChange={importRoutine}/>
     </div>);
 }

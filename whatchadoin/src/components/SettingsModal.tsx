@@ -145,7 +145,7 @@ export default function SettingsModal({
                                style={{color: 'var(--accent)', textDecoration: 'none', fontWeight: 'bold'}}>Create
                                 Token &rarr;</a>
                         </label>
-                        <input
+                        <input name="auto_field_37"
                             type="password"
                             placeholder="ghp_..."
                             value={syncForm.token}
@@ -178,7 +178,7 @@ export default function SettingsModal({
                                style={{color: 'var(--accent)', textDecoration: 'none', fontWeight: 'bold'}}>Create
                                 Gist &rarr;</a>
                         </label>
-                        <input
+                        <input name="auto_field_38"
                             type="text"
                             placeholder="e.g. 8a892b3c..."
                             value={syncForm.id}
@@ -219,7 +219,7 @@ export default function SettingsModal({
                             display: 'block',
                             marginBottom: '6px'
                         }}>Filename</label>
-                        <input
+                        <input name="auto_field_39"
                             type="text"
                             placeholder="e.g. whatchadoin_data.json"
                             value={syncForm.filename}

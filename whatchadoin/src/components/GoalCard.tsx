@@ -80,7 +80,7 @@ export default function GoalCard({
                         <GripVertical size={16} color="var(--text-secondary)"
                                       style={{flexShrink: 0, opacity: 0.5}}/>
                     </div>
-                    <input
+                    <input name="auto_field_9"
                         type="checkbox"
                         className="checkbox-square"
                         checked={goal.completed || false}

@@ -701,7 +701,7 @@ export default function MyDay({
                                     if (nextSibling && nextSibling.showPicker) nextSibling.showPicker();
                                 }}
                             />
-                            <input
+                            <input name="auto_field_14"
                                 type="time"
                                 value={formatTime24(block.startTime)}
                                 onChange={(e) => {
@@ -739,7 +739,7 @@ export default function MyDay({
                                 onClick={(e) => e.stopPropagation()}
                             />
                             <span>-</span>
-                            <input
+                            <input name="auto_field_15"
                                 type="time"
                                 value={formatTime24((block.startTime + block.duration) % 1440)}
                                 onChange={(e) => {
@@ -1057,7 +1057,7 @@ export default function MyDay({
             title="Rename Template"
         >
             <form onSubmit={saveTemplateName}>
-                <input type="text" value={editingTemplateName}
+                <input name="auto_field_16" type="text" value={editingTemplateName}
                        onChange={e => setEditingTemplateName(e.target.value)}
                        style={{width: '100%', marginBottom: '16px'}}
                        autoFocus/>
@@ -1080,7 +1080,7 @@ export default function MyDay({
                 addTemplate(e);
                 setShowNewTemplateModal(false);
             }}>
-                <input type="text" value={newTemplateName}
+                <input name="auto_field_17" type="text" value={newTemplateName}
                        onChange={e => setNewTemplateName(e.target.value)}
                        placeholder="e.g. Vacation Day"
                        style={{width: '100%', marginBottom: '16px'}}

@@ -94,20 +94,6 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         </div>);
     }
 
-    const monthDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
-    if (monthDiff > 6) {
-        return (<div style={{
-            padding: '24px',
-            color: 'var(--danger)',
-            textAlign: 'center',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-        }}>
-            Target period cannot exceed 6 months. Please adjust the routine dates.
-        </div>);
-    }
 
     const formatDate = (date: Date) => {
         const y = date.getFullYear();
@@ -158,7 +144,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
 
     const milestones = activeRoutine.milestones || {};
 
-    return (<div style={{display: 'flex', height: '100%', flex: 1, overflow: 'hidden'}}>
+    return (<div style={{display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minHeight: 0}}>
         <div className="calendar-scroll-container">
             {months.map((m) => {
                 let doneDays = 0;
@@ -176,43 +162,61 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                     }
                 });
 
-                return (<div key={`${m.year}-${m.month}`} className="calendar-month-card" style={{
-                    background: 'var(--panel-bg)', borderRadius: '12px', border: '1px solid var(--panel-border)'
-                }}>
-                    <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'
-                    }}>
-                        <h3 style={{margin: 0, color: '#fff', fontSize: '18px'}}>{m.monthName} {m.year}</h3>
-                        {totalDays > 0 && (<div style={{
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            color: 'var(--text-secondary)',
-                            background: 'rgba(255,255,255,0.05)',
-                            padding: '4px 10px',
-                            borderRadius: '12px'
+                    return (<div key={`${m.year}-${m.month}`} className="calendar-month-card" style={{
+                            background: 'var(--panel-bg)',
+                            borderRadius: '12px',
+                            border: '1px solid var(--panel-border)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            flex: 1
                         }}>
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '16px',
+                                flexShrink: 0
+                            }}>
+                                <h3 style={{margin: 0, color: '#fff', fontSize: '18px'}}>{m.monthName} {m.year}</h3>
+                                {totalDays > 0 && (<div style={{
+                                        fontSize: '12px',
+                                        fontWeight: 'bold',
+                                        color: 'var(--text-secondary)',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        padding: '4px 10px',
+                                        borderRadius: '12px'
+                                    }}>
                                         <span
                                             style={{color: doneDays > 0 ? 'var(--accent)' : '#fff'}}>{doneDays}</span> / {totalDays}
-                        </div>)}
-                    </div>
+                                    </div>)}
+                            </div>
 
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, 1fr)',
-                        gap: '8px',
-                        textAlign: 'center',
-                        marginBottom: '8px'
-                    }}>
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (<div key={day} style={{
-                            fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'bold'
-                        }}>
-                            {day}
-                        </div>))}
-                    </div>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(7, 1fr)',
+                                gap: '8px',
+                                textAlign: 'center',
+                                marginBottom: '8px',
+                                flexShrink: 0
+                            }}>
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (<div key={day} style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {day}
+                                    </div>))}
+                            </div>
 
-                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px'}}>
-                        {m.days.map((d, dIdx) => {
-                            if (!d) return <div key={`empty-${dIdx}`}/>;
+                            <div style={{
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(7, 1fr)', 
+                                gap: '8px', 
+                                flex: 1, 
+                                gridAutoRows: '1fr'
+                            }}>
+                                {m.days.map((d, dIdx) => {
+                                    if (!d) return <div key={`empty-${dIdx}`}/>;
 
                             const dateStr = formatDate(d || "");
                             const inRange = isDateInRange(dateStr);

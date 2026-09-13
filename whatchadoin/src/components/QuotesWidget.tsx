@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Check, Edit2, Plus, Settings, Shuffle, Trash2, X} from 'lucide-react';
+import { useWebMCP } from 'use-webmcp-tool';
 import BaseModal from './BaseModal';
 
 
@@ -68,14 +69,32 @@ export default function QuotesWidget() {
         setCurrentQuoteIndex(nextIndex);
     };
 
-    const handleAdd = () => {
-        if (!newQuoteText.trim()) return;
-        const newQuote = {id: Date.now().toString(), text: newQuoteText.trim()};
+    const handleAdd = (text?: string | any) => {
+        const txt = typeof text === 'string' ? text : newQuoteText;
+        if (!txt.trim()) return;
+        const newQuote = {id: Date.now().toString(), text: txt.trim()};
         const newQuotes = [...quotes, newQuote];
         setQuotes(newQuotes);
         setNewQuoteText('');
         setCurrentQuoteIndex(newQuotes.length - 1);
     };
+
+    useWebMCP({
+        name: 'add_quote',
+        description: 'Add a new motivational quote to the widget at the bottom of the screen.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                text: { type: 'string', description: 'The text of the quote to add' }
+            },
+            required: ['text']
+        },
+        execute: async (inputs: any) => {
+            handleAdd(inputs.text);
+            return { success: true, message: `Quote added.` };
+        },
+        annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
+    });
 
     const handleDelete = (id: string) => {
         const updated = quotes.filter(q => q.id !== id);
@@ -128,7 +147,7 @@ export default function QuotesWidget() {
                 <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
 
                     <div style={{display: 'flex', gap: '8px'}}>
-                        <input
+                        <input name="auto_field_22"
                             type="text"
                             placeholder="Add a new quote..."
                             value={newQuoteText}
@@ -176,7 +195,7 @@ export default function QuotesWidget() {
                                 border: currentQuoteIndex === idx ? '1px solid var(--accent)' : '1px solid var(--panel-border)'
                             }}>
                                 {editingId === q.id ? (<div style={{display: 'flex', gap: '8px', flex: 1}}>
-                                        <input
+                                        <input name="auto_field_23"
                                             type="text"
                                             value={editText}
                                             onChange={e => setEditText(e.target.value)}

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useWebMCP } from 'use-webmcp-tool';
 import { Trash2, GripVertical, X } from 'lucide-react';
 import { useDragReorder } from '../hooks/useDragReorder';
 import ConfirmModal from './ConfirmModal';
@@ -16,6 +17,33 @@ export default function TasksPane() {
   useEffect(() => {
     localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(quickTasks));
   }, [quickTasks]);
+
+  useWebMCP({
+    name: 'read_quick_tasks',
+    description: 'Read all quick tasks (both active and completed).',
+    inputSchema: { type: 'object', properties: {} },
+    execute: async () => ({ tasks: quickTasks.map(t => ({ id: t.id, text: t.text, completed: t.completed })) }),
+    annotations: { readOnlyHint: true, untrustedContentHint: false, consequentialHint: false }
+  });
+
+  const handleAgentAddTask = useCallback(async (inputs: any) => {
+    if (!inputs.text) throw new Error("Invalid parameters");
+    const newTask = { id: crypto.randomUUID(), text: inputs.text, completed: false, createdAt: new Date().toISOString() };
+    setQuickTasks(prev => [...prev, newTask]);
+    return { success: true, message: `Task '${inputs.text}' added.` };
+  }, []);
+
+  useWebMCP({
+    name: 'add_quick_task',
+    description: 'Add a new quick task to the inbox/tasks list.',
+    inputSchema: {
+      type: 'object',
+      properties: { text: { type: 'string', description: 'The content of the task' } },
+      required: ['text']
+    },
+    execute: handleAgentAddTask,
+    annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
+  });
 
   const activeTasks = quickTasks.filter(t => !t.completed);
   const completedTasks = quickTasks.filter(t => t.completed);
@@ -78,7 +106,7 @@ export default function TasksPane() {
         }}
       >
         <GripVertical size={16} style={{ color: 'var(--text-secondary)', opacity: 0.5, marginTop: '2px', cursor: 'grab', flexShrink: 0 }} />
-        <input 
+        <input name="auto_field_40" 
           type="checkbox"
           className="checkbox-square"
           checked={task.completed}
@@ -114,7 +142,7 @@ export default function TasksPane() {
     <div className="tasks-pane-container" style={{ minWidth: 0, width: '100%' }}>
       <div className="tasks-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '100%', width: '100%', margin: '0 auto', minWidth: 0 }}>
         <div style={{ position: 'relative', width: '100%', minWidth: 0 }}>
-          <input 
+          <input name="auto_field_41" 
             type="text"
             placeholder="+ Add a new task..."
             value={newQuickTask}

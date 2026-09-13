@@ -732,7 +732,7 @@ export default function RoutinePane({
                                                                               flexShrink: 0,
                                                                               opacity: 0.5
                                                                           }}/>)}
-                                        {effectiveDate ? (<input
+                                        {effectiveDate ? (<input name="auto_field_28"
                                             type="checkbox"
                                             className="checkbox-square"
                                             style={{
@@ -1134,7 +1134,7 @@ export default function RoutinePane({
                     <label style={{
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Habit Name</label>
-                    <input
+                    <input name="auto_field_29"
                         type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
                         onChange={(e) => setRoutineGoalForm({...routineGoalForm, task: e.target.value})} required
                         style={{width: '100%'}}
@@ -1144,7 +1144,7 @@ export default function RoutinePane({
                     <label style={{
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Details / Notes <span style={{opacity: 0.5}}>(optional)</span></label>
-                    <textarea
+                    <textarea name="auto_field_30"
                         placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
                         onChange={(e) => setRoutineGoalForm({...routineGoalForm, desc: e.target.value})}
                         style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
@@ -1156,7 +1156,7 @@ export default function RoutinePane({
                         <label style={{
                             fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                         }}>Duration</label>
-                        <input
+                        <input name="auto_field_31"
                             type="text" placeholder="1:20" value={String(routineGoalForm.timeValue)}
                             onChange={(e) => setRoutineGoalForm({...routineGoalForm, timeValue: e.target.value})}
                             style={{width: '100%'}}
@@ -1228,7 +1228,7 @@ export default function RoutinePane({
                             }}>
                                 {!(routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) &&
                                     <Palette size={12}/>}
-                                <input
+                                <input name="auto_field_32"
                                     type="color"
                                     value={routineGoalForm.color ? routineGoalForm.color.toLowerCase() : '#ffffff'}
                                     onChange={(e) => setRoutineGoalForm({
@@ -1395,7 +1395,7 @@ export default function RoutinePane({
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px'
                             }}>Date</label>
-                            <input
+                            <input name="auto_field_33"
                                 type="date" value={milestoneForm.date}
                                 onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
                                 required
@@ -1454,7 +1454,7 @@ export default function RoutinePane({
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
                         }}>Milestone Title</label>
-                        <input
+                        <input name="auto_field_34"
                             type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.title}
                             ref={el => modalInputRefs.current['title'] = el}
                             onChange={(e) => handleModalInput(e, 'title')}
@@ -1512,7 +1512,7 @@ export default function RoutinePane({
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
                         }}>Description (Optional)</label>
-                        <textarea
+                        <textarea name="auto_field_35"
                             placeholder="Any extra details..." value={milestoneForm.desc}
                             ref={el => modalInputRefs.current['desc'] = el}
                             onChange={(e) => handleModalInput(e, 'desc')}

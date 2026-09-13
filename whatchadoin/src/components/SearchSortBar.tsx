@@ -39,7 +39,7 @@ export default function SearchSortBar({
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
-                <input
+                <input name="auto_field_36"
                     type="text"
                     placeholder={placeholder}
                     value={searchQuery}

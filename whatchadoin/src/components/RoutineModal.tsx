@@ -132,16 +132,16 @@ export default function RoutineModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Routine Name</label>
-            <input type="text" value={editRoutine.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
+            <input name="auto_field_24" type="text" value={editRoutine.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ name: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
           </div>
           <div>
             <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Description (optional)</label>
-            <input type="text" value={editRoutine.desc || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
+            <input name="auto_field_25" type="text" value={editRoutine.desc || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value })} onBlur={(e: React.FocusEvent<HTMLInputElement>) => handleUpdate({ desc: e.target.value.trim() })} style={{ width: '100%', padding: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', borderRadius: '8px', color: '#fff', fontSize: '14px' }} />
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Start Date</label>
-              <input 
+              <input name="auto_field_26" 
                 type="date" 
                 value={editRoutine.start || ''} 
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,7 +161,7 @@ export default function RoutineModal({
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', fontWeight: '600' }}>End Date</label>
-              <input 
+              <input name="auto_field_27" 
                 type="date" 
                 min={editRoutine.start || ''}
                 value={editRoutine.end || ''} 

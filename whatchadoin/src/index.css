@@ -280,6 +280,7 @@ body {
     padding: 24px;
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 32px;
@@ -1257,5 +1258,33 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
     .main-content.mobile-tab-calendar .right-pane {
         border-left: 1px solid var(--panel-border) !important;
+    }
+}
+
+@media (max-width: 1400px) {
+    /* Override the mobile accordion "expand all" rules for the calendar tab so they can actually scroll! */
+    .main-content.mobile-tab-calendar .mid-pane-content,
+    .main-content.mobile-tab-calendar .mid-pane-content > div,
+    .main-content.mobile-tab-calendar .pane > div,
+    .main-content.mobile-tab-calendar .routine-pane-content {
+        height: 100% !important;
+        min-height: 0 !important;
+        flex: 1 !important;
+        overflow: hidden !important;
+    }
+
+    .main-content.mobile-tab-calendar .calendar-scroll-container,
+    .main-content.mobile-tab-calendar .routine-pane-content > div:nth-child(3) {
+        height: auto !important;
+        min-height: 0 !important;
+        flex: 1 !important;
+        overflow-y: auto !important;
+    }
+}
+
+@media (max-width: 1400px) {
+    /* Hide the Allocated Habits footer on the calendar tab to save space for the actual list */
+    .main-content.mobile-tab-calendar .right-pane > div:last-child:not(.routine-pane-content) {
+        display: none !important;
     }
 }

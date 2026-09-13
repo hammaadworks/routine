@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useWebMCP } from 'use-webmcp-tool';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import { Trash2, FileText, PanelLeftClose, PanelLeftOpen, Copy, FolderPlus, FilePlus, Folder, ChevronRight, ChevronDown, Search, ChevronLeft } from 'lucide-react';
@@ -171,6 +172,47 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
       setIsDocBarCollapsed(true);
     }
   };
+
+  const handleAgentCreateNote = useCallback(async (inputs: any) => {
+    if (!inputs.title || !inputs.content) {
+      throw new Error("Invalid parameters: title and content are required.");
+    }
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+      title: inputs.title,
+      content: inputs.content,
+      folderId: null,
+      createdAt: new Date().toISOString(),
+      isLife: inputs.isLife || false
+    };
+    setNotes(prev => [...prev, newNote]);
+    setActiveNoteId(newNote.id);
+    return { success: true, message: `Plan note '${inputs.title}' created.` };
+  }, []);
+
+  useWebMCP({
+    name: 'create_plan_note',
+    description: 'Create a new markdown note in the Plans section. MANDATORY: Ask the user for all optional fields.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Title of the note' },
+        content: { type: 'string', description: 'Markdown content for the note body' },
+        isLife: { type: 'boolean', description: 'If true, stores it in Life goals instead of the active Routine (default false)' }
+      },
+      required: ['title', 'content']
+    },
+    execute: handleAgentCreateNote,
+    annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
+  });
+
+  useWebMCP({
+    name: 'read_plan_notes',
+    description: 'Read the titles and contents of all your notes and plans to extract intelligence or answer questions.',
+    inputSchema: { type: 'object', properties: {} },
+    execute: async () => ({ notes: notes.map(n => ({ id: n.id, title: n.title, content: n.content, isLife: n.isLife })) }),
+    annotations: { readOnlyHint: true, untrustedContentHint: false, consequentialHint: false }
+  });
 
   const updateActiveNote = (updates: Partial<Note>) => {
     setNotes(notes.map(n => n.id === activeNoteId ? { ...n, ...updates } : n));
@@ -403,7 +445,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
               >
                 {f.isExpanded ? <ChevronDown size={14} style={{ flexShrink: 0 }} /> : <ChevronRight size={14} style={{ flexShrink: 0 }} />}
                 <Folder size={14} style={{ flexShrink: 0 }} />
-                <input 
+                <input name="auto_field_18" 
                   value={f.name}
                   onChange={(e) => updateFolder(f.id, { name: e.target.value })}
                   onBlur={(e) => updateFolder(f.id, { name: e.target.value.trim() })}
@@ -507,7 +549,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
             </div>
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              <input 
+              <input name="auto_field_19" 
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -591,7 +633,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
                   <PanelLeftOpen size={18} />
                 </button>
               )}
-              <input 
+              <input name="auto_field_20" 
                 type="text" 
                 value={activeNote.title}
                 onChange={e => updateActiveNote({ title: e.target.value })}
@@ -622,7 +664,7 @@ export default function PlansPane({ routineGoals, habits, lifeGoals, activeRouti
                       }}
                     >
                       {isActive ? (
-                        <textarea
+                        <textarea name="auto_field_21"
                           ref={el => { textareaRefs.current[idx] = el; }}
                           value={block}
                           onChange={e => handleInput(e, idx)}

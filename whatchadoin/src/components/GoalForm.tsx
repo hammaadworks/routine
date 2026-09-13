@@ -52,7 +52,7 @@ export default function GoalForm({
                 <label style={{
                     fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                 }}>Goal Title</label>
-                <input
+                <input name="auto_field_10"
                     type="text" placeholder="e.g. Write a Book" value={formData.text}
                     onChange={(e) => setFormData({...formData, text: e.target.value})}
                     style={{width: '100%'}}
@@ -63,7 +63,7 @@ export default function GoalForm({
                 <label style={{
                     fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                 }}>Estimated Cost {requireCost ? '' : <span style={{opacity: 0.5}}>(optional)</span>}</label>
-                <input
+                <input name="auto_field_11"
                     type="number" step="0.01" placeholder="e.g. 50" value={formData.cost || ''}
                     onChange={(e) => setFormData({...formData, cost: e.target.value})}
                     style={{width: '100%'}}
@@ -74,7 +74,7 @@ export default function GoalForm({
                 <label style={{
                     fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                 }}>Goal Description <span style={{opacity: 0.5}}>(optional)</span></label>
-                <textarea
+                <textarea name="auto_field_12"
                     placeholder="Add more details about this goal..." value={formData.desc}
                     onChange={(e) => setFormData({...formData, desc: e.target.value})}
                     style={{width: '100%', minHeight: '120px', resize: 'vertical'}}
@@ -128,7 +128,7 @@ export default function GoalForm({
                         color: isCustomColor ? '#fff' : 'var(--text-secondary)'
                     }}>
                         {!isCustomColor && <Palette size={12}/>}
-                        <input
+                        <input name="auto_field_13"
                             type="color"
                             value={formData.color ? formData.color.toLowerCase() : '#ffffff'}
                             onChange={handleColorChange}

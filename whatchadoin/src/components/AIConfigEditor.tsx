@@ -82,7 +82,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                         marginBottom: '8px',
                         color: 'var(--text-secondary)'
                     }}>Active Profile</label>
-                    <select
+                    <select name="auto_field_3"
                         value={config.activeProfileId}
                         onChange={e => setConfig({...config, activeProfileId: e.target.value})}
                         style={{
@@ -135,7 +135,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                         marginBottom: '8px',
                         color: 'var(--text-secondary)'
                     }}>Profile Name</label>
-                    <input
+                    <input name="auto_field_4"
                         type="text"
                         value={activeProfile?.name}
                         onChange={e => updateActiveProfile({name: e.target.value})}
@@ -157,7 +157,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                         marginBottom: '8px',
                         color: 'var(--text-secondary)'
                     }}>Provider</label>
-                    <select
+                    <select name="auto_field_5"
                         value={activeProfile?.provider}
                         onChange={e => updateActiveProfile({provider: e.target.value})}
                         style={{
@@ -183,7 +183,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                             marginBottom: '8px',
                             color: 'var(--text-secondary)'
                         }}>Custom Endpoint URL</label>
-                        <input
+                        <input name="auto_field_6"
                             type="text"
                             value={activeProfile?.customEndpoint || ''}
                             onChange={e => updateActiveProfile({customEndpoint: e.target.value})}
@@ -206,7 +206,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                         marginBottom: '8px',
                         color: 'var(--text-secondary)'
                     }}>Model</label>
-                    <input
+                    <input name="auto_field_7"
                         type="text"
                         value={activeProfile?.model}
                         onChange={e => updateActiveProfile({model: e.target.value})}
@@ -229,7 +229,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                         marginBottom: '8px',
                         color: 'var(--text-secondary)'
                     }}>API Key</label>
-                    <input
+                    <input name="auto_field_8"
                         type="password"
                         value={activeProfile?.apiKey}
                         onChange={e => updateActiveProfile({apiKey: e.target.value})}
