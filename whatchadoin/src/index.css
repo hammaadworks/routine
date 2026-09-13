@@ -206,6 +206,12 @@ body {
     gap: 16px;
 }
 
+@media (min-width: 1400px) {
+    .hide-on-desktop {
+        display: none !important;
+    }
+}
+
 @media (max-width: 1200px) {
     .mobile-hidden {
         display: none !important;
@@ -324,7 +330,7 @@ body {
         padding: 4px;
         gap: 16px;
     }
-    
+
     .tasks-pane-container {
         padding: 4px;
         overflow: visible;
@@ -925,36 +931,42 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 /* Responsive FAB */
 .tab-btn-fab {
-    position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
-    right: 24px;
-    z-index: 101;
-    width: 48px;
-    height: 48px;
-    border-radius: 24px;
-    background: var(--accent);
-    color: #000;
-    border: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.2s, background 0.2s;
-}
-
-.tab-btn-fab:active {
-    transform: scale(0.95);
-}
-
-.tab-btn-fab .fab-label {
     display: none;
 }
 
-.tab-btn-fab .fab-icon {
-    width: 24px;
-    height: 24px;
-    stroke: #000;
+@media (max-width: 1400px) {
+    .tab-btn-fab {
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom, 16px) + 16px);
+        right: 24px;
+        z-index: 101;
+        width: 48px;
+        height: 48px;
+        border-radius: 24px;
+        background: var(--accent);
+        color: #000;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+    }
+
+    .tab-btn-fab:active {
+        transform: scale(0.95);
+    }
+
+    .tab-btn-fab .fab-label {
+        display: none;
+    }
+
+    .tab-btn-fab .fab-icon {
+        width: 24px;
+        height: 24px;
+        stroke: #000;
+    }
 }
 
 .habits-drawer-btn {
@@ -979,7 +991,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         cursor: pointer;
         transition: transform 0.2s;
     }
-    
+
     .habits-drawer-btn:active {
         transform: scale(0.95);
     }
@@ -1034,22 +1046,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     .modal-overlay.drawer-mode-tablet {
         align-items: flex-end !important;
         padding: 0 !important;
-        overscroll-behavior: none !important;
-    }
-
-    .modal-content.drawer-mode-tablet {
-        width: 100% !important;
-        max-width: 100% !important;
-        border-radius: 24px 24px 0 0 !important;
-        border-bottom: none !important;
-        border-left: none !important;
-        border-right: none !important;
-        margin: 0 !important;
-        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        height: 80vh !important;
-        min-height: 80vh !important;
-        max-height: 80vh !important;
-        padding-bottom: env(safe-area-inset-bottom, 20px) !important;
         overscroll-behavior: none !important;
     }
 
@@ -1131,7 +1127,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 @media (max-width: 1399px) {
     /* Hide native Center Tabs on mobile */
-    .timeline-area .tabs { display: none !important; }
+    .timeline-area .tabs {
+        display: none !important;
+    }
 
     /* Right pane as a slide-over drawer on mobile */
     .pane.right-pane {
@@ -1145,21 +1143,21 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         transition: right 0.3s ease !important;
         background: var(--bg) !important;
         border-left: 1px solid var(--panel-border);
-        box-shadow: -4px 0 16px rgba(0,0,0,0.5) !important;
+        box-shadow: -4px 0 16px rgba(0, 0, 0, 0.5) !important;
         flex: none !important;
         height: 100dvh !important;
         overflow-y: auto !important;
         overscroll-behavior-y: contain !important;
     }
-    
+
     .mobile-drawer-overlay {
         position: fixed !important;
         inset: 0 !important;
-        background: rgba(0,0,0,0.5) !important;
+        background: rgba(0, 0, 0, 0.5) !important;
         z-index: 99 !important;
         touch-action: none !important;
     }
-    
+
     .pane.right-pane.drawer-open {
         right: 0 !important;
     }

@@ -48,14 +48,11 @@ export default function GoalCard({
 
     return (<div
             className={`item-card ${goal.completed ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`}
-            draggable={draggable}
-            onDragStart={(e) => onDragStart(e, index)}
             onDragEnter={(e) => onDragEnter(e, index)}
             onDragEnd={onDragEnd}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => e.preventDefault()}
             style={{
-                cursor: draggable ? 'grab' : 'default',
                 position: 'relative',
                 minHeight: '48px',
                 padding: '10px 12px',
@@ -71,8 +68,18 @@ export default function GoalCard({
         >
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
                 <div style={{display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0}}>
-                    <GripVertical size={16} color="var(--text-secondary)"
-                                  style={{cursor: draggable ? 'grab' : 'default', flexShrink: 0, opacity: 0.5}}/>
+                    <div
+                        draggable={draggable}
+                        onDragStart={(e) => {
+                            const parent = e.currentTarget.closest('.item-card') as HTMLDivElement;
+                            if (parent) e.dataTransfer.setDragImage(parent, 20, 20);
+                            onDragStart(e, index);
+                        }}
+                        style={{display: 'flex', cursor: draggable ? 'grab' : 'default', touchAction: 'none'}}
+                    >
+                        <GripVertical size={16} color="var(--text-secondary)"
+                                      style={{flexShrink: 0, opacity: 0.5}}/>
+                    </div>
                     <input
                         type="checkbox"
                         className="checkbox-square"

@@ -238,7 +238,7 @@ export default function RoutinePane({
 
         const dateStr = milestoneForm.date;
         const title = milestoneForm.title.trim();
-        const desc = milestoneForm.desc.trim().replace(/\n+/g, '  \n');
+        const desc = milestoneForm.desc.trim().replace(/\n{2,}/g, '\n');
         const tag = (milestoneForm.tag || '').trim();
 
         let newBlock = '';
@@ -554,8 +554,9 @@ export default function RoutinePane({
         }
     }), [allGoals]);
 
-    return (<div className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
-                 style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
+    return (<div
+        className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
+        style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
         <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -584,15 +585,11 @@ export default function RoutinePane({
             overflow: 'hidden',
             minHeight: 0
         }}>
-            {isRoutineDrawerOpen && (
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '16px',
+            {isRoutineDrawerOpen && (<div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
                 }}>
                     <h2 style={{margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <ListTodo size={20} color="var(--accent)" />
+                        <ListTodo size={20} color="var(--accent)"/>
                         Habits
                     </h2>
                     <button
@@ -600,10 +597,9 @@ export default function RoutinePane({
                         onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(false)}
                         style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
                     >
-                        <X size={18} />
+                        <X size={18}/>
                     </button>
-                </div>
-            )}
+                </div>)}
             {isCalendarTab && effectiveDate && (<button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
@@ -685,7 +681,7 @@ export default function RoutinePane({
                         const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
                         const activeGoals = displayedRoutineGoals.filter(g => !getIsCompleted(g));
                         const completedGoals = displayedRoutineGoals.filter(g => getIsCompleted(g));
-                        
+
                         const renderGoal = (goal: any) => {
                             const isAddressed = checkRoutineAddressed(goal);
                             const hexes = getGoalColor(goal, routineGoals, lifeGoals);
@@ -708,25 +704,30 @@ export default function RoutinePane({
                                 className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
                                 draggable={!effectiveDate}
                                 onDragStart={!effectiveDate ? (e) => handleDragStart(e, goal) : undefined}
-                                onClick={() => {
-                                    if (!effectiveDate) {
-                                        window.dispatchEvent(new CustomEvent('myday-add-habit-mobile', { detail: goal }));
-                                    }
-                                }}
                                 style={{
-                                    display: 'flex', alignItems: 'center', height: '52px', padding: '0 12px', ...bgStyle
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    height: '52px',
+                                    padding: '0 12px',
+                                    touchAction: !effectiveDate ? 'none' : 'auto', ...bgStyle
                                 }}
                                 title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
                             >
                                 <div style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    width: '100%'
                                 }}>
                                     <div style={{
                                         display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                                     }}>
-                                        {!effectiveDate && (
-                                            <GripVertical size={16} color="var(--text-secondary)" style={{cursor: 'grab', flexShrink: 0, opacity: 0.5}}/>
-                                        )}
+                                        {!effectiveDate && (<GripVertical size={16} color="var(--text-secondary)"
+                                                                          style={{
+                                                                              cursor: 'grab',
+                                                                              flexShrink: 0,
+                                                                              opacity: 0.5
+                                                                          }}/>)}
                                         {effectiveDate ? (<input
                                             type="checkbox"
                                             className="checkbox-square"
@@ -805,7 +806,11 @@ export default function RoutinePane({
                                     </div>
 
                                     <div style={{
-                                        display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '6px', alignItems: 'center'
+                                        display: 'flex',
+                                        gap: '6px',
+                                        flexShrink: 0,
+                                        marginLeft: '6px',
+                                        alignItems: 'center'
                                     }}>
                                         {!effectiveDate && (<>
                                             <button className="icon-btn" onClick={(e) => {
@@ -825,44 +830,52 @@ export default function RoutinePane({
                             </div>);
                         };
 
-                        return (
-                            <>
+                        return (<>
                                 {activeGoals.map(renderGoal)}
-                                {completedGoals.length > 0 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 8px 0', justifyContent: 'space-between' }}>
-                                      <span style={{ 
-                                        padding: '0 12px 0 0', 
-                                        fontSize: '12px', 
-                                        color: 'var(--text-secondary)',
-                                        fontWeight: 500
+                                {completedGoals.length > 0 && (<div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        margin: '16px 0 8px 0',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                      <span style={{
+                                          padding: '0 12px 0 0',
+                                          fontSize: '12px',
+                                          color: 'var(--text-secondary)',
+                                          fontWeight: 500
                                       }}>
                                         Completed
                                       </span>
-                                      <div style={{ flex: 1, height: '1px', background: 'var(--panel-border)' }}></div>
-                                      {!effectiveDate && (
-                                        <button 
-                                           onClick={() => {
-                                              setConfirmConfig({
-                                                title: 'Delete All Completed',
-                                                message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
-                                                isDanger: true,
-                                                onConfirm: () => {
-                                                  setHabits(habits.filter((g: any) => !g.completed));
-                                                  setConfirmConfig(null);
-                                                },
-                                                onCancel: () => setConfirmConfig(null)
-                                              });
-                                           }}
-                                           className="icon-btn"
-                                           style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', fontWeight: 500, opacity: 0.8 }}>
-                                           Delete all
-                                        </button>
-                                      )}
-                                  </div>
-                                )}
+                                        <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                        {!effectiveDate && (<button
+                                                onClick={() => {
+                                                    setConfirmConfig({
+                                                        title: 'Delete All Completed',
+                                                        message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
+                                                        isDanger: true,
+                                                        onConfirm: () => {
+                                                            setHabits(habits.filter((g: any) => !g.completed));
+                                                            setConfirmConfig(null);
+                                                        },
+                                                        onCancel: () => setConfirmConfig(null)
+                                                    });
+                                                }}
+                                                className="icon-btn"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--danger)',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer',
+                                                    padding: '4px 8px',
+                                                    fontWeight: 500,
+                                                    opacity: 0.8
+                                                }}>
+                                                Delete all
+                                            </button>)}
+                                    </div>)}
                                 {completedGoals.map(renderGoal)}
-                            </>
-                        );
+                            </>);
                     })()}
                     {(habits || []).length === 0 && (<div style={{
                         display: 'flex',
@@ -889,6 +902,25 @@ export default function RoutinePane({
             {calendarSubTab === 'milestones' && (<div style={{
                 flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto'
             }}>
+                {!effectiveDate && (<button
+                    onClick={() => {
+                        setEditingMilestoneIdx(null);
+                        setMilestoneForm({date: new Date().toISOString().split('T')[0], tag: '', title: '', desc: ''});
+                        setShowMilestoneModal(true);
+                    }}
+                    className="secondary desktop-only-btn"
+                    style={{
+                        width: '100%',
+                        flexShrink: 0,
+                        marginBottom: '16px',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '12px',
+                        borderStyle: 'dashed'
+                    }}
+                >
+                    <Plus size={16}/> Add Milestone
+                </button>)}
                 {milestoneDates.length === 0 ? (
                     <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
                         {isCalendarTab ? "No milestones found. Click 'Add Milestone' to create one." : "No milestones found."}
@@ -949,43 +981,48 @@ export default function RoutinePane({
                                     boxShadow: isActiveDate ? `0 0 10px ${nodeColor}80` : 'none',
                                     opacity: isActiveDate ? 1 : 0.6
                                 }}/>
-                                <div
-                                    onClick={() => {
-                                        if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
-                                    }}
-                                    style={{
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        color: isActiveDate ? '#fff' : 'var(--text-secondary)',
-                                        marginBottom: '16px',
-                                        cursor: 'pointer',
-                                        display: 'inline-block'
-                                    }}
-                                >
-                                    {new Date(dateStr).toLocaleDateString('en-US', {
-                                        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-                                    })}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '16px'
+                                }}>
+                                    <div
+                                        onClick={() => {
+                                            if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
+                                        }}
+                                        style={{
+                                            fontSize: '16px',
+                                            fontWeight: 'bold',
+                                            color: isActiveDate ? '#fff' : 'var(--text-secondary)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {new Date(dateStr).toLocaleDateString('en-US', {
+                                            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+                                        })}
+                                    </div>
+                                    <button
+                                        className="icon-btn"
+                                        onClick={() => openEditMilestone(dateStr, 0, blocks[0])}
+                                        style={{padding: '4px', display: 'flex', alignItems: 'center'}}
+                                    >
+                                        <Pencil size={14} color="var(--text-secondary)"/>
+                                    </button>
                                 </div>
 
                                 {blocks.map((block: string, idx: number) => {
                                     if (!block.trim()) return null;
                                     return (<div
                                         key={idx}
-                                        onClick={() => {
-                                            if (isCalendarTab) openEditMilestone(dateStr, idx, block);
-                                        }}
                                         style={{
-                                            minHeight: '28px',
-                                            cursor: isCalendarTab ? 'pointer' : 'default',
-                                            padding: '4px 0',
-                                            marginBottom: '8px'
+                                            padding: '2px 0', marginBottom: '8px'
                                         }}
                                     >
-                                        <div className="markdown-preview"
-                                             style={{minHeight: '24px'}}>
+                                        <div className="markdown-preview">
                                             <ReactMarkdown
                                                 components={customMarkdownComponents as any}>
-                                                {block === '' ? '\u00A0' : block}
+                                                {block === '' ? '\u00A0' : block.trim()}
                                             </ReactMarkdown>
                                         </div>
                                     </div>);
@@ -1014,13 +1051,23 @@ export default function RoutinePane({
             <div style={{
                 display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
             }}>
-                <Activity size={14} color="var(--accent)"/>
                 {(() => {
+                    if (calendarSubTab === 'milestones') {
+                        const count = Object.keys(activeRoutine?.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '').length;
+                        return (<>
+                                <Target size={14} color="var(--accent)"/>
+                                <span>Total Milestones : {count}</span>
+                            </>);
+                    }
+
                     let allocatedCount = 0;
                     if (currentTemplate && currentTemplate.blocks) {
                         allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.task)).length;
                     }
-                    return `Allocated Habits : ${allocatedCount} / ${habits.length}`;
+                    return (<>
+                            <Activity size={14} color="var(--accent)"/>
+                            <span>Allocated Habits : {allocatedCount} / {habits.length}</span>
+                        </>);
                 })()}
             </div>
         </div>
@@ -1173,8 +1220,7 @@ export default function RoutinePane({
                     </label>
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
                         {(routineGoals || []).length === 0 && <span style={{
-                            fontSize: '12px',
-                            color: 'var(--text-secondary)'
+                            fontSize: '12px', color: 'var(--text-secondary)'
                         }}>No routine goals available</span>}
                         {(routineGoals || []).map(sg => {
                             const isSelected = (routineGoalForm.routineGoalIds || []).includes(sg.id);

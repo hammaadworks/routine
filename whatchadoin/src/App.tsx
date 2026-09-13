@@ -591,6 +591,8 @@ export default function App() {
                             setDayMapping={setDayMapping}
                             updateActiveRoutine={updateActiveRoutine}
                             habits={habits}
+                            routineGoals={routineGoals}
+                            lifeGoals={lifeGoals}
                         />) : activeCenterTab === 'plans' ? (<PlansPane
                             key={activeRoutineId}
                             routineGoals={routineGoals}

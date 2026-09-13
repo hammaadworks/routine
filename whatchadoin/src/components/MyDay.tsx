@@ -1,11 +1,11 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {Clock, GripVertical, X, ZoomIn, ZoomOut} from 'lucide-react';
+import {Clock, Target, X, ZoomIn, ZoomOut} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import MyDayMaker from './MyDayMaker';
 
-import {parseDuration, sortHabits} from '../utils';
+import {getGoalColor, parseDuration, sortHabits} from '../utils';
 
 const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60);
@@ -158,6 +158,8 @@ export interface MyDayProps {
         templates: Template[], activeTemplateId: string, dayMapping: Record<string, string>
     }>) => void;
     habits: Habit[];
+    routineGoals?: any[];
+    lifeGoals?: any[];
 }
 
 
@@ -169,7 +171,9 @@ export default function MyDay({
                                   dayMapping,
                                   setDayMapping,
                                   updateActiveRoutine,
-                                  habits
+                                  habits,
+                                  routineGoals = [],
+                                  lifeGoals = []
                               }: MyDayProps) {
     const [newTemplateName, setNewTemplateName] = useState('');
     // Inline editing for blocks now, no block modal needed
@@ -237,7 +241,7 @@ export default function MyDay({
         }
     };
 
-    const addTemplate = (e: React.FormEvent) => {
+    const addTemplate = (e: React.SyntheticEvent) => {
         e.preventDefault();
         if (!newTemplateName.trim()) return;
         const cleanName = newTemplateName.trim();
@@ -306,7 +310,7 @@ export default function MyDay({
         setShowNewTemplateModal(true);
     };
 
-    const saveTemplateName = (e: React.FormEvent) => {
+    const saveTemplateName = (e: React.SyntheticEvent) => {
         e.preventDefault();
         if (!editingTemplateName.trim()) {
             setIsEditingTemplateName(false);
@@ -392,7 +396,8 @@ export default function MyDay({
         if (!activeTemplateId) return;
 
         const rect = e.currentTarget.getBoundingClientRect();
-        const y = e.clientY - rect.top;
+        const clientY = e.clientY || (e.nativeEvent as any).clientY || (e.nativeEvent as any).changedTouches?.[0]?.clientY || 0;
+        const y = clientY - rect.top;
 
         const startMinutes = getSnappedMinutes(y);
 
@@ -439,18 +444,23 @@ export default function MyDay({
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         const rect = e.currentTarget.getBoundingClientRect();
-        const y = e.clientY - rect.top;
+        const clientY = e.clientY || (e.nativeEvent as any).clientY || (e.nativeEvent as any).changedTouches?.[0]?.clientY || 0;
+        const y = clientY - rect.top;
         let startMinutes = Math.floor(y / (15 * zoomLevel)) * 15;
         if (startMinutes < 0) startMinutes = 0;
         if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
         setDragHoverMins(startMinutes);
     };
 
-    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-            setDragHoverMins(null);
-        }
-    };
+    useEffect(() => {
+        const handleGlobalDragEnd = () => setDragHoverMins(null);
+        window.addEventListener('dragend', handleGlobalDragEnd);
+        window.addEventListener('touchend', handleGlobalDragEnd); // Catch touch ends too for polyfill safety
+        return () => {
+            window.removeEventListener('dragend', handleGlobalDragEnd);
+            window.removeEventListener('touchend', handleGlobalDragEnd);
+        };
+    }, []);
 
 
     const deleteBlock = (id: string) => {
@@ -501,7 +511,6 @@ export default function MyDay({
                 className="timeline-grid"
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
                 style={{'--zoom': zoomLevel} as React.CSSProperties}
             >
                 {/* Hours Grid (12 AM to 11 PM) */}
@@ -655,6 +664,7 @@ export default function MyDay({
                             flexDirection: block.duration <= 60 ? 'row' : 'column',
                             alignItems: block.duration <= 60 ? 'center' : 'flex-start',
                             gap: block.duration <= 60 ? '8px' : '0',
+                            touchAction: 'none',
                             opacity: block.isWrapSecond ? 0.9 : 1
                         }}
                     >
@@ -914,13 +924,41 @@ export default function MyDay({
         </div>
 
         {/* Habits Drawer (Mobile Goals) */}
-        <BaseModal
-            isOpen={showMobileGoals}
-            onClose={() => setShowMobileGoals(false)}
-            title="Habits"
-        >
-            <div style={{display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '16px'}}>
-                <p style={{margin: 0, fontSize: '12px', color: 'var(--text-secondary)'}}>
+        {showMobileGoals && (<div
+                className="mobile-drawer-overlay hide-on-desktop"
+                onClick={() => setShowMobileGoals(false)}
+            />)}
+        <div className={`panel pane right-pane hide-on-desktop ${showMobileGoals ? 'drawer-open' : ''}`}
+             style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
+            <div className="panel-header" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '16px 24px',
+                borderBottom: '1px solid var(--panel-border)'
+            }}>
+                <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
+                    <Target size={18} color="var(--accent)"/>
+                    Habits
+                </h2>
+                <button
+                    className="icon-btn"
+                    onClick={() => setShowMobileGoals(false)}
+                    style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
+                >
+                    <X size={18}/>
+                </button>
+            </div>
+
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                padding: '24px',
+                paddingTop: '16px',
+                overflowY: 'auto'
+            }}>
+                <p style={{margin: 0, marginBottom: '16px', fontSize: '12px', color: 'var(--text-secondary)'}}>
                     Tap to add to schedule, or drag if on desktop.
                 </p>
                 <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', alignContent: 'flex-start'}}>
@@ -932,80 +970,82 @@ export default function MyDay({
                         padding: '24px 0'
                     }}>
                         No goals/habits found.
-                    </div>) : (sortedMobileGoals.map(habit => (<div
-                        key={habit.id}
-                        draggable
-                        onDragStart={(e) => {
-                            e.dataTransfer.setData('source', 'sidebar');
-                            e.dataTransfer.setData('task', habit.task || habit.name);
-                            e.dataTransfer.setData('time', habit.time || '30m');
-                            e.dataTransfer.setData('color', habit.color || '#eab308');
-                            e.dataTransfer.setData('routineGoalId', habit.id);
-                            setShowMobileGoals(false);
-                        }}
-                        onClick={() => {
-                            if (!activeTemplateId) return;
+                    </div>) : (sortedMobileGoals.map(habit => {
+                        const habitColor = getGoalColor(habit, routineGoals, lifeGoals)[0] || '#eab308';
+                        return (<div
+                            key={habit.id}
+                            draggable
+                            onDragStart={(e) => {
+                                e.dataTransfer.setData('source', 'sidebar');
+                                e.dataTransfer.setData('task', habit.task || habit.name);
+                                e.dataTransfer.setData('time', habit.time || '30m');
+                                e.dataTransfer.setData('color', habitColor);
+                                e.dataTransfer.setData('routineGoalId', habit.id);
+                                setTimeout(() => setShowMobileGoals(false), 0);
+                            }}
+                            onClick={() => {
+                                if (!activeTemplateId) return;
 
-                            // Tap to add logic for mobile (and desktop as shortcut)
-                            const duration = parseDuration(habit.time || '30m');
+                                // Tap to add logic for mobile (and desktop as shortcut)
+                                const duration = parseDuration(habit.time || '30m');
 
-                            let updatedTemplates = templates.map((t: Template) => {
-                                if (t.id === activeTemplateId) {
-                                    let newBlocks = [...t.blocks];
-                                    // Find the end time of the last block, or use current time if empty
-                                    let startMinutes;
-                                    if (newBlocks.length > 0) {
-                                        const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
-                                        startMinutes = lastBlock.startTime + lastBlock.duration;
-                                        // Snap to 15 mins
-                                        startMinutes = Math.ceil(startMinutes / 15) * 15;
-                                    } else {
-                                        const now = new Date();
-                                        startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                                let updatedTemplates = templates.map((t: Template) => {
+                                    if (t.id === activeTemplateId) {
+                                        let newBlocks = [...t.blocks];
+                                        // Find the end time of the last block, or use current time if empty
+                                        let startMinutes;
+                                        if (newBlocks.length > 0) {
+                                            const lastBlock = newBlocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
+                                            startMinutes = lastBlock.startTime + lastBlock.duration;
+                                            // Snap to 15 mins
+                                            startMinutes = Math.ceil(startMinutes / 15) * 15;
+                                        } else {
+                                            const now = new Date();
+                                            startMinutes = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+                                        }
+
+                                        if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
+
+                                        newBlocks.push({
+                                            id: Date.now().toString(),
+                                            name: habit.task,
+                                            startTime: startMinutes,
+                                            duration: duration,
+                                            color: habitColor,
+                                            routineGoalId: habit.routineGoalId || habit.id
+                                        });
+                                        return {...t, blocks: newBlocks};
                                     }
+                                    return t;
+                                });
 
-                                    if (startMinutes > 1440 - 15) startMinutes = 1440 - 15;
-
-                                    newBlocks.push({
-                                        id: Date.now().toString(),
-                                        name: habit.task,
-                                        startTime: startMinutes,
-                                        duration: duration,
-                                        color: habit.color || '#eab308',
-                                        routineGoalId: habit.routineGoalId || ''
-                                    });
-                                    return {...t, blocks: newBlocks};
+                                if (updateActiveRoutine) {
+                                    updateActiveRoutine({templates: updatedTemplates});
+                                } else {
+                                    setTemplates(updatedTemplates);
                                 }
-                                return t;
-                            });
-
-                            if (updateActiveRoutine) {
-                                updateActiveRoutine({templates: updatedTemplates});
-                            } else {
-                                setTemplates(updatedTemplates);
-                            }
-                            setShowMobileGoals(false);
-                        }}
-                        style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            borderLeft: `4px solid ${habit.color || '#eab308'}`,
-                            cursor: 'pointer', /* changed from grab to pointer to hint tapability */
-                            fontSize: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}
-                    >
-                        <GripVertical size={14} color="var(--text-secondary)"/>
-                        {habit.task} <span style={{
-                        color: 'var(--text-secondary)', fontSize: '10px'
-                    }}>({habit.time || '30m'})</span>
-                    </div>)))}
+                                setShowMobileGoals(false);
+                            }}
+                            style={{
+                                background: 'rgba(255,255,255,0.05)',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                borderLeft: `4px solid ${habitColor}`,
+                                cursor: 'pointer', /* changed from grab to pointer to hint tapability */
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                        >
+                            {habit.task} <span style={{
+                            color: 'var(--text-secondary)', fontSize: '10px'
+                        }}>({habit.time || '30m'})</span>
+                        </div>);
+                    }))}
                 </div>
             </div>
-        </BaseModal>
+        </div>
 
         {/* Rename Modal */}
         <BaseModal
