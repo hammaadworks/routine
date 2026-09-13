@@ -961,7 +961,7 @@ export default function MyDay({
                 <p style={{margin: 0, marginBottom: '16px', fontSize: '12px', color: 'var(--text-secondary)'}}>
                     Tap to add to schedule, or drag if on desktop.
                 </p>
-                <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', alignContent: 'flex-start'}}>
+                <div className="mobile-goals-grid">
                     {sortedMobileGoals.length === 0 ? (<div style={{
                         color: 'var(--text-secondary)',
                         fontSize: '12px',
@@ -1031,16 +1031,19 @@ export default function MyDay({
                                 padding: '8px 12px',
                                 borderRadius: '8px',
                                 borderLeft: `4px solid ${habitColor}`,
-                                cursor: 'pointer', /* changed from grab to pointer to hint tapability */
+                                cursor: 'pointer',
                                 fontSize: '12px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px'
+                                gap: '8px',
+                                width: '100%',
+                                boxSizing: 'border-box'
                             }}
                         >
-                            {habit.task} <span style={{
-                            color: 'var(--text-secondary)', fontSize: '10px'
-                        }}>({habit.time || '30m'})</span>
+                            <span style={{flex: 1, wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.4}}>{habit.task}</span> 
+                            <span style={{
+                                color: 'var(--text-secondary)', fontSize: '10px', flexShrink: 0
+                            }}>({habit.time || '30m'})</span>
                         </div>);
                     }))}
                 </div>

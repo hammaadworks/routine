@@ -93,7 +93,7 @@ export default function RoutinePane({
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
-    const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', title: '', desc: ''});
+    const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', title: '', desc: '', done: false});
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
 
@@ -107,6 +107,7 @@ export default function RoutinePane({
         let tag;
         let title;
         let desc;
+        let done = false;
         const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
         const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
 
@@ -124,8 +125,16 @@ export default function RoutinePane({
             desc = '';
         }
 
+        if (title.startsWith('[x] ')) {
+            done = true;
+            title = title.substring(4);
+        } else if (title.startsWith('[ ] ')) {
+            done = false;
+            title = title.substring(4);
+        }
+
         setEditingMilestoneIdx({dateStr, idx});
-        setMilestoneForm({date: dateStr, tag: tag || '', title: title || '', desc: desc || ''});
+        setMilestoneForm({date: dateStr, tag: tag || '', title: title || '', desc: desc || '', done});
         setShowMilestoneModal(true);
     };
 
@@ -240,12 +249,13 @@ export default function RoutinePane({
         const title = milestoneForm.title.trim();
         const desc = milestoneForm.desc.trim().replace(/\n{2,}/g, '\n');
         const tag = (milestoneForm.tag || '').trim();
+        const finalTitle = milestoneForm.done ? `[x] ${title}` : title;
 
         let newBlock = '';
         if (tag) {
             newBlock += `**@${tag}** - `;
         }
-        newBlock += `**${title}**`;
+        newBlock += `**${finalTitle}**`;
         if (desc) newBlock += `  \n${desc}`;
 
         const newMilestones = {...(activeRoutine.milestones || {})};
@@ -275,7 +285,7 @@ export default function RoutinePane({
         });
 
         setShowMilestoneModal(false);
-        setMilestoneForm({date: '', tag: '', title: '', desc: ''});
+        setMilestoneForm({date: '', tag: '', title: '', desc: '', done: false});
         setEditingMilestoneIdx(null);
         setCalendarSubTab('milestones');
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
@@ -298,7 +308,7 @@ export default function RoutinePane({
         const handleFab = () => {
             if (calendarSubTab === 'milestones') {
                 setEditingMilestoneIdx(null);
-                setMilestoneForm({date: '', tag: '', title: '', desc: ''});
+                setMilestoneForm({date: '', tag: '', title: '', desc: '', done: false});
                 setShowMilestoneModal(true);
             } else {
                 openAddRoutineGoal();
@@ -603,7 +613,7 @@ export default function RoutinePane({
             {isCalendarTab && effectiveDate && (<button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
-                    setMilestoneForm({date: effectiveDate, tag: '', title: '', desc: ''});
+                    setMilestoneForm({date: effectiveDate, tag: '', title: '', desc: '', done: false});
                     setShowMilestoneModal(true);
                 }}
                 className="secondary"
@@ -707,8 +717,8 @@ export default function RoutinePane({
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    height: '52px',
-                                    padding: '0 12px',
+                                    minHeight: '52px',
+                                    padding: '8px 12px',
                                     touchAction: !effectiveDate ? 'none' : 'auto', ...bgStyle
                                 }}
                                 title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
@@ -745,11 +755,11 @@ export default function RoutinePane({
                                             gap: '2px',
                                             justifyContent: 'center'
                                         }}>
-                                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                            <div style={{display: 'flex', alignItems: 'flex-start', gap: '6px'}}>
                           <span className="item-title" style={{
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              wordBreak: 'break-word',
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: 1.4,
                               color: '#fff',
                               fontSize: '13px',
                               fontWeight: '600'
@@ -757,7 +767,7 @@ export default function RoutinePane({
                             {goal.task}
                           </span>
                                                 {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
-                                                                               style={{flexShrink: 0}}/>)}
+                                                                               style={{flexShrink: 0, marginTop: '2px'}}/>)}
                                             </div>
 
                                             <div style={{
@@ -905,7 +915,7 @@ export default function RoutinePane({
                 {!effectiveDate && (<button
                     onClick={() => {
                         setEditingMilestoneIdx(null);
-                        setMilestoneForm({date: new Date().toISOString().split('T')[0], tag: '', title: '', desc: ''});
+                        setMilestoneForm({date: new Date().toISOString().split('T')[0], tag: '', title: '', desc: '', done: false});
                         setShowMilestoneModal(true);
                     }}
                     className="secondary desktop-only-btn"
@@ -940,6 +950,19 @@ export default function RoutinePane({
                             const blockDate = new Date(dateStr);
                             blockDate.setHours(0, 0, 0, 0);
                             const isPast = blockDate < todayDate;
+                            
+                            const diffTime = blockDate.getTime() - todayDate.getTime();
+                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                            const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
+                            
+                            const validBlocks = blocks.filter(b => b.trim());
+                            const isAllDone = validBlocks.length > 0 && validBlocks.every(b => {
+                                const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                                const titleMatchWithoutTag = b.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                                const title = titleMatchWithTag ? titleMatchWithTag[2] : (titleMatchWithoutTag ? titleMatchWithoutTag[1] : b);
+                                return title.startsWith('[x] ');
+                            });
+                            
                             let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
                             let multiColors: string[] = [];
                             const tagsMatch = contentStr.match(/@([^\s*]+)/g);
@@ -995,12 +1018,24 @@ export default function RoutinePane({
                                             fontSize: '16px',
                                             fontWeight: 'bold',
                                             color: isActiveDate ? '#fff' : 'var(--text-secondary)',
-                                            cursor: 'pointer'
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
                                         }}
                                     >
-                                        {new Date(dateStr).toLocaleDateString('en-US', {
-                                            weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-                                        })}
+                                        <span>
+                                            {new Date(dateStr).toLocaleDateString('en-US', {
+                                                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+                                            })}
+                                        </span>
+                                        {isAllDone ? (
+                                            <CheckCircle2 size={16} color="var(--success, #22c55e)" />
+                                        ) : (
+                                            <span style={{fontSize: '12px', color: diffDays < 0 ? '#ef4444' : 'var(--accent)', fontWeight: 'normal'}}>
+                                                {diffStr}
+                                            </span>
+                                        )}
                                     </div>
                                     <button
                                         className="icon-btn"
@@ -1391,6 +1426,10 @@ export default function RoutinePane({
                                 }))]}
                             />
                         </div>
+                    </div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
+                        <input type="checkbox" id="milestone-done" checked={milestoneForm.done} onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{width: '18px', height: '18px', margin: 0, cursor: 'pointer', accentColor: 'var(--accent)'}} />
+                        <label htmlFor="milestone-done" style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark as Done</label>
                     </div>
                     <div style={{position: 'relative'}}>
                         <label style={{
