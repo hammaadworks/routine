@@ -325,9 +325,10 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                         display: 'flex',
                                         borderTopLeftRadius: '7px',
                                         borderTopRightRadius: '7px',
-                                        overflow: 'hidden',
+                                        overflow: 'clip',
                                         cursor: 'pointer',
-                                        opacity: completed ? 1 : 0.8
+                                        opacity: completed ? 1 : 0.8,
+                                        zIndex: 1
                                     }}
                                     title="View Milestones"
                                 >

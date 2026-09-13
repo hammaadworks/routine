@@ -706,14 +706,14 @@ export default function RoutinePane({
                             return (<div
                                 key={goal.id}
                                 className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
-                                draggable={!effectiveDate}
-                                onDragStart={!effectiveDate ? (e) => handleDragStart(e, goal) : undefined}
+                                draggable={!effectiveDate && !isRoutineDrawerOpen}
+                                onDragStart={!effectiveDate && !isRoutineDrawerOpen ? (e) => handleDragStart(e, goal) : undefined}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     minHeight: '52px',
                                     padding: '8px 12px',
-                                    touchAction: !effectiveDate ? 'none' : 'auto', ...bgStyle
+                                    touchAction: (!effectiveDate && !isRoutineDrawerOpen) ? 'none' : 'auto', ...bgStyle
                                 }}
                                 title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
                             >
@@ -726,7 +726,7 @@ export default function RoutinePane({
                                     <div style={{
                                         display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                                     }}>
-                                        {!effectiveDate && (<GripVertical size={16} color="var(--text-secondary)"
+                                        {!effectiveDate && !isRoutineDrawerOpen && (<GripVertical size={16} color="var(--text-secondary)"
                                                                           style={{
                                                                               cursor: 'grab',
                                                                               flexShrink: 0,
@@ -1431,19 +1431,21 @@ export default function RoutinePane({
                             />
                         </div>
                     </div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
-                        <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
-                               onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{
-                            width: '18px',
-                            height: '18px',
-                            margin: 0,
-                            cursor: 'pointer',
-                            accentColor: 'var(--accent)'
-                        }}/>
-                        <label htmlFor="milestone-done"
-                               style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark
-                            as Done</label>
-                    </div>
+                    {editingMilestoneIdx !== null && (
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
+                            <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
+                                   onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{
+                                width: '18px',
+                                height: '18px',
+                                margin: 0,
+                                cursor: 'pointer',
+                                accentColor: 'var(--accent)'
+                            }}/>
+                            <label htmlFor="milestone-done"
+                                   style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark
+                                as Done</label>
+                        </div>
+                    )}
                     <div style={{position: 'relative'}}>
                         <label style={{
                             fontSize: '12px',
