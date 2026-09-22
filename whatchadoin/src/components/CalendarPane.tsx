@@ -46,6 +46,18 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        setCalendarSubTab
                                                    }) => {
 
+    const visibleHabits = useMemo(() => {
+        return (habits || []).filter((h: Goal) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+    }, [habits, isPublicView]);
+
+    const visibleRoutineGoals = useMemo(() => {
+        return (routineGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    }, [routineGoals, isPublicView]);
+
+    const visibleLifeGoals = useMemo(() => {
+        return (lifeGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    }, [lifeGoals, isPublicView]);
+
     useEffect(() => {
         if (selectedTargetDate) {
             setTimeout(() => {
@@ -102,18 +114,6 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         const day = String(date.getDate()).padStart(2, '0');
         return `${y}-${m}-${day}`;
     };
-
-    const visibleHabits = useMemo(() => {
-        return (habits || []).filter((h: Goal) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
-    }, [habits, isPublicView]);
-
-    const visibleRoutineGoals = useMemo(() => {
-        return (routineGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
-    }, [routineGoals, isPublicView]);
-
-    const visibleLifeGoals = useMemo(() => {
-        return (lifeGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
-    }, [lifeGoals, isPublicView]);
 
     const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, visibleHabits, dayMapping, templates);
 

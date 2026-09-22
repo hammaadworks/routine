@@ -1,6 +1,5 @@
 import {useEffect, useState} from 'react';
 import {Check, Edit2, Plus, Settings, Shuffle, Trash2, X} from 'lucide-react';
-import { useWebMCP } from 'use-webmcp-tool';
 import BaseModal from './BaseModal';
 
 
@@ -79,22 +78,24 @@ export default function QuotesWidget() {
         setCurrentQuoteIndex(newQuotes.length - 1);
     };
 
-    useWebMCP({
-        name: 'add_quote',
-        description: 'Add a new motivational quote to the widget at the bottom of the screen.',
-        inputSchema: {
-            type: 'object',
-            properties: {
-                text: { type: 'string', description: 'The text of the quote to add' }
-            },
-            required: ['text']
-        },
-        execute: async (inputs: any) => {
-            handleAdd(inputs.text);
-            return { success: true, message: `Quote added.` };
-        },
-        annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
-    });
+    useEffect(() => {
+        const reloadQuotes = () => {
+            try {
+                const saved = localStorage.getItem('whatchadoin_quotes');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    setQuotes(parsed);
+                    setCurrentQuoteIndex(parsed.length - 1);
+                }
+            } catch (e) {}
+        };
+        window.addEventListener('storage', reloadQuotes);
+        window.addEventListener('whatchadoin_quotes_updated', reloadQuotes);
+        return () => {
+            window.removeEventListener('storage', reloadQuotes);
+            window.removeEventListener('whatchadoin_quotes_updated', reloadQuotes);
+        };
+    }, []);
 
     const handleDelete = (id: string) => {
         const updated = quotes.filter(q => q.id !== id);

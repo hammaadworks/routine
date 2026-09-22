@@ -909,7 +909,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     .main-content.mobile-tab-myday .left-pane,
     .main-content.mobile-tab-calendar .left-pane,
     .main-content.mobile-tab-plans .left-pane,
-    .main-content.mobile-tab-tasks .left-pane {
+    .main-content.mobile-tab-tasks .left-pane,
+    .main-content.mobile-tab-coins .left-pane {
         display: none !important;
     }
 

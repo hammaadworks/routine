@@ -180,11 +180,16 @@ export default function App() {
 
     const { executeTool } = useWebMCPIntegration({
         setLifeGoals,
+        setMoneyGoals,
+        setRoutines,
+        setActiveRoutineId,
         updateActiveRoutine,
         activeRoutine,
+        routines,
         setActiveCenterTab,
         setActiveLeftTab,
         setMobileTab,
+        setIsLeftPaneExpanded,
         lifeGoals,
         moneyGoals
     });
@@ -218,7 +223,7 @@ export default function App() {
                 const {tool, args, callId} = data;
                 try {
                     const result = await executeTool(tool, args || {});
-                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'success', result});
+                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'success', result, message: (result as any)?.message});
                 } catch (err: any) {
                     channel.postMessage({type: 'TOOL_RESULT', callId, status: 'error', error: err.message});
                 }
@@ -504,6 +509,10 @@ export default function App() {
                     }
                     if (tab === 'tasks') {
                         setActiveCenterTab('tasks');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                    if (tab === 'coins') {
+                        setActiveCenterTab('coins');
                         setIsRoutineDrawerOpen(false);
                     }
                 }}

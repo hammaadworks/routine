@@ -123,7 +123,7 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    const reload = () => {
       try {
         const res = localStorage.getItem("whatchadoin_coins_entries");
         if (res) setEntries(JSON.parse(res));
@@ -132,13 +132,21 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
       }
       try {
         const res2 = localStorage.getItem("whatchadoin_coins_targets");
-      if (res2) setTargets(JSON.parse(res2));
+        if (res2) setTargets(JSON.parse(res2));
       } catch (e) {
         // no coinsTargets set yet
       } finally {
         setLoaded(true);
       }
-    })();
+    };
+
+    reload();
+    window.addEventListener("whatchadoin_coins_updated", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("whatchadoin_coins_updated", reload);
+      window.removeEventListener("storage", reload);
+    };
   }, []);
 
   async function persistTargets(next: any) {

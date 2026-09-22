@@ -75,7 +75,8 @@ const addLifeGoalSchema = {
         name: {type: 'string', description: 'The name of the life goal'},
         desc: {type: 'string', description: 'Optional description of the life goal'},
         color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
-        cost: {type: 'number', description: 'Optional cost/value associated with the goal'}
+        cost: {type: 'number', description: 'Optional cost/value associated with the goal'},
+        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
     }, required: ['name']
 };
 
@@ -86,7 +87,8 @@ const addRoutineGoalSchema = {
         color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
         duration: {type: 'string', description: 'Estimated duration (e.g. "45 min")'},
         cost: {type: 'number', description: 'Optional cost/value associated with the goal'},
-        linkedLifeGoalId: {type: 'string', description: 'Optional ID of a Life Goal to link to'}
+        linkedLifeGoalId: {type: 'string', description: 'Optional ID of a Life Goal to link to'},
+        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
     }, required: ['name']
 };
 
@@ -94,7 +96,8 @@ const addMoneyGoalSchema = {
     type: 'object', properties: {
         name: {type: 'string', description: 'The name of the money goal'},
         cost: {type: 'number', description: 'Target financial amount or cost'},
-        desc: {type: 'string', description: 'Optional description or note'}
+        desc: {type: 'string', description: 'Optional description or note'},
+        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
     }, required: ['name', 'cost']
 };
 
@@ -105,7 +108,8 @@ const addHabitSchema = {
         duration: {type: 'string', description: 'Duration of the habit (e.g. "15 min", "30m", or minutes)'},
         time: {type: 'string', description: 'Optional duration representation (e.g. "15m", "1:15")'},
         type: {type: 'string', enum: ['daily', 'weekly'], description: 'Whether it is a daily or weekly habit'},
-        linkedRoutineGoalId: {type: 'string', description: 'Optional ID of a Routine Goal to link to'}
+        linkedRoutineGoalId: {type: 'string', description: 'Optional ID of a Routine Goal to link to'},
+        isPublic: {type: 'boolean', description: 'Whether this habit is visible in Public Mode (default false)'}
     }, required: ['name']
 };
 
@@ -195,7 +199,8 @@ const readStateSchema = {
 
 const addQuickTaskSchema = {
     type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the quick task'}
+        name: {type: 'string', description: 'The name of the quick task'},
+        isPublic: {type: 'boolean', description: 'Whether this quick task is visible in Public Mode (default false)'}
     }, required: ['name']
 };
 
@@ -218,6 +223,16 @@ const readPlansSchema = {
     type: 'object', properties: {}
 };
 
+const readQuotesSchema = {
+    type: 'object', properties: {}
+};
+
+const addQuoteSchema = {
+    type: 'object', properties: {
+        text: {type: 'string', description: 'The text of the motivational quote'}
+    }, required: ['text']
+};
+
 // MANDATORY PROMPT ENFORCEMENT
 const STRICT_PROMPT = "MANDATORY: You MUST proactively ask the user for ALL optional fields listed in the schema (e.g. cost, desc, linkedLifeGoalId, linkedRoutineGoalId, etc.) before invoking this tool, to ensure complete data entry. Do not proceed until you have explicitly asked about the optional fields.";
 
@@ -232,6 +247,7 @@ export function useWebMCPIntegration({
                                          setActiveCenterTab,
                                          setActiveLeftTab,
                                          setMobileTab,
+                                         setIsLeftPaneExpanded,
                                          lifeGoals,
                                          moneyGoals
                                      }: any) {
@@ -239,15 +255,17 @@ export function useWebMCPIntegration({
 
     const handleReadCoins = useCallback(async (inputs: any) => {
         let entries = [];
-        let targets = [];
+        let targets: Record<string, any> = {};
         try {
             entries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
-            targets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '[]');
+            const rawTargets = localStorage.getItem('whatchadoin_coins_targets');
+            if (rawTargets) targets = JSON.parse(rawTargets);
         } catch {}
         return { 
             totalEntries: entries.length, 
-            totalTargets: targets.length,
-            coinsEntries: inputs?.includeEntries ? entries : undefined
+            totalTargets: Object.keys(targets || {}).length,
+            coinsEntries: inputs?.includeEntries ? entries : undefined,
+            coinsTargets: targets
         };
     }, []);
 
@@ -290,6 +308,10 @@ export function useWebMCPIntegration({
         
         const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
         const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+        let quickTasks = [];
+        try {
+            quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+        } catch {}
 
         return {
             coins: { entries: coinsEntries, targets: coinsTargets },
@@ -322,7 +344,8 @@ export function useWebMCPIntegration({
                         duration: durMin,
                         endTimeFormatted: formatMinutesToTime(startMin + durMin),
                         color: b.color,
-                        routineGoalId: b.routineGoalId
+                        routineGoalId: b.routineGoalId,
+                        isPublic: Boolean(b.isPublic)
                     };
                 })
             })),
@@ -335,7 +358,8 @@ export function useWebMCPIntegration({
                     desc: h.desc || '',
                     duration: durMin,
                     time: h.time || `${durMin}m`,
-                    type: h.type || 'daily'
+                    type: h.type || 'daily',
+                    isPublic: Boolean(h.isPublic)
                 };
             }),
             lifeGoals: (lifeGoals || []).map((g: any) => ({
@@ -343,21 +367,30 @@ export function useWebMCPIntegration({
                 name: g.name,
                 desc: g.desc || '',
                 cost: g.cost,
-                completed: g.completed
+                completed: g.completed,
+                isPublic: Boolean(g.isPublic)
             })),
             routineGoals: (activeRoutine?.routineGoals || []).map((g: any) => ({
                 id: g.id,
                 name: g.name,
                 desc: g.desc || '',
                 cost: g.cost,
-                completed: g.completed
+                completed: g.completed,
+                isPublic: Boolean(g.isPublic)
             })),
             moneyGoals: (moneyGoals || []).map((g: any) => ({
                 id: g.id,
                 name: g.name,
                 desc: g.desc || '',
                 cost: g.cost,
-                completed: g.completed
+                completed: g.completed,
+                isPublic: Boolean(g.isPublic)
+            })),
+            quickTasks: (quickTasks || []).map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                completed: Boolean(t.completed),
+                isPublic: Boolean(t.isPublic)
             })),
             walletTotalRemaining,
             walletGoals: allWalletGoals.map((g: any) => ({
@@ -365,7 +398,8 @@ export function useWebMCPIntegration({
                 desc: g.desc || '',
                 cost: g.cost,
                 completed: g.completed,
-                category: g.category
+                category: g.category,
+                isPublic: Boolean(g.isPublic)
             }))
         };
     }, [activeRoutine, lifeGoals, moneyGoals, routines]);
@@ -509,6 +543,7 @@ export function useWebMCPIntegration({
             desc: inputs.desc || '',
             cost: inputs.cost ? Number(inputs.cost) : 0,
             color: inputs.color,
+            isPublic: Boolean(inputs.isPublic),
             completed: false,
             createdAt: new Date().toISOString()
         }]);
@@ -536,6 +571,7 @@ export function useWebMCPIntegration({
                 lifeGoalId: inputs.linkedLifeGoalId || null,
                 cost: inputs.cost ? Number(inputs.cost) : undefined,
                 color: inputs.color,
+                isPublic: Boolean(inputs.isPublic),
                 completed: false,
                 createdAt: new Date().toISOString()
             }]
@@ -562,6 +598,7 @@ export function useWebMCPIntegration({
                 name: goalName,
                 desc: inputs.desc || '',
                 cost: Number(inputs.cost) || 0,
+                isPublic: Boolean(inputs.isPublic),
                 completed: false,
                 createdAt: new Date().toISOString()
             }]);
@@ -593,7 +630,8 @@ export function useWebMCPIntegration({
             time: timeStr,
             type: inputs.type || 'daily',
             routineGoalId: inputs.linkedRoutineGoalId || null,
-            routineGoalIds: inputs.linkedRoutineGoalId ? [inputs.linkedRoutineGoalId] : []
+            routineGoalIds: inputs.linkedRoutineGoalId ? [inputs.linkedRoutineGoalId] : [],
+            isPublic: Boolean(inputs.isPublic)
         };
 
         const currentHabits = activeRoutine?.habits || [];
@@ -1095,16 +1133,22 @@ export function useWebMCPIntegration({
         }
         if (inputs.leftTab) {
             setActiveLeftTab(inputs.leftTab);
+            if (setIsLeftPaneExpanded) {
+                setIsLeftPaneExpanded(true);
+            }
+            if (!inputs.centerTab) {
+                setMobileTab('goals');
+            }
         }
         return {
             success: true,
             message: `Navigated to ${inputs.centerTab || 'current'} / ${inputs.leftTab || 'current'}`
         };
-    }, [setActiveCenterTab, setActiveLeftTab, setMobileTab]);
+    }, [setActiveCenterTab, setActiveLeftTab, setMobileTab, setIsLeftPaneExpanded]);
 
     useWebMCP({
         name: 'navigate_app',
-        description: 'Switch between different tabs and views: centerTab (myday, tasks, calendar, plans) and leftTab (life, money, routine).',
+        description: 'Switch between different tabs and views: centerTab (myday, tasks, calendar, plans, coins) and leftTab (life, money, routine).',
         inputSchema: navigateAppSchema,
         execute: handleNavigate,
         annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
@@ -1145,6 +1189,7 @@ export function useWebMCPIntegration({
             id: crypto.randomUUID(),
             name: taskName,
             completed: false,
+            isPublic: Boolean(inputs.isPublic),
             createdAt: new Date().toISOString()
         };
         const updated = [newTask, ...tasks];
@@ -1224,6 +1269,49 @@ export function useWebMCPIntegration({
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
+    // 16. Read Quotes
+    const handleReadQuotes = useCallback(async () => {
+        let quotes = [];
+        try {
+            quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
+        } catch {}
+        return {
+            totalQuotes: quotes.length,
+            quotes
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_quotes',
+        description: 'Read all motivational quotes in the footer widget.',
+        inputSchema: readQuotesSchema,
+        execute: handleReadQuotes,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 17. Add Quote
+    const handleAddQuote = useCallback(async (inputs: any) => {
+        const text = (inputs.text || '').trim();
+        if (!text) throw new Error("Invalid parameters: 'text' is required");
+        let quotes = [];
+        try {
+            quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
+        } catch {}
+        const newQuote = { id: Date.now().toString(), text };
+        const updated = [...quotes, newQuote];
+        localStorage.setItem('whatchadoin_quotes', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
+        return { success: true, quote: newQuote, message: `Quote added: "${text}"` };
+    }, []);
+
+    useWebMCP({
+        name: 'add_quote',
+        description: 'Add a new motivational quote to the widget at the bottom of the screen.',
+        inputSchema: addQuoteSchema,
+        execute: handleAddQuote,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
     // Universal Tool Executor (Used by in-app AI agent via BroadcastChannel and external callers)
     const executeTool = useCallback(async (tool: string, args: any = {}) => {
         switch (tool) {
@@ -1291,6 +1379,10 @@ export function useWebMCPIntegration({
                 return await handleReadCoins(args);
             case 'add_coins_entry':
                 return await handleAddCoinsEntry(args);
+            case 'read_quotes':
+                return await handleReadQuotes();
+            case 'add_quote':
+                return await handleAddQuote(args);
             default:
                 throw new Error(`Unknown tool: ${tool}`);
         }
@@ -1315,7 +1407,9 @@ export function useWebMCPIntegration({
         handleReadState,
         handleReadSchedule,
         handleReadCoins,
-        handleAddCoinsEntry
+        handleAddCoinsEntry,
+        handleReadQuotes,
+        handleAddQuote
     ]);
 
     return {

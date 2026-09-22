@@ -60,7 +60,8 @@ const TOOLS = [
           name: { type: "string", description: "Name of the life goal" },
           desc: { type: "string", description: "Optional description of the life goal" },
           color: { type: "string", description: "Optional color code (e.g. #3498db)" },
-          cost: { type: "number", description: "Optional target amount or cost" }
+          cost: { type: "number", description: "Optional target amount or cost" },
+          isPublic: { type: "boolean", description: "Whether this goal is visible in Public Mode (default false)" }
         },
         required: ["name"]
       }
@@ -79,7 +80,8 @@ const TOOLS = [
           color: { type: "string", description: "Optional color code (e.g. #3498db)" },
           duration: { type: "string", description: "Estimated duration (e.g. '45 min')" },
           cost: { type: "number", description: "Target amount or cost" },
-          linkedLifeGoalId: { type: "string", description: "Optional ID of a Life Goal to link to" }
+          linkedLifeGoalId: { type: "string", description: "Optional ID of a Life Goal to link to" },
+          isPublic: { type: "boolean", description: "Whether this goal is visible in Public Mode (default false)" }
         },
         required: ["name"]
       }
@@ -95,7 +97,8 @@ const TOOLS = [
         properties: {
           name: { type: "string", description: "The name of the money goal" },
           cost: { type: "number", description: "Target financial amount or cost" },
-          desc: { type: "string", description: "Optional description or note" }
+          desc: { type: "string", description: "Optional description or note" },
+          isPublic: { type: "boolean", description: "Whether this goal is visible in Public Mode (default false)" }
         },
         required: ["name", "cost"]
       }
@@ -114,7 +117,8 @@ const TOOLS = [
           duration: { type: "string", description: "Duration of the habit (e.g. '15 min', '30m', or minutes)" },
           time: { type: "string", description: "Optional duration string (e.g. '15m', '1:15')" },
           type: { type: "string", enum: ["daily", "weekly"], description: "Whether it is a daily or weekly habit" },
-          linkedRoutineGoalId: { type: "string", description: "Optional ID of a Routine Goal to link to" }
+          linkedRoutineGoalId: { type: "string", description: "Optional ID of a Routine Goal to link to" },
+          isPublic: { type: "boolean", description: "Whether this habit is visible in Public Mode (default false)" }
         },
         required: ["name"]
       }
@@ -231,9 +235,21 @@ const TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          name: { type: "string", description: "The name of the task" }
+          name: { type: "string", description: "The name of the task" },
+          isPublic: { type: "boolean", description: "Whether this task is visible in Public Mode (default false)" }
         },
         required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_quick_tasks",
+      description: "Reads all quick tasks from the quick tasks inbox.",
+      parameters: {
+        type: "object",
+        properties: {}
       }
     }
   },
@@ -250,6 +266,95 @@ const TOOLS = [
           isLife: { type: "boolean", description: "If true, stores it in Life plans instead of the active Routine (default false)" }
         },
         required: ["name", "content"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_plans",
+      description: "Reads all plans and their markdown content.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_schedule",
+      description: "Reads the full Weekly Schedule: view each day of the week (Monday-Sunday) with assigned templates, scheduled blocks, start/end times, and available habits.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_coins",
+      description: "Returns a structured summary of career coins entries and annual targets.",
+      parameters: {
+        type: "object",
+        properties: {
+          includeEntries: { type: "boolean", description: "Whether to return the full list of monthly entries" }
+        }
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_coins_entry",
+      description: "Adds or updates a monthly income/coins record.",
+      parameters: {
+        type: "object",
+        properties: {
+          year: { type: "number", description: "Year (e.g. 2026)" },
+          month: { type: "number", description: "Month number (1-12)" },
+          amount: { type: "number", description: "Earned amount in local currency" },
+          source: { type: "string", description: "Source or client name" },
+          notes: { type: "string", description: "Optional notes" }
+        },
+        required: ["year", "month", "amount", "source"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_app_state",
+      description: "Read the complete current routines, templates, life goals, routine goals, money goals, habits, day mapping, and wallet states.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "read_quotes",
+      description: "Read all motivational quotes in the footer widget.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_quote",
+      description: "Add a new motivational quote to the widget at the bottom of the screen.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "The text of the quote to add" }
+        },
+        required: ["text"]
       }
     }
   }
@@ -329,9 +434,9 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
         setAppState(data.payload);
         appStateRef.current = data.payload;
       } else if (data.type === 'TOOL_RESULT') {
-        const { callId, status, error, message } = data;
+        const { callId, status, error, message, result } = data;
         if (pendingResolvers.current[callId]) {
-          pendingResolvers.current[callId]({ status, error, message });
+          pendingResolvers.current[callId]({ status, error, message: message || result?.message, result });
           delete pendingResolvers.current[callId];
         }
       }
@@ -401,7 +506,18 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
 
         // Wait for result from main tab
         const result = await resultPromise as any;
-        const contentStr = result.status === 'success' ? (result.message || 'Action executed successfully.') : `Error: ${result.error}`;
+        let contentStr = '';
+        if (result.status === 'success') {
+          if (result.result !== undefined) {
+            contentStr = typeof result.result === 'object' ? JSON.stringify(result.result) : String(result.result);
+          } else if (result.message) {
+            contentStr = result.message;
+          } else {
+            contentStr = 'Action executed successfully.';
+          }
+        } else {
+          contentStr = `Error: ${result.error}`;
+        }
         
         toolResultsMsgs.push({
           role: 'tool',
