@@ -64,10 +64,8 @@ export default function LifePane({
     useEffect(() => {
         const handleFab = () => openAddLifeGoal();
         window.addEventListener('fab:add-life-goal', handleFab);
-        window.addEventListener('fab:add-strategy', handleFab);
         return () => {
             window.removeEventListener('fab:add-life-goal', handleFab);
-            window.removeEventListener('fab:add-strategy', handleFab);
         };
     }, []);
 

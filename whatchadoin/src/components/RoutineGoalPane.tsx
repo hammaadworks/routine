@@ -86,7 +86,7 @@ export default function RoutineGoalPane({
                                         }: RoutineGoalPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<string | null>(null);
-    const [routineGoalForm, setRoutineGoalForm] = useState({name: '', color: '', desc: '', cost: ''});
+    const [routineGoalForm, setRoutineGoalForm] = useState<{name: string; color: string; desc: string; cost: string; isPublic?: boolean}>({name: '', color: '', desc: '', cost: '', isPublic: false});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export default function RoutineGoalPane({
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#1982C4';
         const goalName = goal.name || '';
         setRoutineGoalForm({
-            name: goalName, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : ''
+            name: goalName, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : '', isPublic: !!goal.isPublic
         });
         setShowRoutineGoalModal(true);
     };

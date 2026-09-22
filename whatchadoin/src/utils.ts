@@ -179,32 +179,21 @@ export function sanitizeAllStorage(): void {
     }
   }
 
-  // 2. Life Goals (strictly snake_case)
-  const oldLifeRaw = localStorage.getItem('whatchadoin_lifeGoals');
-  const snakeLifeRaw = localStorage.getItem('whatchadoin_life_goals');
-  const lifeRaw = snakeLifeRaw || oldLifeRaw;
+  // 2. Life Goals
+  const lifeRaw = localStorage.getItem('whatchadoin_life_goals');
   if (lifeRaw) {
     try {
       const parsed = JSON.parse(lifeRaw);
       if (Array.isArray(parsed)) {
         const cleaned = sanitizeEntities(parsed);
-        localStorage.setItem('whatchadoin_life_goals', JSON.stringify(cleaned));
+        const newRaw = JSON.stringify(cleaned);
+        if (newRaw !== lifeRaw) {
+          localStorage.setItem('whatchadoin_life_goals', newRaw);
+        }
       }
     } catch (e) {
       console.error('Failed to sanitize life goals in storage', e);
     }
-  }
-  if (oldLifeRaw !== null) {
-    localStorage.removeItem('whatchadoin_lifeGoals');
-  }
-
-  // Active routine ID (strictly snake_case)
-  const oldActiveRoutineId = localStorage.getItem('whatchadoin_activeRoutineId');
-  if (oldActiveRoutineId) {
-    if (!localStorage.getItem('whatchadoin_active_routine_id')) {
-      localStorage.setItem('whatchadoin_active_routine_id', oldActiveRoutineId);
-    }
-    localStorage.removeItem('whatchadoin_activeRoutineId');
   }
 
   // 3. Money Goals

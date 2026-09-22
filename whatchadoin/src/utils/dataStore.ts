@@ -47,13 +47,5 @@ export const loadRoutines = () => {
 };
 
 export const loadActiveRoutineId = () => {
-  const saved = localStorage.getItem('whatchadoin_active_routine_id') || localStorage.getItem('whatchadoin_activeRoutineId');
-  if (saved) {
-    if (localStorage.getItem('whatchadoin_activeRoutineId')) {
-      localStorage.setItem('whatchadoin_active_routine_id', saved);
-      localStorage.removeItem('whatchadoin_activeRoutineId');
-    }
-    return saved;
-  }
-  return 'routine-1';
+  return localStorage.getItem('whatchadoin_active_routine_id') || 'routine-1';
 };

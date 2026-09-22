@@ -87,9 +87,10 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     };
     const handleFab = () => {
       setMode("single");
-      setDraft(emptyDraft());
+      setDraft(emptyDraft() as any);
       setEditingId(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      setTimeout(() => document.getElementById("entry-amount-input")?.focus(), 50);
     };
     window.addEventListener("storage", handleStorage);
     window.addEventListener("whatchadoin_coins_updated", handleCoinsUpdated);

@@ -6,12 +6,18 @@ let gistFilename = localStorage.getItem('whatchadoin_gist_filename') || 'whatcha
 let lastSyncedStr = '';
 let syncTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 let isSyncing = false;
+let isImporting = false;
 
 export const initSync = (onRemoteUpdate?: () => void) => {
   if (!gistToken || !gistId) return;
 
   // 1. Pull on load
   pullFromGist().then(remoteData => {
+    if (remoteData === null) {
+      console.warn('whatchadoin: Could not reach Gist, operating in offline mode.');
+      return;
+    }
+
     if (localStorage.getItem('whatchadoin_force_sync_push') === 'true') {
       localStorage.removeItem('whatchadoin_force_sync_push');
       pushToGist().catch(console.error);
@@ -32,7 +38,7 @@ export const initSync = (onRemoteUpdate?: () => void) => {
         lastSyncedStr = localData;
       }
     } else {
-      // Gist is empty, push local state up to initialize it
+      // Gist file is genuinely empty (HTTP 200), push local state up to initialize it
       pushToGist().catch(console.error);
     }
   }).catch(console.error);
@@ -42,8 +48,9 @@ export const initSync = (onRemoteUpdate?: () => void) => {
   localStorage.setItem = function(key: string, _value: string) {
     originalSetItem.apply(this, [key, _value] as any);
     
-    // Ignore sync keys
-    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
+    if (isImporting) return;
+    if (!key.startsWith('whatchadoin_')) return;
+    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename' || key === 'whatchadoin_force_sync_push') return;
     
     // Debounce push
     clearTimeout(syncTimeout);
@@ -56,8 +63,9 @@ export const initSync = (onRemoteUpdate?: () => void) => {
   localStorage.removeItem = function(key: string) {
     originalRemoveItem.apply(this, [key] as any);
     
-    // Ignore sync keys
-    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename') return;
+    if (isImporting) return;
+    if (!key.startsWith('whatchadoin_')) return;
+    if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename' || key === 'whatchadoin_force_sync_push') return;
     
     // Debounce push
     clearTimeout(syncTimeout);
@@ -103,7 +111,13 @@ export const exportLocalData = () => {
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key === null) continue;
-    if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+    if (
+      key.startsWith('whatchadoin_') &&
+      key !== 'whatchadoin_gist_token' &&
+      key !== 'whatchadoin_gist_id' &&
+      key !== 'whatchadoin_gist_filename' &&
+      key !== 'whatchadoin_force_sync_push'
+    ) {
       data[key] = localStorage.getItem(key);
     }
   }
@@ -114,29 +128,22 @@ export const exportLocalData = () => {
 };
 
 export const importLocalData = (jsonStr: string) => {
+  isImporting = true;
   try {
     const data = JSON.parse(jsonStr);
 
-    // Normalize legacy camelCase keys to snake_case
-    if (data.whatchadoin_lifeGoals) {
-      if (!data.whatchadoin_life_goals) {
-        data.whatchadoin_life_goals = data.whatchadoin_lifeGoals;
-      }
-      delete data.whatchadoin_lifeGoals;
-    }
-    if (data.whatchadoin_activeRoutineId) {
-      if (!data.whatchadoin_active_routine_id) {
-        data.whatchadoin_active_routine_id = data.whatchadoin_activeRoutineId;
-      }
-      delete data.whatchadoin_activeRoutineId;
-    }
-    
-    // Remove local keys that are not present in remote data
+    // Remove local keys that are not present in remote data (strictly whatchadoin_ data keys)
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-    if (key === null) continue;
-      if (key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename') {
+      if (key === null) continue;
+      if (
+        key.startsWith('whatchadoin_') &&
+        key !== 'whatchadoin_gist_token' &&
+        key !== 'whatchadoin_gist_id' &&
+        key !== 'whatchadoin_gist_filename' &&
+        key !== 'whatchadoin_force_sync_push'
+      ) {
         if (!data.hasOwnProperty(key)) {
           keysToRemove.push(key);
         }
@@ -156,6 +163,8 @@ export const importLocalData = (jsonStr: string) => {
   } catch (e) {
     console.error("Failed to parse remote sync data", e);
     return false;
+  } finally {
+    isImporting = false;
   }
 };
 
@@ -166,9 +175,9 @@ const pullFromGist = async () => {
     });
     if (!res.ok) return null;
     const gist = await res.json();
-    return gist.files[gistFilename]?.content;
+    return gist.files[gistFilename]?.content ?? '';
   } catch (e) {
-    console.error(e);
+    console.error('Failed to pull from Gist:', e);
     return null;
   }
 };
@@ -216,6 +225,10 @@ export const saveSyncConfig = (token: string, id: string, filename?: string) => 
   if (token && id) {
     // Initial push or pull to establish sync
     pullFromGist().then(async remoteData => {
+      if (remoteData === null) {
+        console.error('Failed to connect to GitHub Gist. Please verify your token and Gist ID.');
+        return;
+      }
       if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
         importLocalData(remoteData);
         window.location.reload();

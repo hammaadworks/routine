@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as React from 'react';
-import {useEffect} from 'react';
+import {useEffect, useMemo} from 'react';
 import {getScheduledGoalsForDate} from '../utils';
 
 interface Routine {
@@ -34,6 +34,7 @@ interface CalendarPaneProps {
 }
 
 const CalendarPane: React.FC<CalendarPaneProps> = ({
+                                                       isPublicView,
                                                        activeRoutine,
                                                        routineGoals,
                                                        lifeGoals,
@@ -102,7 +103,19 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         return `${y}-${m}-${day}`;
     };
 
-    const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
+    const visibleHabits = useMemo(() => {
+        return (habits || []).filter((h: Goal) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+    }, [habits, isPublicView]);
+
+    const visibleRoutineGoals = useMemo(() => {
+        return (routineGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    }, [routineGoals, isPublicView]);
+
+    const visibleLifeGoals = useMemo(() => {
+        return (lifeGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    }, [lifeGoals, isPublicView]);
+
+    const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, visibleHabits, dayMapping, templates);
 
     const isDateComplete = (dateStr: string) => {
         const goalsForDay = getGoalsForDateStr(dateStr);
@@ -234,11 +247,13 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             }
                             tags = [...new Set(tags)];
                             const tagColors = tags.map(tag => {
-                                const goal = routineGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) || habits?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) || lifeGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase());
-                                return goal?.color || '#fff';
-                            });
+                                const goal = visibleRoutineGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) ||
+                                             visibleHabits?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) ||
+                                             visibleLifeGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase());
+                                return goal ? (goal.color || '#fff') : null;
+                            }).filter(Boolean) as string[];
 
-                            if (hasMilestone && tagColors.length === 0) {
+                            if (!isPublicView && hasMilestone && tagColors.length === 0) {
                                 tagColors.push('#fff');
                             }
 

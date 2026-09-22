@@ -44,7 +44,7 @@ export default function MobileTabBar({
         if (activeTab === 'plans') {
             window.dispatchEvent(new CustomEvent('fab:add-plan'));
         }
-        if (activeTab === 'myday' || activeTab === 'timeline') {
+        if (activeTab === 'myday') {
             window.dispatchEvent(new CustomEvent('fab:add-myday'));
             return;
         }

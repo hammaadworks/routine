@@ -9,7 +9,7 @@ import CalendarPane from './components/CalendarPane';
 import TasksPane from './components/TasksPane';
 import ConfirmModal from './components/ConfirmModal';
 import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
+import {BookOpen, Calendar, TrendingUp, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
 import HabitsPane from './components/HabitsPane';
@@ -22,13 +22,14 @@ import WalletModal from './components/WalletModal';
 import RoutineModal from './components/RoutineModal';
 import SettingsModal from './components/SettingsModal';
 import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
+import {sanitizeAllStorage} from './utils';
 import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
 
     const [lifeGoals, setLifeGoals] = useState<any[]>(() => {
-        return JSON.parse(localStorage.getItem('whatchadoin_lifeGoals') || '[]');
+        return JSON.parse(localStorage.getItem('whatchadoin_life_goals') || '[]');
     });
 
     const [moneyGoals, setMoneyGoals] = useState<any[]>(() => {
@@ -37,8 +38,8 @@ export default function App() {
 
     const [activeRoutineId, setActiveRoutineId] = useState<string>(loadActiveRoutineId);
 
-    const [activeCenterTab, setActiveCenterTab] = useState<string>('timeline');
-    const [mobileTab, setMobileTab] = useState<string>('myday'); // 'strategy' | 'timeline' | 'habits' | 'myday'
+    const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
+    const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
     const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
@@ -54,6 +55,10 @@ export default function App() {
     const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
     const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
     const [aiDockState, setAiDockState] = useState<string>('closed'); // 'closed', 'right', 'bottom', 'popped_out'
+
+    useEffect(() => {
+        sanitizeAllStorage();
+    }, []);
 
     useEffect(() => {
         if (isRoutineDrawerOpen) {
@@ -139,7 +144,7 @@ export default function App() {
     }, [aiDockState]);
 
     useEffect(() => {
-        localStorage.setItem('whatchadoin_lifeGoals', JSON.stringify(lifeGoals));
+        localStorage.setItem('whatchadoin_life_goals', JSON.stringify(lifeGoals));
     }, [lifeGoals]);
 
     useEffect(() => {
@@ -151,7 +156,7 @@ export default function App() {
     }, [routines]);
 
     useEffect(() => {
-        localStorage.setItem('whatchadoin_activeRoutineId', activeRoutineId);
+        localStorage.setItem('whatchadoin_active_routine_id', activeRoutineId);
     }, [activeRoutineId]);
 
     const activeRoutine = routines.find(v => v.id === activeRoutineId) || routines[0];
@@ -173,49 +178,7 @@ export default function App() {
         }));
     }, [activeRoutineId]);
 
-    useEffect(() => {
-        const channel = new BroadcastChannel('whatchadoin_ai_channel');
-
-        const appState = {
-            activeRoutine, routines, lifeGoals, activeCenterTab, activeLeftTab
-        };
-        channel.postMessage({type: 'STATE_UPDATE', payload: appState});
-
-        channel.onmessage = (event) => {
-            const data = event.data;
-            if (data.type === 'PING') {
-                channel.postMessage({type: 'STATE_UPDATE', payload: appState});
-            } else if (data.type === 'DOCK_COMMAND') {
-                setAiDockState(data.payload);
-            } else if (data.type === 'TOOL_EXECUTION') {
-                const {tool, args, callId} = data;
-                try {
-                    if (tool === 'navigate_app') {
-                        if (args.centerTab) setActiveCenterTab(args.centerTab);
-                        if (args.leftTab) setActiveLeftTab(args.leftTab);
-                    } else if (tool === 'add_life_goal') {
-                        setLifeGoals((prev: any[]) => [...prev, {id: crypto.randomUUID(), ...args}]);
-                    } else if (tool === 'add_routine_goal') {
-                        updateActiveRoutine({
-                            routineGoals: [...(activeRoutine.routineGoals || []), {id: crypto.randomUUID(), ...args}]
-                        });
-                    } else {
-                        channel.postMessage({
-                            type: 'TOOL_RESULT', callId, status: 'error', error: `Unknown tool: ${tool}`
-                        });
-                        return;
-                    }
-                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'success'});
-                } catch (err: any) {
-                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'error', error: err.message});
-                }
-            }
-        };
-
-        return () => channel.close();
-    }, [routines, activeRoutineId, activeRoutine, lifeGoals, activeCenterTab, activeLeftTab, updateActiveRoutine]);
-
-    useWebMCPIntegration({
+    const { executeTool } = useWebMCPIntegration({
         setLifeGoals,
         updateActiveRoutine,
         activeRoutine,
@@ -225,6 +188,45 @@ export default function App() {
         lifeGoals,
         moneyGoals
     });
+
+    useEffect(() => {
+        const channel = new BroadcastChannel('whatchadoin_ai_channel');
+
+        const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+        const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+        const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+
+        const appState = {
+            activeRoutine,
+            routines,
+            lifeGoals,
+            moneyGoals,
+            quickTasks,
+            coins: { entries: coinsEntries, targets: coinsTargets },
+            activeCenterTab,
+            activeLeftTab
+        };
+        channel.postMessage({type: 'STATE_UPDATE', payload: appState});
+
+        channel.onmessage = async (event) => {
+            const data = event.data;
+            if (data.type === 'PING') {
+                channel.postMessage({type: 'STATE_UPDATE', payload: appState});
+            } else if (data.type === 'DOCK_COMMAND') {
+                setAiDockState(data.payload);
+            } else if (data.type === 'TOOL_EXECUTION') {
+                const {tool, args, callId} = data;
+                try {
+                    const result = await executeTool(tool, args || {});
+                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'success', result});
+                } catch (err: any) {
+                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'error', error: err.message});
+                }
+            }
+        };
+
+        return () => channel.close();
+    }, [routines, activeRoutineId, activeRoutine, lifeGoals, moneyGoals, activeCenterTab, activeLeftTab, updateActiveRoutine, executeTool]);
     const setRoutineGoals = (goals: any[]) => updateActiveRoutine({routineGoals: goals});
     const setHabits = (goals: any[]) => updateActiveRoutine({habits: goals});
     const setTemplates = (templates: any[]) => updateActiveRoutine({templates: templates});
@@ -254,13 +256,25 @@ export default function App() {
             allFolders[v.id] = JSON.parse(localStorage.getItem(`whatchadoin_plans_folders_${v.id}`) || '[]');
         });
 
+        const lifePlans = JSON.parse(localStorage.getItem('whatchadoin_life_plans') || '[]');
+        const lifeFolders = JSON.parse(localStorage.getItem('whatchadoin_life_plans_folders') || '[]');
+        const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+        const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+        const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+
         const backupData = {
             isFullBackup: true,
             routines: routines,
             activeRoutineId: activeRoutineId,
             allPlans,
             allFolders,
-            lifeGoals: lifeGoals
+            lifeGoals: lifeGoals,
+            moneyGoals: moneyGoals,
+            quickTasks,
+            coinsEntries,
+            coinsTargets,
+            lifePlans,
+            lifeFolders
         };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -303,6 +317,27 @@ export default function App() {
                             if (data.lifeGoals) {
                                 setLifeGoals(data.lifeGoals);
                             }
+                            if (data.moneyGoals) {
+                                setMoneyGoals(data.moneyGoals);
+                            }
+                            if (data.quickTasks) {
+                                localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(data.quickTasks));
+                                window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+                            }
+                            if (data.coinsEntries) {
+                                localStorage.setItem('whatchadoin_coins_entries', JSON.stringify(data.coinsEntries));
+                                window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+                            }
+                            if (data.coinsTargets) {
+                                localStorage.setItem('whatchadoin_coins_targets', JSON.stringify(data.coinsTargets));
+                                window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+                            }
+                            if (data.lifePlans) {
+                                localStorage.setItem('whatchadoin_life_plans', JSON.stringify(data.lifePlans));
+                            }
+                            if (data.lifeFolders) {
+                                localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify(data.lifeFolders));
+                            }
                             setShowRoutineModal(false);
                             setConfirmConfig(null);
                         },
@@ -326,6 +361,25 @@ export default function App() {
                             const newGoals = data.lifeGoals.filter((g: any) => !existingIds.has(g.id));
                             return [...prev, ...newGoals];
                         });
+                    }
+                    if (data.moneyGoals) {
+                        setMoneyGoals((prev: any[]) => {
+                            const existingIds = new Set(prev.map((g: any) => g.id));
+                            const newGoals = data.moneyGoals.filter((g: any) => !existingIds.has(g.id));
+                            return [...prev, ...newGoals];
+                        });
+                    }
+                    if (data.lifePlans) {
+                        const existingLifePlans = JSON.parse(localStorage.getItem('whatchadoin_life_plans') || '[]');
+                        const existingPlanIds = new Set(existingLifePlans.map((p: any) => p.id));
+                        const newPlans = data.lifePlans.filter((p: any) => !existingPlanIds.has(p.id));
+                        localStorage.setItem('whatchadoin_life_plans', JSON.stringify([...existingLifePlans, ...newPlans]));
+                    }
+                    if (data.lifeFolders) {
+                        const existingFolders = JSON.parse(localStorage.getItem('whatchadoin_life_plans_folders') || '[]');
+                        const existingFolderIds = new Set(existingFolders.map((f: any) => f.id));
+                        const newFolders = data.lifeFolders.filter((f: any) => !existingFolderIds.has(f.id));
+                        localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify([...existingFolders, ...newFolders]));
                     }
                     setActiveRoutineId(newId);
                     setShowRoutineModal(false);
@@ -430,7 +484,7 @@ export default function App() {
                         setIsRoutineDrawerOpen(false);
                     }
                     if (tab === 'myday') {
-                        setActiveCenterTab('timeline');
+                        setActiveCenterTab('myday');
                         setIsRoutineDrawerOpen(false);
                     }
                     if (tab === 'calendar') {
@@ -612,7 +666,7 @@ export default function App() {
                     </div>
 
                     <div className="mid-pane-content" style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
-                        {activeCenterTab === 'myday' || activeCenterTab === 'timeline' ? (<MyDay
+                        {activeCenterTab === 'myday' ? (<MyDay
                             templates={templates}
                             setTemplates={setTemplates as any}
                             activeTemplateId={activeTemplateId}
@@ -628,6 +682,7 @@ export default function App() {
                             routineGoals={routineGoals}
                             habits={habits}
                             lifeGoals={lifeGoals}
+                            moneyGoals={moneyGoals}
                             activeRoutineId={activeRoutineId}
                         />) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<CoinsPane walletTotal={walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} />) : (<CalendarPane isPublicView={isPublicView}
                             activeRoutine={activeRoutine}

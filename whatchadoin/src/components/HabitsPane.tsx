@@ -90,8 +90,10 @@ export default function HabitsPane({
                                     }: HabitsPaneProps) {
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
-    const [habitForm, setHabitForm] = useState({
-        name: '', desc: '', timeValue: '1:15', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: ''
+    const [habitForm, setHabitForm] = useState<{
+        name: string; desc: string; timeValue: string; routineGoalIds: string[]; lifeGoalIds: string[]; color: string; isPublic?: boolean;
+    }>({
+        name: '', desc: '', timeValue: '1:15', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: '', isPublic: false
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [sortByName, setSortByName] = useState(false);
