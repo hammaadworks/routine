@@ -79,10 +79,10 @@ export default function RoutineGoalPane({
                                             setHabits,
                                             templates,
                                             setTemplates,
-                                            _activeTemplateId,
+                                            activeTemplateId,
                                             onRoutineGoalBadgeClick,
                                             headerTabs,
-                                            _lifeGoals
+                                            lifeGoals
                                         }: RoutineGoalPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<string | null>(null);
@@ -209,7 +209,8 @@ export default function RoutineGoalPane({
     const getLinkedCount = (goal: RoutineGoal) => {
         const txt = (goal.name || '').toLowerCase().trim();
         if (!txt) return 0;
-        const linkedGoals = (habits || []).filter(g => g.routineGoalId === goal.id || (g.name || '').toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
+        const visibleHabits = (habits || []).filter(g => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+        const linkedGoals = visibleHabits.filter(g => g.routineGoalId === goal.id || (g.name || '').toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
         return linkedGoals.length;
     };
 
@@ -388,8 +389,10 @@ export default function RoutineGoalPane({
                     display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
                 }}>
                     <Activity size={14} color="var(--accent)"/>
-                    Routine Goals
-                    : {routineGoals.filter((g: RoutineGoal) => g.completed).length} / {routineGoals.length}
+                    {(() => {
+                        const visibleRoutineGoals = (routineGoals || []).filter((g: RoutineGoal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+                        return <>Routine Goals : {visibleRoutineGoals.filter((g: RoutineGoal) => g.completed).length} / {visibleRoutineGoals.length}</>;
+                    })()}
                 </div>
             </div>
 
@@ -436,7 +439,7 @@ export default function RoutineGoalPane({
             >
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                     {(() => {
-                        const linkedHabits = (habits || []).filter(g => g.routineGoalId === drawerRoutineGoalId);
+                        const linkedHabits = (habits || []).filter(g => g.routineGoalId === drawerRoutineGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
                         if (linkedHabits.length === 0) {
                             return <div style={{color: 'var(--text-secondary)'}}>No habits linked to this
                                 goal.</div>;

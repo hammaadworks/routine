@@ -306,7 +306,15 @@ export default function HabitsPane({
         quickTasks = [];
     }
 
-    const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery, moneyGoals, quickTasks);
+    const publicFilter = (item: any) => !isPublicView || item.isPublic || (item.name || '').includes('[public]');
+    const {allGoals, filteredGoals} = getAllGoalsForMention(
+        (routineGoals || []).filter(publicFilter),
+        (habits || []).filter(publicFilter),
+        (lifeGoals || []).filter(publicFilter),
+        mentionQuery,
+        (moneyGoals || []).filter(publicFilter),
+        (quickTasks || []).filter(publicFilter)
+    );
 
 
     // Removed inline editing handlers
@@ -422,6 +430,7 @@ export default function HabitsPane({
         e.dataTransfer.setData('time', goal.time || (typeof goal.duration === 'number' && goal.duration > 0 ? `${goal.duration}m` : '1:15'));
         e.dataTransfer.setData('color', hexes[0] || '#ffffff');
         e.dataTransfer.setData('routineGoalId', goal.id);
+        e.dataTransfer.setData('isPublic', (goal.isPublic || (goal.name || '').includes('[public]')) ? 'true' : 'false');
     };
 
     const checkRoutineAddressed = (goal: any) => {
@@ -1122,12 +1131,13 @@ export default function HabitsPane({
                     }
 
                     let allocatedCount = 0;
+                    const visibleHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
                     if (currentTemplate && currentTemplate.blocks) {
-                        allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
+                        allocatedCount = visibleHabits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
                     }
                     return (<>
                         <Activity size={14} color="var(--accent)"/>
-                        <span>Allocated Habits : {allocatedCount} / {habits.length}</span>
+                        <span>Allocated Habits : {allocatedCount} / {visibleHabits.length}</span>
                     </>);
                 })()}
             </div>

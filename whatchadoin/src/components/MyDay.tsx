@@ -136,6 +136,8 @@ export interface Habit {
     time?: string;
     color?: string;
     routineGoalId?: string;
+    isPublic?: boolean;
+    [key: string]: any;
 }
 
 export interface Block {
@@ -153,6 +155,8 @@ export interface Block {
     colIndex?: number;
     width?: number;
     left?: number;
+    isPublic?: boolean;
+    [key: string]: any;
 }
 
 export interface Template {
@@ -421,13 +425,17 @@ export default function MyDay({
                     const routineGoalId = e.dataTransfer.getData('routineGoalId');
                     const duration = parseDuration(timeStr);
 
+                    const linkedHabit = habits?.find((h: any) => h.id === routineGoalId);
+                    const isPublicBlock = (e.dataTransfer.getData('isPublic') === 'true') || linkedHabit?.isPublic || task.includes('[public]');
+
                     newBlocks.push({
                         id: Date.now().toString(),
                         name: task,
                         startTime: startMinutes,
                         duration: duration,
                         color: color,
-                        routineGoalId: routineGoalId
+                        routineGoalId: routineGoalId,
+                        isPublic: isPublicBlock
                     });
                 } else if (source === 'timeline') {
                     const blockId = e.dataTransfer.getData('blockId');
@@ -486,7 +494,8 @@ export default function MyDay({
         }
     };
 
-    const sortedMobileGoals = sortHabits(habits);
+    const visibleHabits = (habits || []).filter((h: any) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+    const sortedMobileGoals = sortHabits(visibleHabits);
 
 
     return (<div className="timeline-inner"
@@ -646,7 +655,8 @@ export default function MyDay({
                 {/* Overlapping GCal-style Blocks */}
                 {laidOutBlocks.map(block => {
                     const hex = block.color || '#ffffff';
-                    const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]');
+                    const linkedHabit = habits?.find((h: any) => h.id === block.routineGoalId);
+                    const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]') || linkedHabit?.isPublic || (linkedHabit?.name || '').includes('[public]');
                     const isMasked = isPublicView && !isBlockPublic;
                     
                     return (<div
@@ -994,6 +1004,7 @@ export default function MyDay({
                                 e.dataTransfer.setData('time', habit.time || '30m');
                                 e.dataTransfer.setData('color', habitColor);
                                 e.dataTransfer.setData('routineGoalId', habit.id);
+                                e.dataTransfer.setData('isPublic', (habit.isPublic || (habit.name || '').includes('[public]')) ? 'true' : 'false');
                                 setTimeout(() => setShowMobileGoals(false), 0);
                             }}
                             onClick={() => {
@@ -1013,7 +1024,8 @@ export default function MyDay({
                                             startTime: startMinutes,
                                             duration: duration,
                                             color: habitColor,
-                                            routineGoalId: habit.routineGoalId || habit.id
+                                            routineGoalId: habit.routineGoalId || habit.id,
+                                            isPublic: habit.isPublic || (habit.name || '').includes('[public]')
                                         });
                                         return {...t, blocks: newBlocks};
                                     }

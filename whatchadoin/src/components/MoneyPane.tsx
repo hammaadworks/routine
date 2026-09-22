@@ -361,18 +361,24 @@ export default function MoneyPane({
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
                 }}>
-                    {isWalletView ? (<>
+                    {isWalletView ? (() => {
+                        const visibleBaseGoals = baseGoals.filter(g => !isPublicView || (g as any).isPublic || (g.name || '').includes('[public]'));
+                        return (<>
                             <Wallet size={14} color="var(--accent)"/>
-                            Wallet Goals : {baseGoals.filter(g => g.completed).length} / {baseGoals.length}
-                        </>) : (<>
+                            Wallet Goals : {visibleBaseGoals.filter(g => g.completed).length} / {visibleBaseGoals.length}
+                        </>);
+                    })() : (() => {
+                        const visibleMoneyGoals = moneyGoals.filter(g => !isPublicView || (g as any).isPublic || (g.name || '').includes('[public]'));
+                        return (<>
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                                  fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"
                                  strokeLinejoin="round">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
-                            Money Goals : {moneyGoals.filter(g => g.completed).length} / {moneyGoals.length}
-                        </>)}
+                            Money Goals : {visibleMoneyGoals.filter(g => g.completed).length} / {visibleMoneyGoals.length}
+                        </>);
+                    })()}
                 </div>
             </div>
 

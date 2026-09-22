@@ -148,10 +148,10 @@ export default function LifePane({
     const getLinkedCount = (goal: Goal) => {
         let count = 0;
         if (routineGoals) {
-            count += routineGoals.filter(g => g.lifeGoalId === goal.id).length;
+            count += routineGoals.filter(g => g.lifeGoalId === goal.id && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'))).length;
         }
         if (habits) {
-            count += habits.filter(g => g.lifeGoalId === goal.id).length;
+            count += habits.filter(g => g.lifeGoalId === goal.id && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'))).length;
         }
         return count;
     };
@@ -319,7 +319,10 @@ export default function LifePane({
                     display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)'
                 }}>
                     <Activity size={14} color="var(--accent)"/>
-                    Life Goals : {lifeGoals.filter(g => g.completed).length} / {lifeGoals.length}
+                    {(() => {
+                        const visibleLifeGoals = (lifeGoals || []).filter((g: any) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+                        return <>Life Goals : {visibleLifeGoals.filter((g: any) => g.completed).length} / {visibleLifeGoals.length}</>;
+                    })()}
                 </div>
             </div>
 
@@ -365,8 +368,8 @@ export default function LifePane({
             >
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                     {(() => {
-                        const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === drawerLifeGoalId);
-                        const linkedHabits = (habits || []).filter(g => g.lifeGoalId === drawerLifeGoalId);
+                        const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === drawerLifeGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+                        const linkedHabits = (habits || []).filter(g => g.lifeGoalId === drawerLifeGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
                         if (linkedRoutines.length === 0 && linkedHabits.length === 0) {
                             return <div style={{color: 'var(--text-secondary)'}}>No items linked to this
                                 goal.</div>;

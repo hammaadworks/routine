@@ -443,14 +443,16 @@ export default function App() {
         ...g, category: 'Money', type: 'money'
     }))].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
 
+    const visibleWalletGoals = isPublicView ? allWalletGoals.filter((g: any) => g.isPublic || (g.name || '').includes('[public]')) : allWalletGoals;
     const walletTotal = allWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
+    const headerWalletTotal = visibleWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
 
     return (<div className={`layout dock-${aiDockState}`}>
 
         <WalletModal
             isOpen={isWalletModalOpen}
             onClose={() => setIsWalletModalOpen(false)}
-            allGoals={allWalletGoals}
+            allGoals={visibleWalletGoals}
         />
 
         {/* Main App Container */}
@@ -462,7 +464,7 @@ export default function App() {
                 setShowRoutineModal={setShowRoutineModal}
                 setAiDockState={setAiDockState as any}
                 setShowSettingsModal={setShowSettingsModal}
-                walletTotal={walletTotal}
+                walletTotal={headerWalletTotal}
                 isPublicView={isPublicView}
                 setIsPublicView={setIsPublicView}
                 onWalletClick={() => {
@@ -667,6 +669,7 @@ export default function App() {
 
                     <div className="mid-pane-content" style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
                         {activeCenterTab === 'myday' ? (<MyDay
+                            isPublicView={isPublicView}
                             templates={templates}
                             setTemplates={setTemplates as any}
                             activeTemplateId={activeTemplateId}
