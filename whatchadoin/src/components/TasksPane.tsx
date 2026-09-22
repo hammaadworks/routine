@@ -1,15 +1,24 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
-import { useWebMCP } from 'use-webmcp-tool';
-import { Trash2, GripVertical, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trash2, GripVertical, X, Globe } from 'lucide-react';
 import { useDragReorder } from '../hooks/useDragReorder';
 import ConfirmModal from './ConfirmModal';
+import { sanitizeEntities } from '../utils';
 
-export default function TasksPane() {
-  const [quickTasks, setQuickTasks] = useState<any[]>(() => {
-    return JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+export interface QuickTask {
+    isPublic?: boolean;
+  id: string;
+  name: string;
+  completed: boolean;
+  createdAt?: string;
+}
+
+export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) {
+  const [quickTasks, setQuickTasks] = useState<QuickTask[]>(() => {
+    return sanitizeEntities<QuickTask>(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
   });
   const [newQuickTask, setNewQuickTask] = useState('');
+  const [newTaskPublic, setNewTaskPublic] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState<any>(null);
 
   const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(quickTasks, setQuickTasks as any);
@@ -18,42 +27,27 @@ export default function TasksPane() {
     localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(quickTasks));
   }, [quickTasks]);
 
-  useWebMCP({
-    name: 'read_quick_tasks',
-    description: 'Read all quick tasks (both active and completed).',
-    inputSchema: { type: 'object', properties: {} },
-    execute: async () => ({ tasks: quickTasks.map(t => ({ id: t.id, text: t.text, completed: t.completed })) }),
-    annotations: { readOnlyHint: true, untrustedContentHint: false, consequentialHint: false }
-  });
-
-  const handleAgentAddTask = useCallback(async (inputs: any) => {
-    if (!inputs.text) throw new Error("Invalid parameters");
-    const newTask = { id: crypto.randomUUID(), text: inputs.text, completed: false, createdAt: new Date().toISOString() };
-    setQuickTasks(prev => [...prev, newTask]);
-    return { success: true, message: `Task '${inputs.text}' added.` };
+  useEffect(() => {
+    const handleUpdate = () => {
+      const raw = localStorage.getItem('whatchadoin_quick_tasks') || '[]';
+      setQuickTasks(prev => {
+        if (JSON.stringify(prev) === raw) return prev;
+        return sanitizeEntities<QuickTask>(JSON.parse(raw));
+      });
+    };
+    window.addEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
+    return () => window.removeEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
   }, []);
 
-  useWebMCP({
-    name: 'add_quick_task',
-    description: 'Add a new quick task to the inbox/tasks list.',
-    inputSchema: {
-      type: 'object',
-      properties: { text: { type: 'string', description: 'The content of the task' } },
-      required: ['text']
-    },
-    execute: handleAgentAddTask,
-    annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
-  });
-
-  const activeTasks = quickTasks.filter(t => !t.completed);
-  const completedTasks = quickTasks.filter(t => t.completed);
+  const activeTasks = quickTasks.filter(t => !t.completed && (!isPublicView || t.isPublic || (t.name || '').includes('[public]')));
+  const completedTasks = quickTasks.filter(t => t.completed && (!isPublicView || t.isPublic || (t.name || '').includes('[public]')));
 
   const toggleTask = (id: string) => {
     setQuickTasks(quickTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
-  const deleteTaskAndEdit = (task: any) => {
-    setNewQuickTask(task.text);
+  const deleteTaskAndEdit = (task: QuickTask) => {
+    setNewQuickTask(task.name || '');
     setQuickTasks(quickTasks.filter(t => t.id !== task.id));
   };
 
@@ -70,7 +64,7 @@ export default function TasksPane() {
     });
   };
 
-  const renderTask = (task: any) => {
+  const renderTask = (task: QuickTask) => {
     const absoluteIndex = quickTasks.findIndex(t => t.id === task.id);
     const isDragging = dragItemIndex === absoluteIndex;
     const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
@@ -122,7 +116,7 @@ export default function TasksPane() {
           minWidth: 0,
           lineHeight: '1.4'
         }}>
-          {task.text}
+          {task.name}
         </span>
         {task.completed && (
           <button 
@@ -149,7 +143,8 @@ export default function TasksPane() {
             onChange={(e) => setNewQuickTask(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newQuickTask.trim()) {
-                setQuickTasks([{ id: Date.now().toString(), text: newQuickTask.trim(), completed: false }, ...quickTasks]);
+                const taskName = newQuickTask.trim();
+                setQuickTasks([{ id: crypto.randomUUID(), name: taskName, completed: false, isPublic: newTaskPublic, createdAt: new Date().toISOString() }, ...quickTasks]);
                 setNewQuickTask('');
               }
             }}
@@ -184,6 +179,19 @@ export default function TasksPane() {
           )}
         </div>
         
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
+            <input 
+                type="checkbox" 
+                id="new-task-public"
+                checked={newTaskPublic}
+                onChange={(e) => setNewTaskPublic(e.target.checked)}
+                className="checkbox-square"
+            />
+            <label htmlFor="new-task-public" style={{color: 'var(--text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'}}>
+                <Globe size={12} /> Make Public (visible in Public View)
+            </label>
+        </div>
+
         {quickTasks.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
             <div className="tasks-grid">

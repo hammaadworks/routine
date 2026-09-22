@@ -2,9 +2,9 @@ import * as React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {createTimeline, utils} from 'animejs';
 import RoutineGoalPane from './components/RoutineGoalPane';
-import RoutinePane from './components/RoutinePane';
 import MyDay from './components/MyDay';
 import PlansPane from './components/PlansPane';
+import CoinsPane from './components/CoinsPane';
 import CalendarPane from './components/CalendarPane';
 import TasksPane from './components/TasksPane';
 import ConfirmModal from './components/ConfirmModal';
@@ -12,6 +12,7 @@ import {saveSyncConfig} from './sync';
 import {BookOpen, Calendar, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
+import HabitsPane from './components/HabitsPane';
 import MoneyPane from './components/MoneyPane';
 import AIAgentApp from './components/AIAgentApp';
 import MobileTabBar from './components/MobileTabBar';
@@ -48,6 +49,7 @@ export default function App() {
     const [editingRoutineId, setEditingRoutineId] = useState<string | null>(null);
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [isMidPaneExpanded, setIsMidPaneExpanded] = useState<boolean>(true);
+    const [isPublicView, setIsPublicView] = useState(false);
     const [isLeftPaneExpanded, setIsLeftPaneExpanded] = useState<boolean>(false);
     const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
     const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
@@ -407,6 +409,8 @@ export default function App() {
                 setAiDockState={setAiDockState as any}
                 setShowSettingsModal={setShowSettingsModal}
                 walletTotal={walletTotal}
+                isPublicView={isPublicView}
+                setIsPublicView={setIsPublicView}
                 onWalletClick={() => {
                     setActiveLeftTab('money');
                     setMobileTab('goals');
@@ -507,7 +511,7 @@ export default function App() {
                             </div>);
 
                             if (activeLeftTab === 'routine') {
-                                return <RoutineGoalPane
+                                return <RoutineGoalPane isPublicView={isPublicView}
                                     routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
                                     habits={habits} setHabits={setHabits as any}
                                     templates={templates} setTemplates={setTemplates as any}
@@ -518,7 +522,7 @@ export default function App() {
                                 />;
                             }
                             if (activeLeftTab === 'money') {
-                                return <MoneyPane
+                                return <MoneyPane isPublicView={isPublicView}
                                     moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
                                     headerTabs={headerTabs}
                                     allWalletGoals={allWalletGoals}
@@ -526,7 +530,7 @@ export default function App() {
                                     setRoutineGoals={setRoutineGoals as any}
                                 />;
                             }
-                            return <LifePane
+                            return <LifePane isPublicView={isPublicView}
                                 lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
                                 routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
                                 habits={habits} setHabits={setHabits as any}
@@ -560,9 +564,9 @@ export default function App() {
                             <ListTodo size={16}/> Tasks
                         </button>
                         <button
-                            className={`tab ${activeCenterTab === 'timeline' ? 'active' : ''}`}
+                            className={`tab ${activeCenterTab === 'myday' ? 'active' : ''}`}
                             onClick={() => {
-                                setActiveCenterTab('timeline');
+                                setActiveCenterTab('myday');
                                 setMobileTab('myday');
                             }}
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
@@ -578,6 +582,16 @@ export default function App() {
                             style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
                         >
                             <Calendar size={16}/> Calendar
+                        </button>
+                        <button
+                            className={`tab ${activeCenterTab === 'coins' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveCenterTab('coins');
+                                setMobileTab('coins');
+                            }}
+                            style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
+                        >
+                            <TrendingUp size={16}/> Coins
                         </button>
                         <button
                             className={`tab ${activeCenterTab === 'plans' ? 'active' : ''}`}
@@ -598,7 +612,7 @@ export default function App() {
                     </div>
 
                     <div className="mid-pane-content" style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
-                        {activeCenterTab === 'timeline' ? (<MyDay
+                        {activeCenterTab === 'myday' || activeCenterTab === 'timeline' ? (<MyDay
                             templates={templates}
                             setTemplates={setTemplates as any}
                             activeTemplateId={activeTemplateId}
@@ -609,13 +623,13 @@ export default function App() {
                             habits={habits}
                             routineGoals={routineGoals}
                             lifeGoals={lifeGoals}
-                        />) : activeCenterTab === 'plans' ? (<PlansPane
+                        />) : activeCenterTab === 'plans' ? (<PlansPane isPublicView={isPublicView}
                             key={activeRoutineId}
                             routineGoals={routineGoals}
                             habits={habits}
                             lifeGoals={lifeGoals}
                             activeRoutineId={activeRoutineId}
-                        />) : activeCenterTab === 'tasks' ? (<TasksPane/>) : (<CalendarPane
+                        />) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<CoinsPane walletTotal={walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} />) : (<CalendarPane isPublicView={isPublicView}
                             activeRoutine={activeRoutine}
                             setCalendarSubTab={setCalendarSubTab}
                             routineGoals={routineGoals}
@@ -632,7 +646,7 @@ export default function App() {
                         className="mobile-drawer-overlay"
                         onClick={() => setIsRoutineDrawerOpen(false)}
                     />)}
-                <RoutinePane
+                <HabitsPane isPublicView={isPublicView}
                     habits={habits} setHabits={setHabits as any}
                     templates={templates} setTemplates={setTemplates as any}
                     routineGoals={routineGoals} lifeGoals={lifeGoals}

@@ -13,15 +13,17 @@ const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#
 
 export interface MoneyGoal {
     id: string;
-    text: string;
+    name: string;
     cost: number;
     color?: string;
     completed?: boolean;
     desc?: string;
     type?: string;
+    isPublic?: boolean;
 }
 
 interface MoneyPaneProps {
+    isPublicView?: boolean;
     moneyGoals: MoneyGoal[];
     setMoneyGoals: React.Dispatch<React.SetStateAction<MoneyGoal[]>>;
     headerTabs?: React.ReactNode;
@@ -39,6 +41,7 @@ interface ConfirmConfig {
 }
 
 export default function MoneyPane({
+    isPublicView,
                                       moneyGoals,
                                       setMoneyGoals,
                                       headerTabs,
@@ -49,7 +52,7 @@ export default function MoneyPane({
     const [showMoneyGoalModal, setShowMoneyGoalModal] = useState(false);
     const [editingMoneyGoalId, setEditingMoneyGoalId] = useState<string | null>(null);
     const [editingGoalType, setEditingGoalType] = useState<string>('money');
-    const [moneyGoalForm, setMoneyGoalForm] = useState({text: '', color: '', cost: '', desc: ''});
+    const [moneyGoalForm, setMoneyGoalForm] = useState<{name: string, color: string, cost: string, desc: string, isPublic?: boolean}>({name: '', color: '', cost: '', desc: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerMoneyGoalId, setDrawerMoneyGoalId] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export default function MoneyPane({
         setEditingMoneyGoalId(null);
         setEditingGoalType('money');
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setMoneyGoalForm({text: '', color: randomColor, cost: '', desc: ''});
+        setMoneyGoalForm({name: '', isPublic: false, color: randomColor, cost: '', desc: ''});
         setShowMoneyGoalModal(true);
     };
 
@@ -85,40 +88,45 @@ export default function MoneyPane({
         setEditingGoalType(goal.type || 'money');
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setMoneyGoalForm({text: goal.text, color: goalColor, cost: String(goal.cost), desc: goal.desc || ''});
+        const goalName = goal.name || '';
+        setMoneyGoalForm({name: goalName, color: goalColor, cost: String(goal.cost), desc: goal.desc || '', isPublic: !!goal.isPublic});
         setShowMoneyGoalModal(true);
     };
 
 
     const saveMoneyGoal = (e: React.SyntheticEvent) => {
         e.preventDefault();
-        if (!moneyGoalForm.text.trim() || !moneyGoalForm.cost.trim()) return;
-        const cleanText = moneyGoalForm.text.trim();
+        const goalName = moneyGoalForm.name.trim();
+        if (!goalName || !moneyGoalForm.cost.trim()) return;
         const costValue = parseFloat(moneyGoalForm.cost);
         if (isNaN(costValue)) return;
 
         if (editingMoneyGoalId) {
+            const cleanUpdates = (g: any) => {
+                const { text: _text, title: _title, task: _task, ...cleanG } = g;
+                return {
+                    ...cleanG,
+                    name: goalName,
+                    isPublic: !!moneyGoalForm.isPublic, color: moneyGoalForm.color,
+                    cost: costValue,
+                    desc: moneyGoalForm.desc || ''
+                };
+            };
             if (editingGoalType === 'life' && setLifeGoals) {
-                setLifeGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? {
-                    ...g, text: cleanText, color: moneyGoalForm.color, cost: costValue, desc: moneyGoalForm.desc
-                } : g));
+                setLifeGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
             } else if (editingGoalType === 'routine' && setRoutineGoals) {
-                setRoutineGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? {
-                    ...g, text: cleanText, color: moneyGoalForm.color, cost: costValue, desc: moneyGoalForm.desc
-                } : g));
+                setRoutineGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
             } else {
-                setMoneyGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? {
-                    ...g, text: cleanText, color: moneyGoalForm.color, cost: costValue, desc: moneyGoalForm.desc
-                } : g));
+                setMoneyGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
             }
         } else {
             setMoneyGoals([...moneyGoals, {
                 id: 'mg-' + Date.now(),
-                text: cleanText,
-                color: moneyGoalForm.color,
+                name: goalName,
+                isPublic: !!moneyGoalForm.isPublic, color: moneyGoalForm.color,
                 cost: costValue,
                 completed: false,
-                desc: moneyGoalForm.desc
+                desc: moneyGoalForm.desc || ''
             }]);
         }
         setShowMoneyGoalModal(false);
@@ -134,10 +142,10 @@ export default function MoneyPane({
         }
     };
 
-    const deleteMoneyGoal = (id: string, text: string, type?: string) => {
+    const deleteMoneyGoal = (id: string, name: string, type?: string) => {
         setConfirmConfig({
             title: 'Delete Goal',
-            message: `Are you sure you want to delete the goal: "${text}"?`,
+            message: `Are you sure you want to delete the goal: "${name}"?`,
             isDanger: true,
             onConfirm: () => {
                 if (type === 'life' && setLifeGoals) {
@@ -157,10 +165,10 @@ export default function MoneyPane({
     const [sortByName, setSortByName] = useState(false);
 
     let baseGoals = isWalletView && allWalletGoals ? allWalletGoals : moneyGoals;
-    let displayedGoals = baseGoals.filter(g => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
+    let displayedGoals = baseGoals.filter(g => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (!isPublicView || (g as any).isPublic || (g.name || '').includes('[public]')));
 
     if (sortByName) {
-        displayedGoals.sort((a, b) => a.text.localeCompare(b.text));
+        displayedGoals.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     } else if (isWalletView) {
         // allWalletGoals is already sorted by cost in App.tsx, but filter might have messed up the order or we just rely on base order
         displayedGoals.sort((a, b) => (b.cost || 0) - (a.cost || 0));
@@ -384,7 +392,7 @@ export default function MoneyPane({
                         onSubmit={saveMoneyGoal}
                         onCancel={() => setShowMoneyGoalModal(false)}
                         onDelete={editingMoneyGoalId ? () => {
-                            deleteMoneyGoal(editingMoneyGoalId, moneyGoalForm.text, editingGoalType);
+                            deleteMoneyGoal(editingMoneyGoalId, moneyGoalForm.name, editingGoalType);
                             setShowMoneyGoalModal(false);
                         } : undefined}
                         isEditing={!!editingMoneyGoalId}
@@ -397,7 +405,7 @@ export default function MoneyPane({
             {drawerMoneyGoalId && (() => {
                 const goal = baseGoals.find(g => g.id === drawerMoneyGoalId);
                 if (!goal) return null;
-                return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title={goal.text}>
+                return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title={goal.name}>
                         <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                             {goal.desc && (<div>
                                     <div style={{

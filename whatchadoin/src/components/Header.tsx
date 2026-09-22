@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import {Bot, Command, Settings, Wallet} from 'lucide-react';
+import {Bot, Command, Settings, Wallet, Globe, Lock} from 'lucide-react';
 import RoutineSelector from './RoutineSelector';
 import { useCurrency } from '../hooks/useCurrency';
 
@@ -18,6 +18,8 @@ interface HeaderProps {
     setAiDockState: Dispatch<SetStateAction<'closed' | 'right'>>;
     setShowSettingsModal: Dispatch<SetStateAction<boolean>>;
     walletTotal?: number;
+    isPublicView: boolean;
+    setIsPublicView: Dispatch<SetStateAction<boolean>>;
     onWalletClick?: () => void;
 }
 
@@ -28,7 +30,9 @@ export default function Header({
                                    setAiDockState,
                                    setShowSettingsModal,
                                    walletTotal,
-                                   onWalletClick
+                                   onWalletClick,
+                                   isPublicView,
+                                   setIsPublicView
                                }: HeaderProps) {
     const { formatCurrency } = useCurrency();
 
@@ -87,6 +91,30 @@ export default function Header({
             <div className="header-controls"
                  style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0}}>
                 
+                
+                <button
+                    className="icon-btn"
+                    onClick={() => setIsPublicView(prev => !prev)}
+                    style={{
+                        padding: '8px 12px',
+                        background: isPublicView ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        border: `1px solid ${isPublicView ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: isPublicView ? '#10B981' : '#EF4444',
+                        fontWeight: '600',
+                        flexShrink: 0
+                    }}
+                    title={isPublicView ? 'Currently in Public Mode (Private items are hidden). Tap to switch to Private Mode.' : 'Currently in Private Mode (Showing everything). Tap to switch to Public Mode.'}
+                >
+                    {isPublicView ? <Globe size={16} color="#10B981" /> : <Lock size={16} color="#EF4444" />}
+                    <span className="mobile-hidden" style={{ fontSize: '13px' }}>
+                        {isPublicView ? 'Public Mode' : 'Private Mode'}
+                    </span>
+                </button>
+
                 {walletTotal !== undefined && (
                     <button className="icon-btn" onClick={onWalletClick} style={{
                         padding: '6px 12px',

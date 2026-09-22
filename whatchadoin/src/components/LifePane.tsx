@@ -12,15 +12,17 @@ const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#
 
 interface Goal {
     id: string;
-    text: string;
+    name: string;
     color?: string;
     completed?: boolean;
     desc?: string;
     lifeGoalId?: string;
     cost?: number;
+    isPublic?: boolean;
 }
 
 interface LifePaneProps {
+    isPublicView?: boolean;
     lifeGoals: Goal[];
     setLifeGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
     routineGoals?: Goal[];
@@ -40,6 +42,7 @@ interface ConfirmConfig {
 }
 
 export default function LifePane({
+    isPublicView,
                                      lifeGoals,
                                      setLifeGoals,
                                      routineGoals,
@@ -51,7 +54,7 @@ export default function LifePane({
                                  }: LifePaneProps) {
     const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
     const [editingLifeGoalId, setEditingLifeGoalId] = useState<string | null>(null);
-    const [lifeGoalForm, setLifeGoalForm] = useState({text: '', color: '', desc: '', cost: ''});
+    const [lifeGoalForm, setLifeGoalForm] = useState<{name: string; color: string; desc: string; cost: string, isPublic?: boolean}>({name: '', color: '', desc: '', cost: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerLifeGoalId, setDrawerLifeGoalId] = useState<string | null>(null);
@@ -60,14 +63,18 @@ export default function LifePane({
 
     useEffect(() => {
         const handleFab = () => openAddLifeGoal();
+        window.addEventListener('fab:add-life-goal', handleFab);
         window.addEventListener('fab:add-strategy', handleFab);
-        return () => window.removeEventListener('fab:add-strategy', handleFab);
+        return () => {
+            window.removeEventListener('fab:add-life-goal', handleFab);
+            window.removeEventListener('fab:add-strategy', handleFab);
+        };
     }, []);
 
     const openAddLifeGoal = () => {
         setEditingLifeGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setLifeGoalForm({text: '', color: randomColor, desc: '', cost: ''});
+        setLifeGoalForm({name: '', isPublic: false, color: randomColor, desc: '', cost: ''});
         setShowLifeGoalModal(true);
     };
 
@@ -75,27 +82,34 @@ export default function LifePane({
         setEditingLifeGoalId(goal.id);
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setLifeGoalForm({text: goal.text, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : ''});
+        const goalName = goal.name || '';
+        setLifeGoalForm({name: goalName, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : '', isPublic: !!goal.isPublic});
         setShowLifeGoalModal(true);
     };
 
-
-
     const saveLifeGoal = (e: React.SyntheticEvent) => {
         e.preventDefault();
-        if (!lifeGoalForm.text.trim()) return;
-        const cleanText = lifeGoalForm.text.trim();
-        const costValue = lifeGoalForm.cost ? parseFloat(lifeGoalForm.cost) : undefined;
+        const cleanName = lifeGoalForm.name.trim();
+        if (!cleanName) return;
+        const costValue = lifeGoalForm.cost ? parseFloat(String(lifeGoalForm.cost)) : undefined;
 
         if (editingLifeGoalId) {
-            setLifeGoals(prev => prev.map(g => g.id === editingLifeGoalId ? {
-                ...g, text: cleanText, color: lifeGoalForm.color, desc: lifeGoalForm.desc, cost: costValue
-            } : g));
+            setLifeGoals(prev => prev.map(g => {
+                if (g.id !== editingLifeGoalId) return g;
+                const { text: _text, title: _title, task: _task, ...cleanG } = g as any;
+                return {
+                    ...cleanG,
+                    name: cleanName,
+                    isPublic: !!lifeGoalForm.isPublic, color: lifeGoalForm.color,
+                    desc: lifeGoalForm.desc,
+                    cost: costValue
+                };
+            }));
         } else {
             setLifeGoals([...lifeGoals, {
                 id: 'lg-' + Date.now(),
-                text: cleanText,
-                color: lifeGoalForm.color,
+                name: cleanName,
+                isPublic: !!lifeGoalForm.isPublic, color: lifeGoalForm.color,
                 completed: false,
                 desc: lifeGoalForm.desc,
                 cost: costValue
@@ -108,10 +122,10 @@ export default function LifePane({
         setLifeGoals(lifeGoals.map(g => g.id === id ? {...g, completed: !g.completed} : g));
     };
 
-    const deleteLifeGoal = (id: string, text: string) => {
+    const deleteLifeGoal = (id: string, name: string) => {
         setConfirmConfig({
             title: 'Delete Life Goal',
-            message: `Are you sure you want to delete the life goal: "${text}"? Routine and habits linked to it will be unlinked.`,
+            message: `Are you sure you want to delete the life goal: "${name}"? Routine and habits linked to it will be unlinked.`,
             isDanger: true,
             onConfirm: () => {
                 setLifeGoals(lifeGoals.filter(g => g.id !== id));
@@ -144,9 +158,9 @@ export default function LifePane({
         return count;
     };
 
-    let displayedGoals = lifeGoals.filter(g => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
+    let displayedGoals = lifeGoals.filter((g: any) => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
     if (sortByName) {
-        displayedGoals.sort((a, b) => a.text.localeCompare(b.text));
+        displayedGoals.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
 
@@ -326,7 +340,7 @@ export default function LifePane({
                     onSubmit={saveLifeGoal}
                     onCancel={() => setShowLifeGoalModal(false)}
                     onDelete={editingLifeGoalId ? () => {
-                        deleteLifeGoal(editingLifeGoalId, lifeGoalForm.text);
+                        deleteLifeGoal(editingLifeGoalId, lifeGoalForm.name);
                         setShowLifeGoalModal(false);
                     } : undefined}
                     isEditing={!!editingLifeGoalId}
@@ -373,7 +387,7 @@ export default function LifePane({
                                     background: 'var(--surface-light)',
                                     borderRadius: '6px',
                                     marginBottom: '4px'
-                                }}>{rg.text}</div>))}
+                                }}>{rg.name}</div>))}
                             </div>)}
                             {linkedHabits.length > 0 && (<div>
                                 <div style={{
@@ -388,7 +402,7 @@ export default function LifePane({
                                     background: 'var(--surface-light)',
                                     borderRadius: '6px',
                                     marginBottom: '4px'
-                                }}>{h.task}</div>))}
+                                }}>{h.name}</div>))}
                             </div>)}
                         </>);
                     })()}

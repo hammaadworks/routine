@@ -190,7 +190,7 @@ export default function SettingsModal({
                                         const parts = url.pathname.split('/').filter(Boolean);
                                         val = parts[parts.length - 1] || val;
                                     }
-                                } catch (_err) {
+                                } catch {
                                 }
                                 setSyncForm({...syncForm, id: val});
                             }}

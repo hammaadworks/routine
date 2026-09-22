@@ -1,4 +1,4 @@
-import {BookOpen, CalendarDays, ListTodo, LucideRepeat, Plus, Target, Zap} from 'lucide-react';
+import {BookOpen, CalendarDays, ListTodo, LucideRepeat, Plus, Target, Zap, Coins} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
@@ -21,7 +21,7 @@ export default function MobileTabBar({
         id: 'goals', icon: Target, label: 'Goals'
     }, {id: 'myday', icon: Zap, label: 'MyDay', default: true}, {
         id: 'calendar', icon: CalendarDays, label: 'Calendar'
-    }, {id: 'plans', icon: BookOpen, label: 'Plans'}];
+    }, {id: 'plans', icon: BookOpen, label: 'Plans'}, {id: 'coins', icon: Coins, label: 'Coins'}];
 
     const handleFabClick = () => {
         if (isRoutineDrawerOpen) {
@@ -34,13 +34,16 @@ export default function MobileTabBar({
             } else if (activeLeftTab === 'routine') {
                 window.dispatchEvent(new CustomEvent('fab:add-routine-goal'));
             } else {
-                window.dispatchEvent(new CustomEvent('fab:add-strategy'));
+                window.dispatchEvent(new CustomEvent('fab:add-life-goal'));
             }
+        }
+        if (activeTab === 'coins') {
+            window.dispatchEvent(new CustomEvent('fab:add-coins'));
+            return;
         }
         if (activeTab === 'plans') {
             window.dispatchEvent(new CustomEvent('fab:add-plan'));
         }
-        if (activeTab === 'habits') window.dispatchEvent(new CustomEvent('fab:add-habits')); // legacy fallback
         if (activeTab === 'myday' || activeTab === 'timeline') {
             window.dispatchEvent(new CustomEvent('fab:add-myday'));
             return;

@@ -25,7 +25,7 @@ export default function WalletModal({ isOpen, onClose, allGoals }: WalletModalPr
                     allGoals.map((g, idx) => (
                         <div key={g.id + idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{g.text}</span>
+                                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{g.name}</span>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{g.category}</span>
                             </div>
                             <div style={{ fontWeight: 'bold', color: 'var(--accent)' }}>

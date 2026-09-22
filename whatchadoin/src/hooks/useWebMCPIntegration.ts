@@ -1,34 +1,117 @@
-import {useWebMCP} from 'use-webmcp-tool';
 import {useCallback} from 'react';
+import {useWebMCP} from 'use-webmcp-tool';
+import {getAllWalletGoals, parseDuration, sanitizeEntities} from '../utils';
+
+export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+export function parseTimeStringToMinutes(val: string | number): number {
+    if (typeof val === 'number') {
+        return Math.max(0, Math.min(1439, Math.round(val)));
+    }
+    if (!val) return 0;
+    const str = String(val).trim().toLowerCase();
+
+    // Pure integer minutes string e.g. "840"
+    if (/^\d+$/.test(str)) {
+        return Math.max(0, Math.min(1439, parseInt(str, 10)));
+    }
+
+    const isPm = /pm/i.test(str);
+    const isAm = /am/i.test(str);
+    const cleaned = str.replace(/[apm\s]/gi, '');
+
+    if (cleaned.includes(':')) {
+        const parts = cleaned.split(':');
+        let h = parseInt(parts[0] || '0', 10);
+        const m = parseInt(parts[1] || '0', 10);
+        if (isPm && h < 12) h += 12;
+        if (isAm && h === 12) h = 0;
+        return Math.max(0, Math.min(1439, (h * 60) + m));
+    }
+
+    let h = parseInt(cleaned || '0', 10);
+    if (isPm && h < 12) h += 12;
+    if (isAm && h === 12) h = 0;
+    return Math.max(0, Math.min(1439, h * 60));
+}
+
+export function formatMinutesToTime(minutes: number): string {
+    const h = Math.floor(minutes / 60) % 24;
+    const m = (minutes % 60).toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return `${displayH}:${m} ${ampm}`;
+}
+
+export function normalizeDayName(dayStr: string): string | null {
+    if (!dayStr) return null;
+    const s = dayStr.trim().toLowerCase();
+    for (const d of DAYS_OF_WEEK) {
+        if (d.toLowerCase().startsWith(s.slice(0, 3))) {
+            return d;
+        }
+    }
+    return null;
+}
 
 // SCHEMAS
+const createRoutineSchema = {
+    type: 'object', properties: {
+        name: {type: 'string', description: 'Name of the new Routine (e.g. "Routine 1", "Summer Sprint")'},
+        desc: {type: 'string', description: 'Optional description of the routine'},
+        start: {type: 'string', description: 'Optional start date (YYYY-MM-DD)'},
+        end: {type: 'string', description: 'Optional end date (YYYY-MM-DD)'}
+    }, required: ['name']
+};
+
+const switchRoutineSchema = {
+    type: 'object', properties: {
+        routineId: {type: 'string', description: 'ID of the routine to switch to'}
+    }, required: ['routineId']
+};
+
 const addLifeGoalSchema = {
     type: 'object', properties: {
-        title: {type: 'string', description: 'The title of the life goal'},
+        name: {type: 'string', description: 'The name of the life goal'},
+        desc: {type: 'string', description: 'Optional description of the life goal'},
+        color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
         cost: {type: 'number', description: 'Optional cost/value associated with the goal'}
-    }, required: ['title']
+    }, required: ['name']
 };
 
 const addRoutineGoalSchema = {
     type: 'object', properties: {
-        title: {type: 'string', description: 'The title of the routine goal'},
+        name: {type: 'string', description: 'The name of the routine goal'},
+        desc: {type: 'string', description: 'Optional description of the routine goal'},
+        color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
         duration: {type: 'string', description: 'Estimated duration (e.g. "45 min")'},
+        cost: {type: 'number', description: 'Optional cost/value associated with the goal'},
         linkedLifeGoalId: {type: 'string', description: 'Optional ID of a Life Goal to link to'}
-    }, required: ['title']
+    }, required: ['name']
+};
+
+const addMoneyGoalSchema = {
+    type: 'object', properties: {
+        name: {type: 'string', description: 'The name of the money goal'},
+        cost: {type: 'number', description: 'Target financial amount or cost'},
+        desc: {type: 'string', description: 'Optional description or note'}
+    }, required: ['name', 'cost']
 };
 
 const addHabitSchema = {
     type: 'object', properties: {
-        title: {type: 'string', description: 'The title of the habit'},
-        duration: {type: 'string', description: 'Duration of the habit (e.g. "15 min")'},
+        name: {type: 'string', description: 'The name of the habit'},
+        desc: {type: 'string', description: 'Optional description of the habit'},
+        duration: {type: 'string', description: 'Duration of the habit (e.g. "15 min", "30m", or minutes)'},
+        time: {type: 'string', description: 'Optional duration representation (e.g. "15m", "1:15")'},
         type: {type: 'string', enum: ['daily', 'weekly'], description: 'Whether it is a daily or weekly habit'},
         linkedRoutineGoalId: {type: 'string', description: 'Optional ID of a Routine Goal to link to'}
-    }, required: ['title', 'duration']
+    }, required: ['name']
 };
 
 const createTemplateSchema = {
     type: 'object', properties: {
-        name: {type: 'string', description: 'Name for the new timeline template'}
+        name: {type: 'string', description: 'Name for the new daily template (e.g. "Workday", "Weekend")'}
     }, required: ['name']
 };
 
@@ -41,17 +124,68 @@ const editTemplateSchema = {
 
 const scheduleBlockSchema = {
     type: 'object', properties: {
-        templateId: {type: 'string', description: 'ID of the template to modify (optional, defaults to active)'},
-        name: {type: 'string', description: 'Name of the block to schedule'},
-        startTime: {type: 'number', description: 'Start time in minutes from midnight (e.g. 540 for 9:00 AM)'},
-        duration: {type: 'number', description: 'Duration in minutes (e.g. 60)'}
+        name: {type: 'string', description: 'Name of the block or habit to schedule'},
+        startTime: {type: 'string', description: 'Start time (e.g. "9am", "14:00", "2:30 PM", or 540 in minutes from midnight)'},
+        duration: {type: 'string', description: 'Duration in minutes or string (e.g. 60, "45m", "1h")'},
+        day: {type: 'string', description: 'Optional day of the week (e.g. "Monday", "Wednesday") to schedule on'},
+        templateId: {type: 'string', description: 'Optional template ID to schedule on (defaults to day\'s template or active template)'}
     }, required: ['name', 'startTime', 'duration']
+};
+
+const moveBlockSchema = {
+    type: 'object', properties: {
+        habitName: {type: 'string', description: 'Name, task, or ID of the habit or scheduled block to move'},
+        toTime: {type: 'string', description: 'Target start time on the schedule (e.g. "3pm", "15:00", "3:30 PM", or 900 minutes)'},
+        toDay: {type: 'string', description: 'Target day of the week (e.g. "Wednesday", "Wed", "Monday"). If omitted, moves within the same day/template.'},
+        fromDay: {type: 'string', description: 'Optional source day of the week (e.g. "Monday", "Mon") to identify where the block is currently scheduled'},
+        fromTime: {type: 'string', description: 'Optional source time (e.g. "2pm", "14:00") to disambiguate if multiple blocks share the same habit name'},
+        fromTemplateId: {type: 'string', description: 'Optional source template ID if moving directly from a specific template'},
+        toTemplateId: {type: 'string', description: 'Optional target template ID if moving directly to a specific template'},
+        duration: {type: 'string', description: 'Optional new duration (e.g. "45m", "1h", 45). Defaults to existing duration or habit duration.'}
+    }, required: ['habitName', 'toTime']
+};
+
+const deleteBlockSchema = {
+    type: 'object', properties: {
+        blockName: {type: 'string', description: 'Name, task, or ID of the block to delete'},
+        day: {type: 'string', description: 'Optional day of the week (e.g. "Monday") where the block is scheduled'},
+        templateId: {type: 'string', description: 'Optional template ID where the block is scheduled'}
+    }, required: ['blockName']
+};
+
+const mapTemplateToDaySchema = {
+    type: 'object', properties: {
+        day: {
+            type: 'string',
+            enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            description: 'Day of the week in the Weekly Schedule'
+        },
+        templateId: {type: 'string', description: 'ID of the template to assign to this day in the Weekly Schedule'}
+    }, required: ['day', 'templateId']
+};
+
+const readScheduleSchema = {
+    type: 'object', properties: {}
+};
+
+
+const readCoinsSchema = { type: 'object', properties: { includeEntries: { type: 'boolean' } } };
+const addCoinsEntrySchema = {
+    type: 'object',
+    properties: {
+        year: { type: 'number' },
+        month: { type: 'number' },
+        amount: { type: 'number' },
+        source: { type: 'string' },
+        notes: { type: 'string' }
+    },
+    required: ['year', 'month', 'amount', 'source']
 };
 
 const navigateAppSchema = {
     type: 'object', properties: {
-        centerTab: {type: 'string', enum: ['timeline', 'tasks', 'calendar', 'plans'], description: 'Main center view'},
-        leftTab: {type: 'string', enum: ['life', 'money', 'routine'], description: 'Left sidebar view'}
+        centerTab: {type: 'string', enum: ['myday', 'tasks', 'calendar', 'plans', 'coins'], description: 'Main center view: myday (My Day), tasks, calendar, plans, coins'},
+        leftTab: {type: 'string', enum: ['life', 'money', 'routine'], description: 'Left sidebar view: life, money, routine'}
     }
 };
 
@@ -59,80 +193,326 @@ const readStateSchema = {
     type: 'object', properties: {}
 };
 
+const addQuickTaskSchema = {
+    type: 'object', properties: {
+        name: {type: 'string', description: 'The name of the quick task'}
+    }, required: ['name']
+};
+
+const readQuickTasksSchema = {
+    type: 'object', properties: {}
+};
+
+const createPlanSchema = {
+    type: 'object', properties: {
+        name: {type: 'string', description: 'Name of the plan'},
+        content: {type: 'string', description: 'Markdown content for the plan body'},
+        isLife: {
+            type: 'boolean',
+            description: 'If true, stores it in Life plans instead of the active Routine (default false)'
+        }
+    }, required: ['name', 'content']
+};
+
+const readPlansSchema = {
+    type: 'object', properties: {}
+};
+
 // MANDATORY PROMPT ENFORCEMENT
-const STRICT_PROMPT = "MANDATORY: You MUST proactively ask the user for ALL optional fields listed in the schema (e.g. cost, linkedLifeGoalId, linkedRoutineGoalId, etc.) before invoking this tool, to ensure complete data entry. Do not proceed until you have explicitly asked about the optional fields.";
+const STRICT_PROMPT = "MANDATORY: You MUST proactively ask the user for ALL optional fields listed in the schema (e.g. cost, desc, linkedLifeGoalId, linkedRoutineGoalId, etc.) before invoking this tool, to ensure complete data entry. Do not proceed until you have explicitly asked about the optional fields.";
 
 export function useWebMCPIntegration({
                                          setLifeGoals,
+                                         setMoneyGoals,
+                                         setRoutines,
+                                         setActiveRoutineId,
                                          updateActiveRoutine,
                                          activeRoutine,
+                                         routines,
                                          setActiveCenterTab,
                                          setActiveLeftTab,
                                          setMobileTab,
                                          lifeGoals,
                                          moneyGoals
                                      }: any) {
-    // 0. Read State (Crucial for getting IDs to link to)
-    const handleReadState = useCallback(async () => {
-        const allWalletGoals = [...(lifeGoals || []).map((g: any) => ({
-            ...g, category: 'Life'
-        })), ...(activeRoutine.routineGoals || []).map((g: any) => ({
-            ...g, category: 'Routine'
-        })), ...(moneyGoals || []).map((g: any) => ({
-            ...g, category: 'Money'
-        }))].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
+    // 0. Read State (Returns complete app state with fallback keys)
 
+    const handleReadCoins = useCallback(async (inputs: any) => {
+        let entries = [];
+        let targets = [];
+        try {
+            entries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+            targets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '[]');
+        } catch {}
+        return { 
+            totalEntries: entries.length, 
+            totalTargets: targets.length,
+            coinsEntries: inputs?.includeEntries ? entries : undefined
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_coins',
+        description: 'Returns a structured summary of career coins and targets. Can optionally return raw coinsEntries list.',
+        inputSchema: readCoinsSchema,
+        execute: handleReadCoins,
+        annotations: { readOnlyHint: true, untrustedContentHint: false, consequentialHint: false }
+    });
+
+    const handleAddCoinsEntry = useCallback(async (inputs: any) => {
+        let entries = [];
+        try {
+            entries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+        } catch {}
+        const newEntry = { ...inputs, id: Date.now().toString(36) };
+        const updated = [...entries, newEntry];
+        localStorage.setItem('whatchadoin_coins_entries', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+        return { success: true, message: 'Added entry for ' + inputs.year + '-' + inputs.month };
+    }, []);
+
+    useWebMCP({
+        name: 'add_coins_entry',
+        description: 'Adds or updates a monthly coins record',
+        inputSchema: addCoinsEntrySchema,
+        execute: handleAddCoinsEntry,
+        annotations: { readOnlyHint: false, untrustedContentHint: true, consequentialHint: false }
+    });
+
+    const handleReadState = useCallback(async () => {
+        const allWalletGoals = getAllWalletGoals(lifeGoals, activeRoutine?.routineGoals, moneyGoals);
         const walletTotalRemaining = allWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
 
+        const rawHabits = Array.isArray(activeRoutine?.habits)
+            ? activeRoutine.habits
+            : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
+
+        
+        const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+        const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+
         return {
-            templates: (activeRoutine.templates || []).map((t: any) => ({id: t.id, name: t.name})),
+            coins: { entries: coinsEntries, targets: coinsTargets },
+            routines: (routines || []).map((r: any) => ({
+                id: r.id,
+                name: r.name,
+                start: r.start,
+                end: r.end,
+                isActive: r.id === (activeRoutine?.id)
+            })),
+            activeRoutine: {
+                id: activeRoutine?.id,
+                name: activeRoutine?.name,
+                start: activeRoutine?.start,
+                end: activeRoutine?.end,
+                activeTemplateId: activeRoutine?.activeTemplateId
+            },
+            templates: (activeRoutine?.templates || []).map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                blocksCount: (t.blocks || []).length,
+                blocks: (t.blocks || []).map((b: any) => {
+                    const startMin = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                    const durMin = typeof b.duration === 'number' ? b.duration : parseDuration(b.duration);
+                    return {
+                        id: b.id,
+                        name: b.name,
+                        startTime: startMin,
+                        timeFormatted: formatMinutesToTime(startMin),
+                        duration: durMin,
+                        endTimeFormatted: formatMinutesToTime(startMin + durMin),
+                        color: b.color,
+                        routineGoalId: b.routineGoalId
+                    };
+                })
+            })),
+            dayMapping: activeRoutine?.dayMapping || {},
+            habits: rawHabits.map((h: any) => {
+                const durMin = typeof h.duration === 'number' ? h.duration : parseDuration(h.duration || h.time || '15m');
+                return {
+                    id: h.id,
+                    name: h.name,
+                    desc: h.desc || '',
+                    duration: durMin,
+                    time: h.time || `${durMin}m`,
+                    type: h.type || 'daily'
+                };
+            }),
             lifeGoals: (lifeGoals || []).map((g: any) => ({
                 id: g.id,
-                title: g.title,
+                name: g.name,
+                desc: g.desc || '',
                 cost: g.cost,
                 completed: g.completed
             })),
-            routineGoals: (activeRoutine.routineGoals || []).map((g: any) => ({
+            routineGoals: (activeRoutine?.routineGoals || []).map((g: any) => ({
                 id: g.id,
-                title: g.title,
+                name: g.name,
+                desc: g.desc || '',
                 cost: g.cost,
                 completed: g.completed
             })),
             moneyGoals: (moneyGoals || []).map((g: any) => ({
                 id: g.id,
-                title: g.title,
+                name: g.name,
+                desc: g.desc || '',
                 cost: g.cost,
                 completed: g.completed
             })),
             walletTotalRemaining,
             walletGoals: allWalletGoals.map((g: any) => ({
-                title: g.title,
+                name: g.name,
+                desc: g.desc || '',
                 cost: g.cost,
                 completed: g.completed,
                 category: g.category
             }))
         };
-    }, [activeRoutine, lifeGoals, moneyGoals]);
+    }, [activeRoutine, lifeGoals, moneyGoals, routines]);
 
     useWebMCP({
         name: 'read_app_state',
-        description: 'Read the current templates, life goals, routine goals, and wallet/money states.',
+        description: 'Read the current routines, templates, life goals, routine goals, money goals, habits, day mapping, and wallet states.',
         inputSchema: readStateSchema,
         execute: handleReadState,
         annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
     });
 
-    // 1. Add Life Goal
+    // Read Full Weekly Schedule Picture
+    const handleReadSchedule = useCallback(async () => {
+        const templates = activeRoutine?.templates || [];
+        const dayMapping = activeRoutine?.dayMapping || {};
+
+        const weeklySchedule = DAYS_OF_WEEK.map(day => {
+            const templateId = dayMapping[day];
+            const template = templates.find((t: any) => t.id === templateId);
+            const blocks = (template?.blocks || []).map((b: any) => {
+                const startMin = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                const durMin = typeof b.duration === 'number' ? b.duration : parseDuration(b.duration);
+                return {
+                    id: b.id,
+                    name: b.name,
+                    startTime: startMin,
+                    timeFormatted: formatMinutesToTime(startMin),
+                    duration: durMin,
+                    endTimeFormatted: formatMinutesToTime(startMin + durMin),
+                    color: b.color,
+                    routineGoalId: b.routineGoalId
+                };
+            }).sort((a: any, b: any) => a.startTime - b.startTime);
+
+            return {
+                day,
+                templateId: templateId || null,
+                templateName: template ? template.name : (templateId ? 'Unknown Template' : 'No Template Assigned'),
+                blocksCount: blocks.length,
+                blocks
+            };
+        });
+
+        const rawHabits = Array.isArray(activeRoutine?.habits)
+            ? activeRoutine.habits
+            : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
+
+        const habitsBank = rawHabits.map((h: any) => {
+            const durMin = typeof h.duration === 'number' ? h.duration : parseDuration(h.duration || h.time || '15m');
+            return {
+                id: h.id,
+                name: h.name,
+                desc: h.desc || '',
+                duration: durMin,
+                time: h.time || `${durMin}m`,
+                type: h.type || 'daily'
+            };
+        });
+
+        return {
+            routineName: activeRoutine?.name,
+            weeklySchedule,
+            allTemplates: templates.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                blocksCount: (t.blocks || []).length,
+                assignedDays: DAYS_OF_WEEK.filter(d => dayMapping[d] === t.id)
+            })),
+            habitsBank
+        };
+    }, [activeRoutine]);
+
+    useWebMCP({
+        name: 'read_schedule',
+        description: 'Read the full Weekly Schedule picture: view each day of the week (Monday-Sunday) with assigned templates, scheduled blocks, start/end times, and available habits in the bank.',
+        inputSchema: readScheduleSchema,
+        execute: handleReadSchedule,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 1. Create Routine
+    const handleCreateRoutine = useCallback(async (inputs: any) => {
+        if (!inputs.name) throw new Error("Invalid parameters: name is required");
+        const defaultTemplateId = crypto.randomUUID();
+        const newRoutine = {
+            id: crypto.randomUUID(),
+            name: inputs.name,
+            desc: inputs.desc || '',
+            start: inputs.start || '',
+            end: inputs.end || '',
+            routineGoals: [],
+            habits: [],
+            templates: [{ id: defaultTemplateId, name: 'Vanilla whatchadoin', blocks: [] }],
+            activeTemplateId: defaultTemplateId,
+            dayMapping: { Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: '', Sunday: '' }
+        };
+        if (setRoutines) {
+            setRoutines((prev: any[]) => [...(prev || []), newRoutine]);
+        }
+        if (setActiveRoutineId) {
+            setActiveRoutineId(newRoutine.id);
+        }
+        return { success: true, routineId: newRoutine.id, message: `Routine '${inputs.name}' created and set as active.` };
+    }, [setRoutines, setActiveRoutineId]);
+
+    useWebMCP({
+        name: 'create_routine',
+        description: `Create a new top-level Routine (with name, optional start/end dates, and description) and set it as active.`,
+        inputSchema: createRoutineSchema,
+        execute: handleCreateRoutine,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 2. Switch Routine
+    const handleSwitchRoutine = useCallback(async (inputs: any) => {
+        if (!inputs.routineId) throw new Error("Invalid parameters: routineId is required");
+        const target = (routines || []).find((r: any) => r.id === inputs.routineId);
+        if (!target) throw new Error(`Routine with ID '${inputs.routineId}' not found.`);
+        if (setActiveRoutineId) {
+            setActiveRoutineId(target.id);
+        }
+        return { success: true, message: `Switched to routine '${target.name}'.` };
+    }, [routines, setActiveRoutineId]);
+
+    useWebMCP({
+        name: 'switch_routine',
+        description: 'Switch the active Routine to another existing Routine by routineId.',
+        inputSchema: switchRoutineSchema,
+        execute: handleSwitchRoutine,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 3. Add Life Goal
     const handleAddLifeGoal = useCallback(async (inputs: any) => {
-        if (!inputs.title) throw new Error("Invalid parameters: title is required");
+        const goalName = inputs.name;
+        if (!goalName) throw new Error("Invalid parameters: name is required");
         setLifeGoals((prev: any[]) => [...prev, {
             id: crypto.randomUUID(),
-            title: inputs.title,
-            cost: inputs.cost || 0,
+            name: goalName,
+            desc: inputs.desc || '',
+            cost: inputs.cost ? Number(inputs.cost) : 0,
+            color: inputs.color,
             completed: false,
             createdAt: new Date().toISOString()
         }]);
-        return {success: true, message: `Life goal '${inputs.title}' created.`};
+        return {success: true, message: `Life goal '${goalName}' created.`};
     }, [setLifeGoals]);
 
     useWebMCP({
@@ -143,42 +523,80 @@ export function useWebMCPIntegration({
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
-    // 2. Add Routine Goal
+    // 4. Add Routine Goal
     const handleAddRoutineGoal = useCallback(async (inputs: any) => {
-        if (!inputs.title) throw new Error("Invalid parameters: title is required");
+        const goalName = inputs.name;
+        if (!goalName) throw new Error("Invalid parameters: name is required");
         updateActiveRoutine({
             routineGoals: [...(activeRoutine.routineGoals || []), {
                 id: crypto.randomUUID(),
-                title: inputs.title,
+                name: goalName,
+                desc: inputs.desc || '',
                 duration: inputs.duration || '30 min',
                 lifeGoalId: inputs.linkedLifeGoalId || null,
+                cost: inputs.cost ? Number(inputs.cost) : undefined,
+                color: inputs.color,
+                completed: false,
                 createdAt: new Date().toISOString()
             }]
         });
-        return {success: true, message: `Routine goal '${inputs.title}' created.`};
+        return {success: true, message: `Routine goal '${goalName}' created in active routine.`};
     }, [activeRoutine, updateActiveRoutine]);
 
     useWebMCP({
         name: 'add_routine_goal',
-        description: `Add a routine goal. ${STRICT_PROMPT}`,
+        description: `Add a project/milestone goal to the Routine tab inside the active routine. ${STRICT_PROMPT}`,
         inputSchema: addRoutineGoalSchema,
         execute: handleAddRoutineGoal,
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
-    // 3. Add Habit
+    // 5. Add Money Goal
+    const handleAddMoneyGoal = useCallback(async (inputs: any) => {
+        const goalName = inputs.name;
+        if (!goalName) throw new Error("Invalid parameters: name is required");
+        if (inputs.cost === undefined) throw new Error("Invalid parameters: cost is required");
+        if (setMoneyGoals) {
+            setMoneyGoals((prev: any[]) => [...(prev || []), {
+                id: crypto.randomUUID(),
+                name: goalName,
+                desc: inputs.desc || '',
+                cost: Number(inputs.cost) || 0,
+                completed: false,
+                createdAt: new Date().toISOString()
+            }]);
+        }
+        return {success: true, message: `Money goal '${goalName}' created.`};
+    }, [setMoneyGoals]);
+
+    useWebMCP({
+        name: 'add_money_goal',
+        description: `Add a financial goal with cost to the Money tab. ${STRICT_PROMPT}`,
+        inputSchema: addMoneyGoalSchema,
+        execute: handleAddMoneyGoal,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 6. Add Habit (Dual-write duration and time)
     const handleAddHabit = useCallback(async (inputs: any) => {
-        if (!inputs.title) throw new Error("Invalid parameters: title is required");
+        const habitName = inputs.name;
+        if (!habitName) throw new Error("Invalid parameters: name is required");
+
+        const durationMins = inputs.duration ? parseDuration(inputs.duration) : (inputs.time ? parseDuration(inputs.time) : 15);
+        const timeStr = inputs.time || (inputs.duration ? String(inputs.duration) : `${durationMins}m`);
 
         const newHabit = {
             id: crypto.randomUUID(),
-            title: inputs.title,
-            duration: inputs.duration || '15 min',
+            name: habitName,
+            desc: inputs.desc || '',
+            duration: durationMins,
+            time: timeStr,
             type: inputs.type || 'daily',
-            routineGoalId: inputs.linkedRoutineGoalId || null
+            routineGoalId: inputs.linkedRoutineGoalId || null,
+            routineGoalIds: inputs.linkedRoutineGoalId ? [inputs.linkedRoutineGoalId] : []
         };
 
-        const currentHabits = activeRoutine.habits || {daily: [], weekly: []};
+        const currentHabits = activeRoutine?.habits || [];
         const isArray = Array.isArray(currentHabits);
 
         let newHabitsState;
@@ -192,36 +610,36 @@ export function useWebMCPIntegration({
         }
 
         updateActiveRoutine({habits: newHabitsState});
-        return {success: true, message: `Habit '${inputs.title}' created.`};
+        return {success: true, message: `Habit '${habitName}' created in active routine.`};
     }, [activeRoutine, updateActiveRoutine]);
 
     useWebMCP({
         name: 'add_habit',
-        description: `Add an atomic habit. ${STRICT_PROMPT}`,
+        description: `Add an atomic recurring habit to the Habits pane inside the active routine. ${STRICT_PROMPT}`,
         inputSchema: addHabitSchema,
         execute: handleAddHabit,
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
-    // 4. Create Template
+    // 7. Create Template
     const handleCreateTemplate = useCallback(async (inputs: any) => {
         if (!inputs.name) throw new Error("Invalid parameters: name is required");
         const newTemplate = {id: crypto.randomUUID(), name: inputs.name, blocks: []};
         updateActiveRoutine({
             templates: [...(activeRoutine.templates || []), newTemplate], activeTemplateId: newTemplate.id
         });
-        return {success: true, message: `Template '${inputs.name}' created.`};
+        return {success: true, message: `Template '${inputs.name}' created inside active routine.`};
     }, [activeRoutine, updateActiveRoutine]);
 
     useWebMCP({
         name: 'create_template',
-        description: `Create a new timeline template.`,
+        description: `Create a new daily template (e.g. "Workday", "Weekend") inside the active routine.`,
         inputSchema: createTemplateSchema,
         execute: handleCreateTemplate,
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
-    // 5. Edit Template
+    // 8. Edit Template
     const handleEditTemplate = useCallback(async (inputs: any) => {
         if (!inputs.templateId || !inputs.name) throw new Error("Invalid parameters");
         const currentTemplates = activeRoutine.templates || [];
@@ -236,55 +654,444 @@ export function useWebMCPIntegration({
 
     useWebMCP({
         name: 'edit_template',
-        description: `Edit an existing timeline template's name.`,
+        description: `Edit an existing template's name inside the active routine.`,
         inputSchema: editTemplateSchema,
         execute: handleEditTemplate,
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
-    // 6. Schedule Timeline Block
+    // 9. Schedule Block (With day resolution, uncoupling, and overlap detection)
     const handleScheduleBlock = useCallback(async (inputs: any) => {
         if (!inputs.name || inputs.startTime === undefined || !inputs.duration) {
-            throw new Error("Invalid parameters");
+            throw new Error("Invalid parameters: name, startTime, and duration are required");
         }
 
-        const targetTemplateId = inputs.templateId || activeRoutine.activeTemplateId;
-        if (!targetTemplateId) throw new Error("Wrong state: No active template selected and no templateId provided.");
+        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
+        const normalizedDay = inputs.day ? normalizeDayName(inputs.day) : null;
 
-        const currentTemplates = activeRoutine.templates || [];
-        const templateIndex = currentTemplates.findIndex((t: any) => t.id === targetTemplateId);
-        if (templateIndex === -1) throw new Error(`Invalid parameters: Template ${targetTemplateId} not found.`);
+        let targetTemplate: any = null;
+        if (inputs.templateId) {
+            targetTemplate = templates.find(t => t.id === inputs.templateId);
+        } else if (normalizedDay) {
+            const tId = dayMapping[normalizedDay];
+            if (tId) {
+                targetTemplate = templates.find(t => t.id === tId);
+                if (targetTemplate) {
+                    const sharedDays = DAYS_OF_WEEK.filter(d => dayMapping[d] === targetTemplate.id && d !== normalizedDay);
+                    if (sharedDays.length > 0) {
+                        const cloned = {
+                            ...targetTemplate,
+                            id: crypto.randomUUID(),
+                            name: `${targetTemplate.name} (${normalizedDay})`,
+                            blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                        };
+                        templates.push(cloned);
+                        dayMapping[normalizedDay] = cloned.id;
+                        targetTemplate = cloned;
+                    }
+                } else {
+                    targetTemplate = { id: crypto.randomUUID(), name: `${normalizedDay} Schedule`, blocks: [] };
+                    templates.push(targetTemplate);
+                    dayMapping[normalizedDay] = targetTemplate.id;
+                }
+            } else {
+                targetTemplate = { id: crypto.randomUUID(), name: `${normalizedDay} Schedule`, blocks: [] };
+                templates.push(targetTemplate);
+                dayMapping[normalizedDay] = targetTemplate.id;
+            }
+        } else {
+            const activeId = activeRoutine?.activeTemplateId;
+            targetTemplate = templates.find(t => t.id === activeId) || templates[0];
+            if (!targetTemplate) {
+                targetTemplate = { id: crypto.randomUUID(), name: 'Vanilla whatchadoin', blocks: [] };
+                templates.push(targetTemplate);
+            }
+        }
+
+        const startMinutes = parseTimeStringToMinutes(inputs.startTime);
+        const durationMinutes = parseDuration(inputs.duration);
+
+        // Overlap detection
+        const endMinutes = startMinutes + durationMinutes;
+        const overlappingBlocks = (targetTemplate.blocks || []).filter((eb: any) => {
+            const ebStart = typeof eb.startTime === 'number' ? eb.startTime : parseTimeStringToMinutes(eb.startTime);
+            const ebDur = typeof eb.duration === 'number' ? eb.duration : parseDuration(eb.duration);
+            return Math.max(startMinutes, ebStart) < Math.min(endMinutes, ebStart + ebDur);
+        });
+
+        let overlapWarning = '';
+        if (overlappingBlocks.length > 0) {
+            const names = overlappingBlocks.map((b: any) => {
+                const s = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                return `'${b.name}' at ${formatMinutesToTime(s)}`;
+            }).join(', ');
+            overlapWarning = ` (Note: Overlaps with ${names}.)`;
+        }
 
         const newBlock = {
             id: crypto.randomUUID(),
             name: inputs.name,
-            startTime: inputs.startTime,
-            duration: inputs.duration,
+            startTime: startMinutes,
+            duration: durationMinutes,
             color: '#3498db'
         };
 
-        const updatedTemplates = [...currentTemplates];
-        updatedTemplates[templateIndex] = {
-            ...updatedTemplates[templateIndex], blocks: [...(updatedTemplates[templateIndex].blocks || []), newBlock]
+        const updatedTarget = {
+            ...targetTemplate,
+            blocks: [...(targetTemplate.blocks || []), newBlock]
         };
 
-        updateActiveRoutine({templates: updatedTemplates});
-        return {success: true, message: `Block '${inputs.name}' scheduled.`};
+        templates = templates.map(t => t.id === updatedTarget.id ? updatedTarget : t);
+
+        updateActiveRoutine({
+            templates,
+            dayMapping
+        });
+
+        return {
+            success: true,
+            block: newBlock,
+            time: `${formatMinutesToTime(startMinutes)} - ${formatMinutesToTime(endMinutes)}`,
+            message: `Block '${inputs.name}' scheduled on ${normalizedDay || targetTemplate.name} at ${formatMinutesToTime(startMinutes)} (${durationMinutes} min).${overlapWarning}`
+        };
     }, [activeRoutine, updateActiveRoutine]);
 
     useWebMCP({
-        name: 'schedule_timeline_block',
-        description: `Schedule a block on a timeline template. ${STRICT_PROMPT}`,
+        name: 'schedule_myday_block',
+        description: `Schedule a block on a My Day template or specific day of the week. ${STRICT_PROMPT}`,
         inputSchema: scheduleBlockSchema,
         execute: handleScheduleBlock,
         annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
     });
 
-    // 7. Navigate App
+    // 10. Move Block (Supports cross-day moves, shared template uncoupling, habit bank fallback, collision warnings)
+    const handleMoveBlock = useCallback(async (inputs: any) => {
+        if (!inputs.habitName || inputs.toTime === undefined) {
+            throw new Error("Invalid parameters: habitName and toTime are required");
+        }
+
+        const targetStartMinutes = parseTimeStringToMinutes(inputs.toTime);
+        const fromStartMinutes = inputs.fromTime !== undefined ? parseTimeStringToMinutes(inputs.fromTime) : undefined;
+        const normalizedFromDay = inputs.fromDay ? normalizeDayName(inputs.fromDay) : null;
+        const normalizedToDay = inputs.toDay ? normalizeDayName(inputs.toDay) : (normalizedFromDay || null);
+
+        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
+
+        // 1. Identify Source Template
+        let sourceTemplate: any = null;
+        if (inputs.fromTemplateId) {
+            sourceTemplate = templates.find(t => t.id === inputs.fromTemplateId);
+        } else if (normalizedFromDay) {
+            const mappedId = dayMapping[normalizedFromDay];
+            if (mappedId) {
+                sourceTemplate = templates.find(t => t.id === mappedId);
+            }
+        }
+
+        // If sourceTemplate not yet identified, search across templates for the block
+        if (!sourceTemplate) {
+            const query = inputs.habitName.toLowerCase().trim();
+            for (const t of templates) {
+                const match = (t.blocks || []).find((b: any) => {
+                    const matchesName = b.id === inputs.habitName ||
+                        (b.name && b.name.toLowerCase().includes(query));
+                    if (!matchesName) return false;
+                    if (fromStartMinutes !== undefined) {
+                        const bStart = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                        return Math.abs(bStart - fromStartMinutes) <= 15;
+                    }
+                    return true;
+                });
+                if (match) {
+                    sourceTemplate = t;
+                    break;
+                }
+            }
+        }
+
+        // 2. Shared Template Uncoupling for Source Day
+        if (sourceTemplate && normalizedFromDay) {
+            const sourceSharedDays = DAYS_OF_WEEK.filter(d => dayMapping[d] === sourceTemplate.id);
+            if (sourceSharedDays.length > 1) {
+                const clonedSource = {
+                    ...sourceTemplate,
+                    id: crypto.randomUUID(),
+                    name: `${sourceTemplate.name} (${normalizedFromDay})`,
+                    blocks: [...(sourceTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                };
+                templates.push(clonedSource);
+                dayMapping[normalizedFromDay] = clonedSource.id;
+                sourceTemplate = clonedSource;
+            }
+        }
+
+        // 3. Find and extract block from source template, or fallback to Habit Bank
+        let extractedBlock: any = null;
+        if (sourceTemplate) {
+            const query = inputs.habitName.toLowerCase().trim();
+            const blockIndex = (sourceTemplate.blocks || []).findIndex((b: any) => {
+                const matchesName = b.id === inputs.habitName ||
+                    (b.name && b.name.toLowerCase().includes(query));
+                if (!matchesName) return false;
+                if (fromStartMinutes !== undefined) {
+                    const bStart = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                    return Math.abs(bStart - fromStartMinutes) <= 15;
+                }
+                return true;
+            });
+
+            if (blockIndex !== -1) {
+                extractedBlock = sourceTemplate.blocks[blockIndex];
+                const updatedBlocks = [...sourceTemplate.blocks];
+                updatedBlocks.splice(blockIndex, 1);
+                sourceTemplate = { ...sourceTemplate, blocks: updatedBlocks };
+                templates = templates.map(t => t.id === sourceTemplate.id ? sourceTemplate : t);
+            }
+        }
+
+        // Habit Bank Fallback
+        const rawHabits = Array.isArray(activeRoutine?.habits)
+            ? activeRoutine.habits
+            : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
+        const matchedHabit = rawHabits.find((h: any) =>
+            h.id === inputs.habitName ||
+            (h.name && h.name.toLowerCase().includes(inputs.habitName.toLowerCase().trim()))
+        );
+
+        const finalBlockName = extractedBlock?.name || matchedHabit?.name || inputs.habitName;
+        const finalDuration = inputs.duration !== undefined
+            ? parseDuration(inputs.duration)
+            : (extractedBlock
+                ? (typeof extractedBlock.duration === 'number' ? extractedBlock.duration : parseDuration(extractedBlock.duration))
+                : (matchedHabit?.duration
+                    ? parseDuration(matchedHabit.duration)
+                    : (matchedHabit?.time ? parseDuration(matchedHabit.time) : 30)));
+        const finalColor = extractedBlock?.color || matchedHabit?.color || '#3498db';
+        const finalGoalId = extractedBlock?.routineGoalId || matchedHabit?.routineGoalId || matchedHabit?.linkedRoutineGoalId;
+
+        // 4. Identify & Uncouple Target Template
+        let targetTemplate: any = null;
+        if (inputs.toTemplateId) {
+            targetTemplate = templates.find(t => t.id === inputs.toTemplateId);
+        } else if (normalizedToDay) {
+            const targetTemplateId = dayMapping[normalizedToDay];
+            if (targetTemplateId) {
+                targetTemplate = templates.find(t => t.id === targetTemplateId);
+                if (targetTemplate) {
+                    const targetSharedDays = DAYS_OF_WEEK.filter(d => dayMapping[d] === targetTemplate.id && d !== normalizedToDay);
+                    if (targetSharedDays.length > 0) {
+                        const clonedTarget = {
+                            ...targetTemplate,
+                            id: crypto.randomUUID(),
+                            name: `${targetTemplate.name} (${normalizedToDay})`,
+                            blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                        };
+                        templates.push(clonedTarget);
+                        dayMapping[normalizedToDay] = clonedTarget.id;
+                        targetTemplate = clonedTarget;
+                    }
+                } else {
+                    targetTemplate = {
+                        id: crypto.randomUUID(),
+                        name: `${normalizedToDay} Schedule`,
+                        blocks: []
+                    };
+                    templates.push(targetTemplate);
+                    dayMapping[normalizedToDay] = targetTemplate.id;
+                }
+            } else {
+                targetTemplate = {
+                    id: crypto.randomUUID(),
+                    name: `${normalizedToDay} Schedule`,
+                    blocks: []
+                };
+                templates.push(targetTemplate);
+                dayMapping[normalizedToDay] = targetTemplate.id;
+            }
+        } else {
+            targetTemplate = sourceTemplate || templates.find(t => t.id === activeRoutine?.activeTemplateId) || templates[0];
+            if (!targetTemplate) {
+                targetTemplate = { id: crypto.randomUUID(), name: 'Vanilla whatchadoin', blocks: [] };
+                templates.push(targetTemplate);
+            }
+        }
+
+        // 5. Collision / Overlap Detection
+        const targetEndMinutes = targetStartMinutes + finalDuration;
+        const overlappingBlocks = (targetTemplate.blocks || []).filter((eb: any) => {
+            const ebStart = typeof eb.startTime === 'number' ? eb.startTime : parseTimeStringToMinutes(eb.startTime);
+            const ebDur = typeof eb.duration === 'number' ? eb.duration : parseDuration(eb.duration);
+            const ebEnd = ebStart + ebDur;
+            return Math.max(targetStartMinutes, ebStart) < Math.min(targetEndMinutes, ebEnd);
+        });
+
+        let overlapWarning = '';
+        if (overlappingBlocks.length > 0) {
+            const names = overlappingBlocks.map((b: any) => {
+                const s = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
+                return `'${b.name}' at ${formatMinutesToTime(s)}`;
+            }).join(', ');
+            overlapWarning = ` (Note: Overlaps with ${names}. Both will display side-by-side in My Day.)`;
+        }
+
+        // 6. Add Block to Target Template
+        const newBlock = {
+            id: crypto.randomUUID(),
+            name: finalBlockName,
+            startTime: targetStartMinutes,
+            duration: finalDuration,
+            color: finalColor,
+            ...(finalGoalId ? { routineGoalId: finalGoalId } : {})
+        };
+
+        const updatedTarget = {
+            ...targetTemplate,
+            blocks: [...(targetTemplate.blocks || []), newBlock]
+        };
+
+        templates = templates.map(t => t.id === updatedTarget.id ? updatedTarget : t);
+
+        updateActiveRoutine({
+            templates,
+            dayMapping
+        });
+
+        const fromLabel = normalizedFromDay || (sourceTemplate ? sourceTemplate.name : 'Unassigned');
+        const toLabel = normalizedToDay || targetTemplate.name;
+
+        return {
+            success: true,
+            movedBlock: newBlock,
+            fromDay: fromLabel,
+            toDay: toLabel,
+            startTime: formatMinutesToTime(targetStartMinutes),
+            endTime: formatMinutesToTime(targetEndMinutes),
+            duration: `${finalDuration} min`,
+            message: `Moved '${finalBlockName}' ${normalizedFromDay ? `from ${normalizedFromDay}` : ''} to ${toLabel} at ${formatMinutesToTime(targetStartMinutes)} (${finalDuration} min).${overlapWarning}`
+        };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'move_block',
+        description: 'Move a scheduled block or habit from one day/time to another (e.g. "move habit1 from monday 2pm to wed 3pm"). Handles uncoupling shared templates, auto-creating day templates, habit bank fallback, and collision detection.',
+        inputSchema: moveBlockSchema,
+        execute: handleMoveBlock,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 11. Delete Block (With uncoupling)
+    const handleDeleteBlock = useCallback(async (inputs: any) => {
+        if (!inputs.blockName) throw new Error("Invalid parameters: blockName is required");
+
+        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
+        const normalizedDay = inputs.day ? normalizeDayName(inputs.day) : null;
+
+        let targetTemplate: any = null;
+        if (inputs.templateId) {
+            targetTemplate = templates.find(t => t.id === inputs.templateId);
+        } else if (normalizedDay) {
+            const tId = dayMapping[normalizedDay];
+            if (tId) targetTemplate = templates.find(t => t.id === tId);
+        }
+
+        if (!targetTemplate) {
+            const query = inputs.blockName.toLowerCase().trim();
+            for (const t of templates) {
+                const hasBlock = (t.blocks || []).some((b: any) =>
+                    b.id === inputs.blockName ||
+                    (b.name && b.name.toLowerCase().includes(query))
+                );
+                if (hasBlock) {
+                    targetTemplate = t;
+                    break;
+                }
+            }
+        }
+
+        if (!targetTemplate) {
+            throw new Error(`Block '${inputs.blockName}' not found in any template.`);
+        }
+
+        if (normalizedDay) {
+            const sharedDays = DAYS_OF_WEEK.filter(d => dayMapping[d] === targetTemplate.id);
+            if (sharedDays.length > 1) {
+                const cloned = {
+                    ...targetTemplate,
+                    id: crypto.randomUUID(),
+                    name: `${targetTemplate.name} (${normalizedDay})`,
+                    blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                };
+                templates.push(cloned);
+                dayMapping[normalizedDay] = cloned.id;
+                targetTemplate = cloned;
+            }
+        }
+
+        const query = inputs.blockName.toLowerCase().trim();
+        const blockIndex = (targetTemplate.blocks || []).findIndex((b: any) =>
+            b.id === inputs.blockName ||
+            (b.name && b.name.toLowerCase().includes(query))
+        );
+
+        if (blockIndex === -1) {
+            throw new Error(`Block '${inputs.blockName}' not found in template '${targetTemplate.name}'.`);
+        }
+
+        const deletedName = targetTemplate.blocks[blockIndex].name;
+        const updatedBlocks = [...targetTemplate.blocks];
+        updatedBlocks.splice(blockIndex, 1);
+
+        targetTemplate = { ...targetTemplate, blocks: updatedBlocks };
+        templates = templates.map(t => t.id === targetTemplate.id ? targetTemplate : t);
+
+        updateActiveRoutine({ templates, dayMapping });
+        return {
+            success: true,
+            message: `Deleted block '${deletedName}' from ${normalizedDay || targetTemplate.name}.`
+        };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'delete_myday_block',
+        description: 'Delete a scheduled block from a specific day of the week or template. Uncouples shared templates so only the targeted day is modified.',
+        inputSchema: deleteBlockSchema,
+        execute: handleDeleteBlock,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 10. Map Template to Day
+    const handleMapTemplateToDay = useCallback(async (inputs: any) => {
+        if (!inputs.day || !inputs.templateId) throw new Error("Invalid parameters: day and templateId are required");
+        const templates = activeRoutine.templates || [];
+        const templateExists = templates.some((t: any) => t.id === inputs.templateId);
+        if (!templateExists) throw new Error(`Template with ID '${inputs.templateId}' not found.`);
+
+        updateActiveRoutine({
+            dayMapping: {
+                ...(activeRoutine.dayMapping || {}),
+                [inputs.day]: inputs.templateId
+            }
+        });
+        return {success: true, message: `Day '${inputs.day}' mapped to template.`};
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'map_template_to_day',
+        description: 'Assign a daily template to a specific day of the week (Monday - Sunday) in the active routine Weekly Schedule.',
+        inputSchema: mapTemplateToDaySchema,
+        execute: handleMapTemplateToDay,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 11. Navigate App
     const handleNavigate = useCallback(async (inputs: any) => {
         if (inputs.centerTab) {
-            setActiveCenterTab(inputs.centerTab);
-            setMobileTab(inputs.centerTab === 'timeline' ? 'myday' : inputs.centerTab);
+            const targetCenter = inputs.centerTab === 'timeline' ? 'myday' : inputs.centerTab;
+            setActiveCenterTab(targetCenter);
+            setMobileTab(targetCenter);
         }
         if (inputs.leftTab) {
             setActiveLeftTab(inputs.leftTab);
@@ -297,9 +1104,242 @@ export function useWebMCPIntegration({
 
     useWebMCP({
         name: 'navigate_app',
-        description: 'Switch between different tabs and views.',
+        description: 'Switch between different tabs and views: centerTab (myday, tasks, calendar, plans) and leftTab (life, money, routine).',
         inputSchema: navigateAppSchema,
         execute: handleNavigate,
         annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
     });
+
+    // 12. Read Quick Tasks
+    const handleReadQuickTasks = useCallback(async () => {
+        let tasks: any[] = [];
+        try {
+            tasks = sanitizeEntities(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
+        } catch {}
+        return {
+            tasks: tasks.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                completed: Boolean(t.completed)
+            }))
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_quick_tasks',
+        description: 'Read all quick tasks (both active and completed).',
+        inputSchema: readQuickTasksSchema,
+        execute: handleReadQuickTasks,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 13. Add Quick Task
+    const handleAddQuickTask = useCallback(async (inputs: any) => {
+        const taskName = (inputs.name || '').trim();
+        if (!taskName) throw new Error("Invalid parameters: 'name' is required");
+        let tasks: any[] = [];
+        try {
+            tasks = sanitizeEntities(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
+        } catch {}
+        const newTask = {
+            id: crypto.randomUUID(),
+            name: taskName,
+            completed: false,
+            createdAt: new Date().toISOString()
+        };
+        const updated = [newTask, ...tasks];
+        localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+        return { success: true, message: `Task '${taskName}' added.` };
+    }, []);
+
+    useWebMCP({
+        name: 'add_quick_task',
+        description: 'Add a new task to the quick tasks inbox.',
+        inputSchema: addQuickTaskSchema,
+        execute: handleAddQuickTask,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 14. Read Plans
+    const handleReadPlans = useCallback(async () => {
+        let rNotes: any[] = [];
+        let lNotes: any[] = [];
+        try {
+            const rSaved = localStorage.getItem(`whatchadoin_plans_${activeRoutine?.id}`);
+            rNotes = rSaved ? sanitizeEntities(JSON.parse(rSaved)).map((n: any) => ({ ...n, isLife: false })) : [];
+            const lSaved = localStorage.getItem(`whatchadoin_life_plans`);
+            lNotes = lSaved ? sanitizeEntities(JSON.parse(lSaved)).map((n: any) => ({ ...n, isLife: true })) : [];
+        } catch {}
+        return {
+            plans: [...lNotes, ...rNotes].map((n: any) => ({
+                id: n.id,
+                name: n.name || 'Untitled Plan',
+                content: n.content || '',
+                isLife: Boolean(n.isLife)
+            }))
+        };
+    }, [activeRoutine?.id]);
+
+    useWebMCP({
+        name: 'read_plans',
+        description: 'Read all plans and their content.',
+        inputSchema: readPlansSchema,
+        execute: handleReadPlans,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 15. Create Plan
+    const handleCreatePlan = useCallback(async (inputs: any) => {
+        const planName = (inputs.name || '').trim();
+        if (!planName || !inputs.content) {
+            throw new Error("Invalid parameters: name and content are required.");
+        }
+        const isLife = Boolean(inputs.isLife);
+        const storageKey = isLife ? 'whatchadoin_life_plans' : `whatchadoin_plans_${activeRoutine?.id}`;
+        let existingNotes: any[] = [];
+        try {
+            const raw = localStorage.getItem(storageKey);
+            existingNotes = raw ? sanitizeEntities(JSON.parse(raw)) : [];
+        } catch {}
+        const newNote = {
+            id: crypto.randomUUID(),
+            name: planName,
+            content: inputs.content,
+            folderId: null,
+            createdAt: new Date().toISOString(),
+            isLife
+        };
+        const updated = [...existingNotes, newNote];
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+        return { success: true, message: `Plan '${planName}' created in ${isLife ? 'Life Plans' : 'Routine Plans'}.` };
+    }, [activeRoutine?.id]);
+
+    useWebMCP({
+        name: 'create_plan',
+        description: 'Create a new plan in the Plans section.',
+        inputSchema: createPlanSchema,
+        execute: handleCreatePlan,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // Universal Tool Executor (Used by in-app AI agent via BroadcastChannel and external callers)
+    const executeTool = useCallback(async (tool: string, args: any = {}) => {
+        switch (tool) {
+            case 'navigate_app':
+                return await handleNavigate(args);
+            case 'create_routine':
+                return await handleCreateRoutine(args);
+            case 'switch_routine':
+                return await handleSwitchRoutine(args);
+            case 'add_life_goal':
+                return await handleAddLifeGoal(args);
+            case 'add_routine_goal':
+                return await handleAddRoutineGoal(args);
+            case 'add_money_goal':
+                return await handleAddMoneyGoal(args);
+            case 'add_habit':
+                return await handleAddHabit(args);
+            case 'create_template':
+                return await handleCreateTemplate(args);
+            case 'edit_template':
+                return await handleEditTemplate(args);
+            case 'schedule_myday_block':
+            case 'schedule_habit_on_day':
+                return await handleScheduleBlock({
+                    name: args.name || args.habitName,
+                    startTime: args.startTime || args.time || args.start,
+                    duration: args.duration || args.dur || '30m',
+                    day: args.day,
+                    templateId: args.templateId
+                });
+            case 'move_block':
+            case 'move_scheduled_habit':
+                return await handleMoveBlock({
+                    habitName: args.habitName || args.name || args.blockName,
+                    toTime: args.toTime || args.toStartTime || args.targetTime,
+                    toDay: args.toDay || args.day,
+                    fromDay: args.fromDay,
+                    fromTime: args.fromTime || args.fromStartTime || args.sourceTime,
+                    fromTemplateId: args.fromTemplateId,
+                    toTemplateId: args.toTemplateId,
+                    duration: args.duration
+                });
+            case 'delete_myday_block':
+            case 'delete_scheduled_habit_block':
+                return await handleDeleteBlock({
+                    blockName: args.blockName || args.name || args.habitName,
+                    day: args.day,
+                    templateId: args.templateId
+                });
+            case 'map_template_to_day':
+                return await handleMapTemplateToDay(args);
+            case 'add_quick_task':
+                return await handleAddQuickTask(args);
+            case 'read_quick_tasks':
+                return await handleReadQuickTasks();
+            case 'create_plan':
+                return await handleCreatePlan(args);
+            case 'read_plans':
+                return await handleReadPlans();
+            case 'read_app_state':
+                return await handleReadState();
+            case 'read_schedule':
+                return await handleReadSchedule();
+            case 'read_coins':
+                return await handleReadCoins(args);
+            case 'add_coins_entry':
+                return await handleAddCoinsEntry(args);
+            default:
+                throw new Error(`Unknown tool: ${tool}`);
+        }
+    }, [
+        handleNavigate,
+        handleCreateRoutine,
+        handleSwitchRoutine,
+        handleAddLifeGoal,
+        handleAddRoutineGoal,
+        handleAddMoneyGoal,
+        handleAddHabit,
+        handleCreateTemplate,
+        handleEditTemplate,
+        handleScheduleBlock,
+        handleMoveBlock,
+        handleDeleteBlock,
+        handleMapTemplateToDay,
+        handleAddQuickTask,
+        handleReadQuickTasks,
+        handleCreatePlan,
+        handleReadPlans,
+        handleReadState,
+        handleReadSchedule,
+        handleReadCoins,
+        handleAddCoinsEntry
+    ]);
+
+    return {
+        executeTool,
+        handleReadState,
+        handleReadSchedule,
+        handleCreateRoutine,
+        handleSwitchRoutine,
+        handleAddLifeGoal,
+        handleAddRoutineGoal,
+        handleAddMoneyGoal,
+        handleAddHabit,
+        handleCreateTemplate,
+        handleEditTemplate,
+        handleScheduleBlock,
+        handleMoveBlock,
+        handleDeleteBlock,
+        handleMapTemplateToDay,
+        handleNavigate,
+        handleAddQuickTask,
+        handleReadQuickTasks,
+        handleCreatePlan,
+        handleReadPlans,
+        handleReadCoins,
+        handleAddCoinsEntry
+    };
 }

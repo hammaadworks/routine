@@ -4,9 +4,10 @@ import {getCardBgStyle} from '../utils';
 
 interface Goal {
     id: string;
-    text: string;
+    name: string;
     color?: string;
     completed?: boolean;
+    isPublic?: boolean;
     desc?: string;
 
     [key: string]: any;
@@ -101,8 +102,8 @@ export default function GoalCard({
                 textOverflow: 'ellipsis',
                 fontSize: '13px',
                 fontWeight: '500'
-            }} title={goal.text}>
-              {goal.text}
+            }} title={goal.name}>
+              {goal.name}
             </span>
                         {goal.desc && (<span style={{
                                 fontSize: '11px',

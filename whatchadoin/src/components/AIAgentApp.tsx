@@ -4,7 +4,6 @@ import { Settings, Send, PanelRight, PanelBottom, ExternalLink, X } from 'lucide
 import AIConfigEditor from './AIConfigEditor';
 
 const TOOLS = [
-// ... keeping tools as is ...
   {
     type: "function",
     function: {
@@ -13,8 +12,8 @@ const TOOLS = [
       parameters: {
         type: "object",
         properties: {
-          centerTab: { type: "string", enum: ["timeline", "calendar", "plans"] },
-          leftTab: { type: "string", enum: ["routine", "life"] }
+          centerTab: { type: "string", enum: ["tasks", "myday", "calendar", "plans", "coins"], description: "Main center view: tasks, myday, calendar, plans" },
+          leftTab: { type: "string", enum: ["life", "money", "routine"], description: "Left sidebar view: life, money, routine" }
         }
       }
     }
@@ -22,16 +21,31 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "add_routine_goal",
-      description: "Adds a new routine goal for the current active routine.",
+      name: "create_routine",
+      description: "Creates a new top-level Routine (with name, optional start/end dates, and description) and sets it as active.",
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string", description: "Title of the goal" },
-          status: { type: "string", enum: ["not_started", "in_progress", "completed"] },
-          type: { type: "string", enum: ["task", "milestone", "habit"] }
+          name: { type: "string", description: "Name of the new Routine (e.g. 'Routine 1', 'Summer Sprint')" },
+          desc: { type: "string", description: "Optional description of the routine" },
+          start: { type: "string", description: "Optional start date (YYYY-MM-DD)" },
+          end: { type: "string", description: "Optional end date (YYYY-MM-DD)" }
         },
-        required: ["title", "status", "type"]
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "switch_routine",
+      description: "Switches the active Routine to another existing Routine by routineId.",
+      parameters: {
+        type: "object",
+        properties: {
+          routineId: { type: "string", description: "ID of the routine to switch to" }
+        },
+        required: ["routineId"]
       }
     }
   },
@@ -39,15 +53,203 @@ const TOOLS = [
     type: "function",
     function: {
       name: "add_life_goal",
-      description: "Adds a new life goal to the Life tab.",
+      description: "Adds a new high-level life goal to the Life tab.",
       parameters: {
         type: "object",
         properties: {
-          title: { type: "string" },
-          description: { type: "string" },
-          status: { type: "string", enum: ["not_started", "in_progress", "completed"] }
+          name: { type: "string", description: "Name of the life goal" },
+          desc: { type: "string", description: "Optional description of the life goal" },
+          color: { type: "string", description: "Optional color code (e.g. #3498db)" },
+          cost: { type: "number", description: "Optional target amount or cost" }
         },
-        required: ["title"]
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_routine_goal",
+      description: "Adds a new routine goal/project for the current active routine.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name of the routine goal" },
+          desc: { type: "string", description: "Description of the routine goal" },
+          color: { type: "string", description: "Optional color code (e.g. #3498db)" },
+          duration: { type: "string", description: "Estimated duration (e.g. '45 min')" },
+          cost: { type: "number", description: "Target amount or cost" },
+          linkedLifeGoalId: { type: "string", description: "Optional ID of a Life Goal to link to" }
+        },
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_money_goal",
+      description: "Adds a financial goal with cost to the Money tab.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The name of the money goal" },
+          cost: { type: "number", description: "Target financial amount or cost" },
+          desc: { type: "string", description: "Optional description or note" }
+        },
+        required: ["name", "cost"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_habit",
+      description: "Adds an atomic recurring habit to the Habits bank in the active routine.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The name of the habit" },
+          desc: { type: "string", description: "Optional description of the habit" },
+          duration: { type: "string", description: "Duration of the habit (e.g. '15 min', '30m', or minutes)" },
+          time: { type: "string", description: "Optional duration string (e.g. '15m', '1:15')" },
+          type: { type: "string", enum: ["daily", "weekly"], description: "Whether it is a daily or weekly habit" },
+          linkedRoutineGoalId: { type: "string", description: "Optional ID of a Routine Goal to link to" }
+        },
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_template",
+      description: "Creates a new daily template (e.g. 'Workday', 'Weekend') inside the active routine.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name for the new daily template" }
+        },
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "edit_template",
+      description: "Edits an existing daily template's name inside the active routine.",
+      parameters: {
+        type: "object",
+        properties: {
+          templateId: { type: "string", description: "ID of the template to edit" },
+          name: { type: "string", description: "New name for the template" }
+        },
+        required: ["templateId", "name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "schedule_myday_block",
+      description: "Schedules a habit or custom block onto a specific day of the week (e.g. 'Monday', 'Tuesday') or template in the active routine.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name of the block or habit to schedule" },
+          startTime: { type: "string", description: "Start time (e.g. '9am', '14:00', '2:30 PM', or minutes from midnight)" },
+          duration: { type: "string", description: "Duration in minutes or string (e.g. 60, '45m', '1h')" },
+          day: { type: "string", description: "Optional day of the week (e.g. 'Monday', 'Wednesday') to schedule on" },
+          templateId: { type: "string", description: "Optional template ID to schedule on" }
+        },
+        required: ["name", "startTime", "duration"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "move_block",
+      description: "Moves a scheduled block or habit from one day/time to another (e.g. 'move habit1 from monday 2pm to wed 3pm'). Uncouples shared templates, auto-creates day templates, and detects collisions.",
+      parameters: {
+        type: "object",
+        properties: {
+          habitName: { type: "string", description: "Name, task, or ID of the habit or scheduled block to move" },
+          toTime: { type: "string", description: "Target start time on the schedule (e.g. '3pm', '15:00', '3:30 PM')" },
+          toDay: { type: "string", description: "Target day of the week (e.g. 'Wednesday', 'Monday'). If omitted, moves within the same day/template." },
+          fromDay: { type: "string", description: "Optional source day of the week (e.g. 'Monday') where the block is currently scheduled" },
+          fromTime: { type: "string", description: "Optional source time (e.g. '2pm', '14:00') to disambiguate if multiple blocks share the same habit name" },
+          fromTemplateId: { type: "string", description: "Optional source template ID" },
+          toTemplateId: { type: "string", description: "Optional target template ID" },
+          duration: { type: "string", description: "Optional new duration (e.g. '45m', '1h', 45)" }
+        },
+        required: ["habitName", "toTime"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_myday_block",
+      description: "Deletes a scheduled block from a specific day of the week or template. Uncouples shared templates so only the targeted day is modified.",
+      parameters: {
+        type: "object",
+        properties: {
+          blockName: { type: "string", description: "Name, task, or ID of the block to delete" },
+          day: { type: "string", description: "Optional day of the week (e.g. 'Monday') where the block is scheduled" },
+          templateId: { type: "string", description: "Optional template ID where the block is scheduled" }
+        },
+        required: ["blockName"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "map_template_to_day",
+      description: "Assigns a daily template to a specific day of the week in the active routine Weekly Schedule.",
+      parameters: {
+        type: "object",
+        properties: {
+          day: {
+            type: "string",
+            enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            description: "Day of the week"
+          },
+          templateId: { type: "string", description: "ID of the template to assign to this day" }
+        },
+        required: ["day", "templateId"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_quick_task",
+      description: "Adds a new task to the quick tasks inbox.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The name of the task" }
+        },
+        required: ["name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_plan",
+      description: "Creates a new plan/document in the Plans section.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Name of the plan" },
+          content: { type: "string", description: "Markdown content for the plan body" },
+          isLife: { type: "boolean", description: "If true, stores it in Life plans instead of the active Routine (default false)" }
+        },
+        required: ["name", "content"]
       }
     }
   }
@@ -55,6 +257,7 @@ const TOOLS = [
 
 export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean }) {
   const [appState, setAppState] = useState<any>(null);
+  const appStateRef = useRef<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +291,7 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
             customEndpoint: parsed.customEndpoint || ''
           }]
         };
-      } catch (_e) {}
+      } catch {}
     }
     return {
       activeProfileId: 'default',
@@ -124,10 +327,11 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
       const data = event.data;
       if (data.type === 'STATE_UPDATE') {
         setAppState(data.payload);
+        appStateRef.current = data.payload;
       } else if (data.type === 'TOOL_RESULT') {
-        const { callId, status, error } = data;
+        const { callId, status, error, message } = data;
         if (pendingResolvers.current[callId]) {
-          pendingResolvers.current[callId]({ status, error });
+          pendingResolvers.current[callId]({ status, error, message });
           delete pendingResolvers.current[callId];
         }
       }
@@ -169,7 +373,8 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
 
   const processLLMLoop = async (currentMsgs: any[]) => {
     const activeProfile = config.profiles.find((p: any) => p.id === config.activeProfileId) || config.profiles[0];
-    const response = await sendToProvider(currentMsgs, appState, TOOLS, activeProfile);
+    const currentAppState = appStateRef.current || appState;
+    const response = await sendToProvider(currentMsgs, currentAppState, TOOLS, activeProfile);
     
     if (response.type === 'tool_call') {
       const assistantMsg = response.message;
@@ -196,7 +401,7 @@ export default function AIAgentApp({ isDocked = false }: { isDocked?: boolean })
 
         // Wait for result from main tab
         const result = await resultPromise as any;
-        const contentStr = result.status === 'success' ? 'Action executed successfully.' : `Error: ${result.error}`;
+        const contentStr = result.status === 'success' ? (result.message || 'Action executed successfully.') : `Error: ${result.error}`;
         
         toolResultsMsgs.push({
           role: 'tool',

@@ -162,6 +162,7 @@ export interface Template {
 }
 
 export interface MyDayProps {
+    isPublicView?: boolean;
     templates: Template[];
     setTemplates: React.Dispatch<React.SetStateAction<Template[]>>;
     activeTemplateId: string;
@@ -178,6 +179,7 @@ export interface MyDayProps {
 
 
 export default function MyDay({
+    isPublicView,
                                   templates,
                                   setTemplates,
                                   activeTemplateId,
@@ -282,7 +284,7 @@ export default function MyDay({
 
                         newBlocks.push({
                             id: Date.now().toString(),
-                            name: habit.task,
+                            name: habit.name,
                             startTime: startMinutes,
                             duration: duration,
                             color: habit.color || '#eab308',
@@ -644,11 +646,14 @@ export default function MyDay({
                 {/* Overlapping GCal-style Blocks */}
                 {laidOutBlocks.map(block => {
                     const hex = block.color || '#ffffff';
+                    const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]');
+                    const isMasked = isPublicView && !isBlockPublic;
+                    
                     return (<div
                         key={block.id}
                         className="time-block"
-                        draggable
-                        onDragStart={(e) => {
+                        draggable={!isMasked}
+                        onDragStart={isMasked ? undefined : (e) => {
                             e.dataTransfer.setData('source', 'timeline');
                             e.dataTransfer.setData('blockId', block.originalId || block.id);
                         }}
@@ -674,6 +679,7 @@ export default function MyDay({
                             opacity: block.isWrapSecond ? 0.9 : 1
                         }}
                     >
+                        {!isMasked && (<>
                         <div className="time-block-title" style={{
                             color: hex,
                             fontWeight: '600',
@@ -806,6 +812,7 @@ export default function MyDay({
                         >
                             <X size={14}/>
                         </button>
+                        </>)}
                     </div>);
                 })}
             </div>
@@ -983,7 +990,7 @@ export default function MyDay({
                             draggable
                             onDragStart={(e) => {
                                 e.dataTransfer.setData('source', 'sidebar');
-                                e.dataTransfer.setData('task', habit.task || habit.name);
+                                e.dataTransfer.setData('task', habit.name);
                                 e.dataTransfer.setData('time', habit.time || '30m');
                                 e.dataTransfer.setData('color', habitColor);
                                 e.dataTransfer.setData('routineGoalId', habit.id);
@@ -1002,7 +1009,7 @@ export default function MyDay({
 
                                         newBlocks.push({
                                             id: Date.now().toString(),
-                                            name: habit.task,
+                                            name: habit.name,
                                             startTime: startMinutes,
                                             duration: duration,
                                             color: habitColor,
@@ -1039,7 +1046,7 @@ export default function MyDay({
                                 wordBreak: 'break-word',
                                 whiteSpace: 'pre-wrap',
                                 lineHeight: 1.4
-                            }}>{habit.task}</span>
+                            }}>{habit.name}</span>
                             <span style={{
                                 color: 'var(--text-secondary)', fontSize: '10px', flexShrink: 0
                             }}>({habit.time || '30m'})</span>

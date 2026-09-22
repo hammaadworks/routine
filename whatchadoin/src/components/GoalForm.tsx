@@ -1,13 +1,14 @@
 import React from 'react';
-import { Palette } from 'lucide-react';
+import { Palette, Globe } from 'lucide-react';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
 interface GoalFormState {
-    text: string;
+    name: string;
     color: string;
     desc: string;
     cost?: string | number;
+    isPublic?: boolean;
 }
 
 interface GoalFormProps {
@@ -51,10 +52,10 @@ export default function GoalForm({
             <div>
                 <label style={{
                     fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                }}>Goal Title</label>
+                }}>Goal Name</label>
                 <input name="auto_field_10"
-                    type="text" placeholder="e.g. Write a Book" value={formData.text}
-                    onChange={(e) => setFormData({...formData, text: e.target.value})}
+                    type="text" placeholder="e.g. Write a Book" value={formData.name || ''}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     style={{width: '100%'}}
                     required
                 />
@@ -90,7 +91,8 @@ export default function GoalForm({
                 <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
                     {PRESET_COLORS.slice(0, 8).map(c => {
                         const isSelected = formData.color && formData.color.toLowerCase() === c.toLowerCase();
-                        return (<button
+                        return (
+<button
                             key={c}
                             type="button"
                             onClick={() => {
@@ -147,6 +149,18 @@ export default function GoalForm({
                 </div>
             </div>
 
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px'}}>
+                <input 
+                    type="checkbox" 
+                    id="goal-public"
+                    checked={!!formData.isPublic}
+                    onChange={(e) => setFormData({...formData, isPublic: e.target.checked})}
+                    className="checkbox-square"
+                />
+                <label htmlFor="goal-public" style={{color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer'}}>
+                    <Globe size={14} /> Make Public (visible in Public View)
+                </label>
+            </div>
             <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
                 {isEditing && onDelete && (
                     <button type="button" onClick={onDelete} style={{

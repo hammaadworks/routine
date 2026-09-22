@@ -1,6 +1,5 @@
 import * as React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {useWebMCP} from 'use-webmcp-tool';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import {
@@ -17,11 +16,11 @@ import {
     Trash2
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
-import {getAllGoalsForMention} from '../utils';
+import {getAllGoalsForMention, sanitizeEntities} from '../utils';
 
 interface Note {
     id: string;
-    title: string;
+    name: string;
     content: string;
     folderId: string | null;
     createdAt: string;
@@ -45,22 +44,26 @@ interface ConfirmConfig {
 }
 
 interface PlansPaneProps {
+    isPublicView?: boolean;
     routineGoals: any[];
     habits: any[];
     lifeGoals: any[];
+    moneyGoals?: any[];
     activeRoutineId: string;
 }
 
-export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutineId}: PlansPaneProps) {
+export default function PlansPane({
+    isPublicView, routineGoals, habits, lifeGoals, moneyGoals, activeRoutineId}: PlansPaneProps) {
+
     const [notes, setNotes] = useState<Note[]>(() => {
-        const rSaved = localStorage.getItem(`routine_plans_${activeRoutineId}`);
-        const rNotes = rSaved ? JSON.parse(rSaved).map((n: any) => ({...n, isLife: false})) : [];
+        const rSaved = localStorage.getItem(`whatchadoin_plans_${activeRoutineId}`);
+        const rNotes = rSaved ? sanitizeEntities<Note>(JSON.parse(rSaved)).map((n: any) => ({...n, isLife: false})) : [];
         const lSaved = localStorage.getItem(`whatchadoin_life_plans`);
-        const lNotes = lSaved ? JSON.parse(lSaved).map((n: any) => ({...n, isLife: true})) : [];
+        const lNotes = lSaved ? sanitizeEntities<Note>(JSON.parse(lSaved)).map((n: any) => ({...n, isLife: true})) : [];
         return [...lNotes, ...rNotes];
     });
     const [folders, setFolders] = useState<FolderType[]>(() => {
-        const rSaved = localStorage.getItem(`routine_plans_folders_${activeRoutineId}`);
+        const rSaved = localStorage.getItem(`whatchadoin_plans_folders_${activeRoutineId}`);
         const rFolders = rSaved ? JSON.parse(rSaved).map((f: any) => ({...f, isLife: false})) : [];
         const lSaved = localStorage.getItem(`whatchadoin_life_plans_folders`);
         const lFolders = lSaved ? JSON.parse(lSaved).map((f: any) => ({...f, isLife: true})) : [];
@@ -95,22 +98,50 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
 
     const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({});
 
-    // All goals for mentioning
-    const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery);
+    // All goals, habits, money goals, and tasks for mentioning
+    let quickTasks: any[] = [];
+    try {
+        quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+    } catch {
+        quickTasks = [];
+    }
+
+    const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery, moneyGoals, quickTasks);
 
     useEffect(() => {
         const rNotes = notes.filter(n => !n.isLife);
         const lNotes = notes.filter(n => n.isLife);
-        localStorage.setItem(`routine_plans_${activeRoutineId}`, JSON.stringify(rNotes));
+        localStorage.setItem(`whatchadoin_plans_${activeRoutineId}`, JSON.stringify(rNotes));
         localStorage.setItem(`whatchadoin_life_plans`, JSON.stringify(lNotes));
     }, [notes, activeRoutineId]);
 
     useEffect(() => {
         const rFolders = folders.filter(f => !f.isLife);
         const lFolders = folders.filter(f => f.isLife);
-        localStorage.setItem(`routine_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
+        localStorage.setItem(`whatchadoin_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
         localStorage.setItem(`whatchadoin_life_plans_folders`, JSON.stringify(lFolders));
     }, [folders, activeRoutineId]);
+
+    const createNote = useCallback((folderId: string | null = null, isLife = false) => {
+        if (folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) isLife = folder.isLife;
+        }
+        const defaultName = isLife ? 'Untitled Life Plan' : 'Untitled Routine Plan';
+        const newNote: Note = {
+            id: Date.now().toString(),
+            name: defaultName,
+            content: '',
+            folderId,
+            createdAt: new Date().toISOString(),
+            isLife
+        };
+        setNotes(prev => [...prev, newNote]);
+        setActiveNoteId(newNote.id);
+        if (isMobile) {
+            setIsDocBarCollapsed(true);
+        }
+    }, [folders, isMobile]);
 
     useEffect(() => {
         const handleFabAddPlan = () => {
@@ -119,8 +150,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
         };
         window.addEventListener('fab:add-plan', handleFabAddPlan);
         return () => window.removeEventListener('fab:add-plan', handleFabAddPlan);
-    }, [folders, notes]); // createNote uses these states, wait we should just use a ref or not pass dependencies if we can, but createNote needs current state. Actually createNote doesn't rely on current state for anything other than folders to check isLife, and setNotes which uses a spread, but wait, setNotes in React will use closure values if not using functional update. We should just call createNote.
-
+    }, [createNote]);
 
     const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -167,74 +197,21 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
         });
     };
 
-    const createNote = (folderId: string | null = null, isLife = false) => {
-        if (folderId) {
-            const folder = folders.find(f => f.id === folderId);
-            if (folder) isLife = folder.isLife;
-        }
-        const newNote: Note = {
-            id: Date.now().toString(),
-            title: 'Untitled Note',
-            content: '',
-            folderId,
-            createdAt: new Date().toISOString(),
-            isLife
+    useEffect(() => {
+        const handleUpdate = () => {
+            const rSaved = localStorage.getItem(`whatchadoin_plans_${activeRoutineId}`);
+            const rNotes = rSaved ? sanitizeEntities<Note>(JSON.parse(rSaved)).map((n: any) => ({...n, isLife: false})) : [];
+            const lSaved = localStorage.getItem(`whatchadoin_life_plans`);
+            const lNotes = lSaved ? sanitizeEntities<Note>(JSON.parse(lSaved)).map((n: any) => ({...n, isLife: true})) : [];
+            const merged = [...lNotes, ...rNotes];
+            setNotes(prev => {
+                if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
+                return merged;
+            });
         };
-        setNotes(prev => [...prev, newNote]);
-        setActiveNoteId(newNote.id);
-        if (isMobile) {
-            setIsDocBarCollapsed(true);
-        }
-    };
-
-    const handleAgentCreateNote = useCallback(async (inputs: any) => {
-        if (!inputs.title || !inputs.content) {
-            throw new Error("Invalid parameters: title and content are required.");
-        }
-        const newNote: Note = {
-            id: crypto.randomUUID(),
-            title: inputs.title,
-            content: inputs.content,
-            folderId: null,
-            createdAt: new Date().toISOString(),
-            isLife: inputs.isLife || false
-        };
-        setNotes(prev => [...prev, newNote]);
-        setActiveNoteId(newNote.id);
-        return {success: true, message: `Plan note '${inputs.title}' created.`};
-    }, []);
-
-    useWebMCP({
-        name: 'create_plan_note',
-        description: 'Create a new markdown note in the Plans section. MANDATORY: Ask the user for all optional fields.',
-        inputSchema: {
-            type: 'object', properties: {
-                title: {type: 'string', description: 'Title of the note'},
-                content: {type: 'string', description: 'Markdown content for the note body'},
-                isLife: {
-                    type: 'boolean',
-                    description: 'If true, stores it in Life goals instead of the active Routine (default false)'
-                }
-            }, required: ['title', 'content']
-        },
-        execute: handleAgentCreateNote,
-        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
-    });
-
-    useWebMCP({
-        name: 'read_plan_notes',
-        description: 'Read the titles and contents of all your notes and plans to extract intelligence or answer questions.',
-        inputSchema: {type: 'object', properties: {}},
-        execute: async () => ({
-            notes: notes.map(n => ({
-                id: n.id,
-                title: n.title,
-                content: n.content,
-                isLife: n.isLife
-            }))
-        }),
-        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
-    });
+        window.addEventListener('whatchadoin_plans_updated', handleUpdate);
+        return () => window.removeEventListener('whatchadoin_plans_updated', handleUpdate);
+    }, [activeRoutineId]);
 
     const updateActiveNote = (updates: Partial<Note>) => {
         setNotes(notes.map(n => n.id === activeNoteId ? {...n, ...updates} : n));
@@ -261,10 +238,11 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
         const noteToCopy = notes.find(n => n.id === id);
         if (!noteToCopy) return;
 
+        const currentName = noteToCopy.name || 'Plan';
         const newNote: Note = {
             ...noteToCopy,
             id: Date.now().toString(),
-            title: `${noteToCopy.title} (Copy)`,
+            name: `${currentName} (Copy)`,
             createdAt: new Date().toISOString()
         };
 
@@ -365,7 +343,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
     };
 
     const insertMention = (goal: any, idx: number) => {
-        const goalText = goal.task || goal.text;
+        const goalText = goal.name;
         const ref = textareaRefs.current[idx];
         if (!ref) return;
         const cursor = ref.selectionStart;
@@ -411,7 +389,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
             const text = String(children).trim();
             if (text.startsWith('@')) {
                 const goalName = text.slice(1);
-                const goal = allGoals.find((g: any) => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
+                const goal = allGoals.find((g: any) => (g.name || '').toLowerCase() === goalName.toLowerCase());
                 if (goal && goal.color) {
                     return (<strong {...props} style={{
                             color: goal.color,
@@ -439,7 +417,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
     const filteredNotes = notes.filter(n => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
-        return n.title.toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q);
+        return (n.name || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q);
     });
 
     const renderTree = (parentId: string | null = null, level = 0, isLife = false) => {
@@ -494,7 +472,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                             </div>
                             <div style={{display: 'flex', gap: '4px', flexShrink: 0}} className="tree-item-actions">
                                 <button className="icon-btn" onClick={() => createNote(f.id)} style={{padding: '6px'}}
-                                        title="New Note here"><FilePlus size={14}/></button>
+                                        title="New Plan here"><FilePlus size={14}/></button>
                                 <button className="icon-btn" onClick={() => createFolder(f.id)} style={{padding: '6px'}}
                                         title="New Subfolder"><FolderPlus size={14}/></button>
                                 <button className="icon-btn" onClick={() => deleteFolder(f.id)} style={{padding: '6px'}}
@@ -536,7 +514,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                     textOverflow: 'ellipsis',
                     color: isActive ? '#000' : 'var(--text-primary)'
                 }}>
-                  {n.title || 'Untitled Note'}
+                  {n.name || 'Untitled Plan'}
                 </span>
                                 <div style={{display: 'flex', gap: '4px', flexShrink: 0}} className="tree-item-actions">
                                     <button
@@ -583,6 +561,9 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
     const showSidebar = isMobile ? !activeNote : !isDocBarCollapsed;
     const showEditor = isMobile ? !!activeNote : true;
 
+    if (isPublicView) return <div style={{ padding: '40px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>[ Private Mode ] Plans are hidden in public view.</div>;
+
+
     return (<div className="plans-pane-container"
                  style={{display: 'flex', flexDirection: 'row', width: '100%', height: '100%'}}>
             <style>{`
@@ -590,7 +571,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
         .tree-item:hover .tree-item-actions, .tree-item.active .tree-item-actions { opacity: 1; }
         .tree-item:hover:not(.active) { background: rgba(255, 255, 255, 0.05); }
       `}</style>
-            {/* Sidebar for Notes */}
+            {/* Sidebar for Plans */}
             {showSidebar && (<div className="plans-sidebar" style={{
                     borderRight: '1px solid var(--panel-border)',
                     display: 'flex',
@@ -606,35 +587,59 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                     }}>
                         <div style={{
                             display: 'flex',
-                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            gap: '8px'
+                            gap: '6px'
                         }}>
                             <button
-                                onClick={() => createNote(null, false)}
+                                onClick={() => createNote(null, true)}
                                 style={{
                                     flex: 1,
                                     background: 'var(--accent)',
                                     color: '#000',
                                     border: 'none',
-                                    padding: '8px 12px',
+                                    padding: '8px 6px',
                                     borderRadius: '6px',
-                                    fontWeight: 'bold',
-                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    fontSize: '12px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: '6px',
-                                    cursor: 'pointer'
+                                    gap: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
                                 }}
+                                title="Add Life Plan"
                             >
-                                <FilePlus size={16}/> New Plan
+                                <FilePlus size={14}/> + Life Plan
+                            </button>
+                            <button
+                                onClick={() => createNote(null, false)}
+                                style={{
+                                    flex: 1,
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--panel-border)',
+                                    padding: '8px 6px',
+                                    borderRadius: '6px',
+                                    fontWeight: '600',
+                                    fontSize: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '4px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                                title="Add Routine Plan"
+                            >
+                                <FilePlus size={14}/> + Routine Plan
                             </button>
                             {!isMobile && (<button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)}
                                                    style={{
-                                                       padding: '8px',
+                                                       padding: '6px',
                                                        display: 'flex',
-                                                       color: 'var(--text-secondary)'
+                                                       color: 'var(--text-secondary)',
+                                                       flexShrink: 0
                                                    }} title="Close sidebar">
                                     <PanelLeftClose size={18}/>
                                 </button>)}
@@ -680,14 +685,14 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                                     color: 'var(--text-secondary)',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.05em'
-                                }}>Life Notes</h3>
+                                }}>Life Plans</h3>
                                 <div style={{display: 'flex', gap: '4px'}}>
                                     <button className="icon-btn" onClick={() => createFolder(null, true)}
-                                            style={{padding: '6px'}} title="New Life Folder">
+                                            style={{padding: '6px'}} title="Add Life Folder">
                                         <FolderPlus size={16}/>
                                     </button>
                                     <button className="icon-btn" onClick={() => createNote(null, true)}
-                                            style={{padding: '6px'}} title="New Life Note">
+                                            style={{padding: '6px'}} title="Add Life Plan">
                                         <FilePlus size={16}/>
                                     </button>
                                 </div>
@@ -714,11 +719,11 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                                     }}>Routine Plans</h3>
                                     <div style={{display: 'flex', gap: '4px'}}>
                                         <button className="icon-btn" onClick={() => createFolder(null, false)}
-                                                style={{padding: '6px'}} title="New Routine Folder">
+                                                style={{padding: '6px'}} title="Add Routine Folder">
                                             <FolderPlus size={16}/>
                                         </button>
                                         <button className="icon-btn" onClick={() => createNote(null, false)}
-                                                style={{padding: '6px'}} title="New Routine Plan">
+                                                style={{padding: '6px'}} title="Add Routine Plan">
                                             <FilePlus size={16}/>
                                         </button>
                                     </div>
@@ -780,9 +785,9 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                                     </button>)}
                                 <input
                                     type="text"
-                                    value={activeNote.title}
-                                    onChange={e => updateActiveNote({title: e.target.value})}
-                                    onBlur={e => updateActiveNote({title: e.target.value.trim()})}
+                                    value={activeNote.name || ''}
+                                    onChange={e => updateActiveNote({name: e.target.value})}
+                                    onBlur={e => updateActiveNote({name: e.target.value.trim()})}
                                     style={{
                                         background: 'transparent',
                                         border: 'none',
@@ -794,7 +799,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                                         outline: 'none',
                                         boxShadow: 'none'
                                     }}
-                                    placeholder="Note Title"
+                                    placeholder="Plan Name"
                                 />
                             </div>
                             <div className="plans-editor-scroll" style={{
@@ -905,7 +910,7 @@ export default function PlansPane({routineGoals, habits, lifeGoals, activeRoutin
                             color: '#fff',
                             fontWeight: i === mentionIndex ? 'bold' : 'normal'
                         }}>
-                          {g.task || g.text}
+                          {g.name}
                         </span>
                                                     <span style={{
                                                         fontSize: '11px',

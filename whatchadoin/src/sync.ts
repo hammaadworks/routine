@@ -1,3 +1,5 @@
+import { sanitizeAllStorage } from './utils';
+
 let gistToken = localStorage.getItem('whatchadoin_gist_token');
 let gistId = localStorage.getItem('whatchadoin_gist_id');
 let gistFilename = localStorage.getItem('whatchadoin_gist_filename') || 'whatchadoin_data.json';
@@ -63,9 +65,40 @@ export const initSync = (onRemoteUpdate?: () => void) => {
       pushToGist().catch(console.error);
     }, 5000);
   };
+
+  // 3. Ensure sync happens if user closes tab before debounce fires
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        const currentStr = exportLocalData();
+        if (currentStr !== lastSyncedStr && gistToken && gistId) {
+          // Fire and forget using keepalive so it completes even if tab closes
+          fetch(`https://api.github.com/gists/${gistId}`, {
+            method: 'PATCH',
+            headers: {
+              Authorization: `token ${gistToken}`,
+              Accept: 'application/vnd.github.v3+json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              files: {
+                [gistFilename]: {
+                  content: currentStr
+                }
+              }
+            }),
+            keepalive: true
+          }).then(res => {
+            if (res.ok) lastSyncedStr = currentStr;
+          }).catch(console.error);
+        }
+      }
+    });
+  }
 };
 
 export const exportLocalData = () => {
+  sanitizeAllStorage();
   const data: Record<string, string | null> = {};
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -83,6 +116,20 @@ export const exportLocalData = () => {
 export const importLocalData = (jsonStr: string) => {
   try {
     const data = JSON.parse(jsonStr);
+
+    // Normalize legacy camelCase keys to snake_case
+    if (data.whatchadoin_lifeGoals) {
+      if (!data.whatchadoin_life_goals) {
+        data.whatchadoin_life_goals = data.whatchadoin_lifeGoals;
+      }
+      delete data.whatchadoin_lifeGoals;
+    }
+    if (data.whatchadoin_activeRoutineId) {
+      if (!data.whatchadoin_active_routine_id) {
+        data.whatchadoin_active_routine_id = data.whatchadoin_activeRoutineId;
+      }
+      delete data.whatchadoin_activeRoutineId;
+    }
     
     // Remove local keys that are not present in remote data
     const keysToRemove: string[] = [];
@@ -104,6 +151,7 @@ export const importLocalData = (jsonStr: string) => {
         localStorage.setItem(key, JSON.stringify(data[key]));
       }
     }
+    sanitizeAllStorage();
     return true;
   } catch (e) {
     console.error("Failed to parse remote sync data", e);

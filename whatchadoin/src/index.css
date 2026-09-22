@@ -1,24 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 :root {
-    --bg: #0c0a09;
-    --panel-bg: rgba(255, 255, 255, 0.02);
-    --panel-border: rgba(255, 255, 255, 0.06);
-    --text-primary: #f8fafc;
-    --text-secondary: #f8fafc;
+    --bg: #111418;
+    --panel-bg: rgba(26, 31, 37, 0.8);
+    --panel-border: #2A3038;
+    --text-primary: #EDE7D9;
+    --text-secondary: #8A8F98;
 
-    /* Yellow Theme */
-    --accent: #eab308;
-    --accent-hover: #ca8a04;
-    --accent-gradient: linear-gradient(135deg, #f59e0b, #fbbf24);
-    --danger: #ef4444;
-    --success: #10b981;
-    --block-bg: rgba(234, 179, 8, 0.15);
-    --block-border: rgba(234, 179, 8, 0.4);
+    /* Gold Theme */
+    --accent: #C9A227;
+    --accent-hover: #E3B830;
+    --accent-gradient: linear-gradient(135deg, #D4AF37, #C9A227);
+    --danger: #C1665A;
+    --success: #7FA87A;
+    --block-bg: rgba(201, 162, 39, 0.15);
+    --block-border: rgba(201, 162, 39, 0.4);
 
     --surface-light: rgba(255, 255, 255, 0.03);
-    --border: rgba(255, 255, 255, 0.04);
+    --border: #333B44;
     --zoom: 1;
 
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-header: 'Source Serif 4', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
 }
 
 * {
@@ -103,6 +106,7 @@ body {
 }
 
 .header h1 {
+    font-family: var(--font-header);
     font-size: 24px;
     font-weight: 700;
     background: var(--accent-gradient);
@@ -151,24 +155,24 @@ body {
     }
 
 
-    .panel, .timeline-area {
+    .panel, .myday-area {
         min-height: 400px;
         padding: 16px;
     }
 
     /* Accordion styles for mobile */
-    .panel.mobile-collapsed, .timeline-area.mobile-collapsed {
+    .panel.mobile-collapsed, .myday-area.mobile-collapsed {
         min-height: auto !important;
         height: auto !important;
     }
 
     .panel.mobile-collapsed > *:not(.panel-header),
-    .timeline-area.mobile-collapsed > *:not(.tabs) {
+    .myday-area.mobile-collapsed > *:not(.tabs) {
         display: none !important;
     }
 
     /* Make all panes and their structural scrolling containers expand to fit content on mobile */
-    .panel, .timeline-area, .mid-pane-content,
+    .panel, .myday-area, .mid-pane-content,
     .pane > div,
     .mid-pane-content > div,
     .pane div[style*="overflow: hidden"],
@@ -264,7 +268,7 @@ body {
     width: 280px;
 }
 
-.timeline-area {
+.myday-area {
     flex: 1;
     background: var(--panel-bg);
     border: 1px solid var(--panel-border);
@@ -364,13 +368,13 @@ body {
 
 /* Forms & Inputs */
 input, select, textarea {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid var(--panel-border);
+    background: #1E242A;
+    border: 1px solid var(--border);
     color: var(--text-primary);
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 10px 14px;
-    font-family: var(--font-main), sans-serif;
-    font-size: 16px;
+    font-family: var(--font-mono);
+    font-size: 14px;
     outline: none;
     transition: all 0.2s;
 }
@@ -430,7 +434,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.15);
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.15);
 }
 
 input[type="time"]::-webkit-calendar-picker-indicator {
@@ -901,7 +905,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
 
-    .main-content.mobile-tab-goals .timeline-area,
+    .main-content.mobile-tab-goals .myday-area,
     .main-content.mobile-tab-myday .left-pane,
     .main-content.mobile-tab-calendar .left-pane,
     .main-content.mobile-tab-plans .left-pane,
@@ -911,8 +915,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
     /* Force panes to expand on mobile, overriding any accordion state */
     .panel.mobile-collapsed > *:not(.panel-header),
-    .timeline-area.mobile-collapsed > *:not(.tabs),
-    .panel > *, .timeline-area > * {
+    .myday-area.mobile-collapsed > *:not(.tabs),
+    .panel > *, .myday-area > * {
         display: flex !important;
     }
 
@@ -1128,7 +1132,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 @media (max-width: 1399px) {
     /* Hide native Center Tabs on mobile */
-    .timeline-area .tabs {
+    .myday-area .tabs {
         display: none !important;
     }
 
@@ -1137,11 +1141,12 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         position: fixed !important;
         top: 0;
         bottom: 0;
-        right: -85% !important;
+        right: 0 !important;
+        transform: translateX(100%) !important;
         width: 85% !important;
         max-width: 400px !important;
         z-index: 100 !important;
-        transition: right 0.3s ease !important;
+        transition: transform 0.3s ease, visibility 0.3s !important;
         background: var(--bg) !important;
         border-left: 1px solid var(--panel-border);
         box-shadow: -4px 0 16px rgba(0, 0, 0, 0.5) !important;
@@ -1149,6 +1154,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         height: 100dvh !important;
         overflow-y: auto !important;
         overscroll-behavior-y: contain !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
 
     .mobile-drawer-overlay {
@@ -1160,7 +1167,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .pane.right-pane.drawer-open {
-        right: 0 !important;
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
     }
 }
 
@@ -1200,7 +1209,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         gap: 8px !important;
     }
 
-    .main-content.mobile-tab-calendar .timeline-area {
+    .main-content.mobile-tab-calendar .myday-area {
         flex: 1 1 50% !important;
         height: 50% !important;
         min-height: 0 !important;
@@ -1246,7 +1255,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         flex-direction: row !important;
     }
 
-    .main-content.mobile-tab-calendar .timeline-area,
+    .main-content.mobile-tab-calendar .myday-area,
     .main-content.mobile-tab-calendar .right-pane {
         height: 100% !important;
         width: 50% !important;

@@ -64,7 +64,7 @@ export default function AIConfigEditor({config, setConfig}: AIConfigEditorProps)
                     e.preventDefault();
                     setConfig(parsed);
                 }
-            } catch (err) {
+            } catch {
                 // Ignore non-JSON pastes or invalid configs
             }
         }}

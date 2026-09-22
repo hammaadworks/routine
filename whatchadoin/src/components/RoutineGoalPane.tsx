@@ -11,18 +11,20 @@ import {useDragReorder} from '../hooks/useDragReorder';
 
 interface RoutineGoal {
     id: string;
-    text: string;
+    name: string;
     color?: string;
     completed?: boolean;
     lifeGoalId?: string;
     desc?: string;
     cost?: number;
+    isPublic?: boolean;
 }
 
 interface Habit {
     id: string;
     routineGoalId?: string;
-    task: string;
+    routineGoalIds?: string[];
+    name: string;
     desc?: string;
 }
 
@@ -38,15 +40,9 @@ interface Template {
     blocks: TemplateBlock[];
 }
 
-interface LifeGoal {
-    id: string;
-    text: string;
-    cost?: number;
-}
-
 export interface MoneyGoal {
     id: string;
-    text: string;
+    name: string;
     cost: number;
     desc?: string;
 }
@@ -60,6 +56,7 @@ interface ConfirmConfig {
 }
 
 interface RoutineGoalPaneProps {
+    isPublicView?: boolean;
     routineGoals: RoutineGoal[];
     setRoutineGoals: React.Dispatch<React.SetStateAction<RoutineGoal[]>>;
     habits?: Habit[];
@@ -75,6 +72,7 @@ interface RoutineGoalPaneProps {
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
 export default function RoutineGoalPane({
+    isPublicView,
                                             routineGoals,
                                             setRoutineGoals,
                                             habits,
@@ -84,11 +82,11 @@ export default function RoutineGoalPane({
                                             _activeTemplateId,
                                             onRoutineGoalBadgeClick,
                                             headerTabs,
-                                            lifeGoals
+                                            _lifeGoals
                                         }: RoutineGoalPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<string | null>(null);
-    const [routineGoalForm, setRoutineGoalForm] = useState({text: '', color: '', desc: '', cost: ''});
+    const [routineGoalForm, setRoutineGoalForm] = useState({name: '', color: '', desc: '', cost: ''});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
@@ -100,7 +98,7 @@ export default function RoutineGoalPane({
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#1982C4';
-        setRoutineGoalForm({text: '', color: randomColor, desc: '', cost: ''});
+        setRoutineGoalForm({name: '', isPublic: false, color: randomColor, desc: '', cost: ''});
         setShowRoutineGoalModal(true);
     };
 
@@ -115,8 +113,9 @@ export default function RoutineGoalPane({
         setEditingRoutineGoalId(goal.id);
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#1982C4';
+        const goalName = goal.name || '';
         setRoutineGoalForm({
-            text: goal.text, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : ''
+            name: goalName, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : ''
         });
         setShowRoutineGoalModal(true);
     };
@@ -124,20 +123,28 @@ export default function RoutineGoalPane({
 
     const saveRoutineGoal = (e: React.SyntheticEvent) => {
         e.preventDefault();
-        if (!routineGoalForm.text.trim()) return;
-        const cleanText = routineGoalForm.text.trim();
-        const costValue = routineGoalForm.cost ? parseFloat(routineGoalForm.cost) : undefined;
+        const cleanName = routineGoalForm.name.trim();
+        if (!cleanName) return;
+        const costValue = routineGoalForm.cost ? parseFloat(String(routineGoalForm.cost)) : undefined;
         if (editingRoutineGoalId) {
-            setRoutineGoals(prev => prev.map((g: RoutineGoal) => g.id === editingRoutineGoalId ? {
-                ...g, text: cleanText, color: routineGoalForm.color, desc: routineGoalForm.desc || "", cost: costValue
-            } : g));
+            setRoutineGoals(prev => prev.map((g: RoutineGoal) => {
+                if (g.id !== editingRoutineGoalId) return g;
+                const { text: _text, title: _title, task: _task, ...cleanG } = g as any;
+                return {
+                    ...cleanG,
+                    name: cleanName,
+                    isPublic: !!routineGoalForm.isPublic, color: routineGoalForm.color,
+                    desc: routineGoalForm.desc || "",
+                    cost: costValue
+                };
+            }));
 
             if (templates && setTemplates && habits) {
                 const linkedRoutineGoalIds = habits.filter((g: Habit) => g.routineGoalIds?.includes(editingRoutineGoalId) || g.routineGoalId === editingRoutineGoalId).map(g => g.id);
                 const updatedTemplates = templates.map((t: Template) => ({
                     ...t, blocks: t.blocks.map((b: TemplateBlock) => {
                         if (b.routineGoalId && linkedRoutineGoalIds.includes(b.routineGoalId)) {
-                            return {...b, color: routineGoalForm.color || ""};
+                            return {...b, isPublic: !!routineGoalForm.isPublic, color: routineGoalForm.color || ""};
                         }
                         return b;
                     })
@@ -147,8 +154,8 @@ export default function RoutineGoalPane({
         } else {
             setRoutineGoals([...routineGoals, {
                 id: 'sg-' + Date.now(),
-                text: cleanText,
-                color: routineGoalForm.color,
+                name: cleanName,
+                isPublic: !!routineGoalForm.isPublic, color: routineGoalForm.color,
                 completed: false,
                 desc: routineGoalForm.desc || "",
                 cost: costValue
@@ -161,10 +168,10 @@ export default function RoutineGoalPane({
         setRoutineGoals(routineGoals.map((g: RoutineGoal) => g.id === id ? {...g, completed: !g.completed} : g));
     };
 
-    const deleteRoutineGoal = (id: string, text: string) => {
+    const deleteRoutineGoal = (id: string, name: string) => {
         setConfirmConfig({
             title: 'Delete Routine Goal',
-            message: `Are you sure you want to delete the routine goal: "${text}"? Routine goals and calendar blocks linked to it will be unlinked (turned white).`,
+            message: `Are you sure you want to delete the routine goal: "${name}"? Routine goals and calendar blocks linked to it will be unlinked (turned white).`,
             isDanger: true,
             onConfirm: () => {
                 setRoutineGoals(routineGoals.filter((g: RoutineGoal) => g.id !== id));
@@ -200,16 +207,16 @@ export default function RoutineGoalPane({
     const [sortByName, setSortByName] = useState(false);
 
     const getLinkedCount = (goal: RoutineGoal) => {
-        const txt = goal.text.toLowerCase().trim();
+        const txt = (goal.name || '').toLowerCase().trim();
         if (!txt) return 0;
-        const linkedGoals = (habits || []).filter(g => g.routineGoalId === goal.id || g.task.toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
+        const linkedGoals = (habits || []).filter(g => g.routineGoalId === goal.id || (g.name || '').toLowerCase().trim() === txt || (g.desc && g.desc.toLowerCase().trim() === txt));
         return linkedGoals.length;
     };
 
 
-    let displayedGoals = routineGoals.filter((g: RoutineGoal) => g.text.toLowerCase().includes(searchQuery.toLowerCase()));
+    let displayedGoals = routineGoals.filter((g: RoutineGoal) => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
     if (sortByName) {
-        displayedGoals.sort((a, b) => a.text.localeCompare(b.text));
+        displayedGoals.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
 
@@ -401,7 +408,7 @@ export default function RoutineGoalPane({
                     onSubmit={saveRoutineGoal}
                     onCancel={() => setShowRoutineGoalModal(false)}
                     onDelete={editingRoutineGoalId ? () => {
-                        deleteRoutineGoal(editingRoutineGoalId, routineGoalForm.text);
+                        deleteRoutineGoal(editingRoutineGoalId, routineGoalForm.name);
                         setShowRoutineGoalModal(false);
                     } : undefined}
                     isEditing={!!editingRoutineGoalId}
@@ -440,7 +447,7 @@ export default function RoutineGoalPane({
                                 background: 'var(--surface-light)',
                                 borderRadius: '6px',
                                 marginBottom: '4px'
-                            }}>{h.task}</div>))}
+                            }}>{h.name}</div>))}
                         </div>);
                     })()}
                 </div>

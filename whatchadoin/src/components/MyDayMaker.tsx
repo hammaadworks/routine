@@ -25,24 +25,6 @@ export interface MyDayMakerProps {
     deleteTemplate: () => void;
 }
 
-
-import type { Template } from './MyDay';
-
-export interface MyDayMakerProps {
-    templates: Template[];
-    activeTemplateId: string;
-    setActiveTemplateId: (id: any) => void;
-    activeTemplate?: Template | null;
-    dayMapping: Record<string, string>;
-    setDayMapping: (mapping: Record<string, string>) => void;
-    days: string[];
-    handleNewClick: () => void;
-    setIsEditingTemplateName: (isEditing: boolean) => void;
-    setEditingTemplateName: (name: string) => void;
-    duplicateTemplate: () => void;
-    deleteTemplate: () => void;
-}
-
 export default function MyDayMaker({
                                        templates,
                                        activeTemplateId,
@@ -105,7 +87,7 @@ export default function MyDayMaker({
             </span>
           </div>
           <div className="myday-maker-divider" />
-          <span className="myday-maker-days" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+          <span className="myday-maker-days" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }} title={`Weekly Schedule: ${activeDaysStr}`}>
             {activeDaysStr}
           </span>
         </div>
@@ -115,7 +97,7 @@ export default function MyDayMaker({
             <BaseModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title="Manage Schedules"
+                title="Templates & Weekly Schedule"
             >
                 <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
 
@@ -131,11 +113,11 @@ export default function MyDayMaker({
                             value={activeTemplateId}
                             onChange={setActiveTemplateId}
                             options={templates.map((t: Template) => ({value: t.id, label: t.name}))}
-                            placeholder="Select Schedule..."
+                            placeholder="Select Template..."
                         />
                     </div>
 
-                    {/* Active On Days */}
+                    {/* Weekly Schedule Days */}
                     {activeTemplate && (<div className="th-active-on" style={{
                             background: 'rgba(0,0,0,0.15)',
                             padding: '12px',
@@ -144,7 +126,7 @@ export default function MyDayMaker({
                         }}>
                             <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px'}}>
                                 <CalendarDays size={16} color="var(--accent)"/>
-                                <span style={{fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600'}}>Active on:</span>
+                                <span style={{fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600'}}>Weekly Schedule:</span>
                             </div>
                             <div className="day-btn-container"
                                  style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px'}}>
@@ -161,7 +143,7 @@ export default function MyDayMaker({
                                                 [day]: isActive ? '' : activeTemplateId
                                             })}
                                             className={`day-btn ${isActive ? 'active' : ''} ${isAssignedToOther ? 'assigned-other' : ''}`}
-                                            title={isActive ? day : assignedTemplate ? `${day} (Assigned to ${assignedTemplate.name})` : day}
+                                            title={isActive ? `${day} (Active)` : assignedTemplate ? `${day} (Assigned to ${assignedTemplate.name})` : day}
                                             style={{
                                                 borderRadius: '6px',
                                                 padding: '6px 2px',
@@ -185,7 +167,7 @@ export default function MyDayMaker({
                                 color: 'var(--text-secondary)',
                                 textAlign: 'center'
                             }}>
-                                Click a day to assign this template to it.
+                                Assign this template to days of the week in your Weekly Schedule.
                             </div>
                         </div>)}
 
@@ -196,7 +178,7 @@ export default function MyDayMaker({
                             marginBottom: '8px',
                             fontSize: '13px',
                             color: 'var(--text-secondary)'
-                        }}>Actions</label>
+                        }}>Template Actions</label>
                         <div className="th-actions"
                              style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px'}}>
                             <button className="secondary action-btn" onClick={() => {

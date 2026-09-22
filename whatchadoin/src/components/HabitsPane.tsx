@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as React from 'react';
-import {useEffect, useRef, useState} from 'react';
-import {
+import { useEffect, useRef, useState} from 'react';
+import { 
     Activity,
     CheckCircle2,
     ChevronDown,
@@ -13,7 +13,8 @@ import {
     Pencil,
     Plus,
     Target,
-    X
+    X,
+    Globe
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
@@ -21,7 +22,7 @@ import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import SearchSortBar from './SearchSortBar';
-import {
+import { 
     getAllGoalsForMention,
     getCardBgStyle,
     getGoalColor,
@@ -32,7 +33,8 @@ import {
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
-interface HabitPaneProps {
+interface HabitsPaneProps {
+    isPublicView?: boolean;
     habits: any[];
     setHabits: (h: any[]) => void;
     templates: any[];
@@ -56,15 +58,18 @@ interface HabitPaneProps {
     setCalendarSubTab?: (tab: string) => void;
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
+    moneyGoals?: any[];
 }
 
-export default function RoutinePane({
+export default function HabitsPane({
+    isPublicView,
                                         habits,
                                         setHabits,
                                         templates,
                                         setTemplates,
                                         routineGoals,
                                         lifeGoals,
+                                        moneyGoals,
                                         activeTemplateId,
                                         habitFilterRoutineGoalId,
                                         setHabitFilterRoutineGoalId,
@@ -82,18 +87,18 @@ export default function RoutinePane({
                                         setCalendarSubTab,
                                         isRoutineDrawerOpen,
                                         setIsRoutineDrawerOpen
-                                    }: HabitPaneProps) {
-    const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
-    const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<any>(null);
-    const [routineGoalForm, setRoutineGoalForm] = useState({
-        task: '', desc: '', timeValue: '', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: ''
+                                    }: HabitsPaneProps) {
+    const [showHabitModal, setShowHabitModal] = useState(false);
+    const [editingHabitId, setEditingHabitId] = useState<any>(null);
+    const [habitForm, setHabitForm] = useState({
+        name: '', desc: '', timeValue: '1:15', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: ''
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [sortByName, setSortByName] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
-    const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', title: '', desc: '', done: false});
+    const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', name: '', desc: '', done: false});
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
 
@@ -105,7 +110,7 @@ export default function RoutinePane({
 
     const openEditMilestone = (dateStr: string, idx: number, block: string) => {
         let tag;
-        let title;
+        let name;
         let desc;
         let done = false;
         const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
@@ -113,28 +118,28 @@ export default function RoutinePane({
 
         if (matchWithTag) {
             tag = matchWithTag[1];
-            title = matchWithTag[2];
+            name = matchWithTag[2];
             desc = (matchWithTag[3] || '').trim().replace(/ {2}\n/g, '\n');
         } else if (matchWithoutTag) {
             tag = '';
-            title = matchWithoutTag[1];
+            name = matchWithoutTag[1];
             desc = (matchWithoutTag[2] || '').trim().replace(/ {2}\n/g, '\n');
         } else {
             tag = '';
-            title = block;
+            name = block;
             desc = '';
         }
 
-        if (title.startsWith('[x] ')) {
+        if (name.startsWith('[x] ')) {
             done = true;
-            title = title.substring(4);
-        } else if (title.startsWith('[ ] ')) {
+            name = name.substring(4);
+        } else if (name.startsWith('[ ] ')) {
             done = false;
-            title = title.substring(4);
+            name = name.substring(4);
         }
 
         setEditingMilestoneIdx({dateStr, idx});
-        setMilestoneForm({date: dateStr, tag: tag || '', title: title || '', desc: desc || '', done});
+        setMilestoneForm({date: dateStr, tag: tag || '', name: name || '', desc: desc || '', done});
         setShowMilestoneModal(true);
     };
 
@@ -207,7 +212,7 @@ export default function RoutinePane({
         const words = textBefore.split(/\s/);
         words.pop();
 
-        const goalText = (goal.task || goal.text).replace(/\s+/g, '-');
+        const goalText = (goal.name || '').replace(/\s+/g, '-');
         const newBefore = words.join(' ') + (words.length > 0 ? ' ' : '') + '@' + goalText + ' ';
         const newVal = newBefore + textAfter;
 
@@ -243,19 +248,19 @@ export default function RoutinePane({
 
     const saveMilestone = (e: any) => {
         e.preventDefault();
-        if (!milestoneForm.date || !milestoneForm.title) return;
+        if (!milestoneForm.date || !milestoneForm.name) return;
 
         const dateStr = milestoneForm.date;
-        const title = milestoneForm.title.trim();
+        const name = milestoneForm.name.trim();
         const desc = milestoneForm.desc.trim().replace(/\n{2,}/g, '\n');
         const tag = (milestoneForm.tag || '').trim();
-        const finalTitle = milestoneForm.done ? `[x] ${title}` : title;
+        const finalName = milestoneForm.done ? `[x] ${name}` : name;
 
         let newBlock = '';
         if (tag) {
             newBlock += `**@${tag}** - `;
         }
-        newBlock += `**${finalTitle}**`;
+        newBlock += `**${finalName}**`;
         if (desc) newBlock += `  \n${desc}`;
 
         const newMilestones = {...(activeRoutine.milestones || {})};
@@ -285,33 +290,40 @@ export default function RoutinePane({
         });
 
         setShowMilestoneModal(false);
-        setMilestoneForm({date: '', tag: '', title: '', desc: '', done: false});
+        setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
         setEditingMilestoneIdx(null);
         setCalendarSubTab('milestones');
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
     };
     const modalInputRefs = useRef<any>({});
 
-    const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery);
+    let quickTasks: any[] = [];
+    try {
+        quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+    } catch {
+        quickTasks = [];
+    }
+
+    const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery, moneyGoals, quickTasks);
 
 
     // Removed inline editing handlers
 
 
-    const openAddRoutineGoal = () => {
-        setEditingRoutineGoalId(null);
-        setRoutineGoalForm({task: '', desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''});
-        setShowRoutineGoalModal(true);
+    const openAddHabit = () => {
+        setEditingHabitId(null);
+        setHabitForm({name: '', isPublic: false, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''});
+        setShowHabitModal(true);
     };
 
     useEffect(() => {
         const handleFab = () => {
             if (calendarSubTab === 'milestones') {
                 setEditingMilestoneIdx(null);
-                setMilestoneForm({date: '', tag: '', title: '', desc: '', done: false});
+                setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
                 setShowMilestoneModal(true);
             } else {
-                openAddRoutineGoal();
+                openAddHabit();
             }
         };
         window.addEventListener('fab:add-habits', handleFab);
@@ -319,64 +331,69 @@ export default function RoutinePane({
     }, [calendarSubTab]);
 
 
-    const openEditRoutineGoal = (goal: any) => {
-        setEditingRoutineGoalId(goal.id);
+    const openEditHabit = (goal: any) => {
+        setEditingHabitId(goal.id);
 
         const rIds = Array.isArray(goal.routineGoalIds) ? goal.routineGoalIds : (goal.routineGoalId ? [goal.routineGoalId] : []);
         const lIds = Array.isArray(goal.lifeGoalIds) ? goal.lifeGoalIds : (goal.lifeGoalId ? [goal.lifeGoalId] : []);
 
-        setRoutineGoalForm({
-            task: goal.task || '',
+        setHabitForm({
+            name: goal.name || '',
             desc: goal.desc || '',
-            timeValue: goal.time || '',
+            timeValue: goal.time || (typeof goal.duration === 'number' && goal.duration > 0 ? `${goal.duration}m` : (goal.duration || '')),
             routineGoalIds: rIds,
             lifeGoalIds: lIds,
-            color: goal.color || ''
+            color: goal.color || '',
+                isPublic: !!goal.isPublic
         });
-        setShowRoutineGoalModal(true);
+        setShowHabitModal(true);
     };
 
-    const duplicateGoal = (goal: any) => {
+    const duplicateHabit = (goal: any) => {
+        const goalName = goal.name || '';
         const newGoal = {
-            ...goal, task: '0_' + goal.task, id: 'rg-' + Date.now(), completed: false
+            ...goal, name: '0_' + goalName, id: 'rg-' + Date.now(), completed: false
         };
         setHabits([...(habits || []), newGoal]);
     };
 
-    const saveRoutineGoal = (e: any) => {
+    const saveHabit = (e: any) => {
         e.preventDefault();
-        if (!routineGoalForm.task.trim()) return;
+        if (!habitForm.name.trim()) return;
 
         let timeString = '';
-        if (routineGoalForm.timeValue) {
-            timeString = routineGoalForm.timeValue.toString();
+        if (habitForm.timeValue) {
+            timeString = habitForm.timeValue.toString();
         }
 
+        const cleanName = habitForm.name.trim();
+        const durationMins = timeString ? parseDuration(timeString) : 0;
         const goalData = {
-            task: routineGoalForm.task.trim(),
-            desc: (routineGoalForm.desc || '').trim(),
+            name: cleanName,
+            desc: (habitForm.desc || '').trim(),
             time: timeString,
-            routineGoalIds: routineGoalForm.routineGoalIds,
-            lifeGoalIds: routineGoalForm.lifeGoalIds,
-            color: routineGoalForm.color
+            duration: durationMins,
+            routineGoalIds: habitForm.routineGoalIds,
+            lifeGoalIds: habitForm.lifeGoalIds,
+            isPublic: !!habitForm.isPublic, color: habitForm.color
         };
 
-        if (editingRoutineGoalId) {
-            const oldGoal = (habits || []).find(g => g.id === editingRoutineGoalId);
-            setHabits((habits || []).map(g => g.id === editingRoutineGoalId ? {...g, ...goalData} : g));
+        if (editingHabitId) {
+            const oldGoal = (habits || []).find(g => g.id === editingHabitId);
+            setHabits((habits || []).map(g => g.id === editingHabitId ? {...g, ...goalData} : g));
 
             if (oldGoal && templates && setTemplates) {
-                const oldTaskLower = (oldGoal.task || '').toLowerCase().trim();
-                const newColors = getGoalColor(goalData, routineGoals, lifeGoals);
+                const oldTaskLower = (oldGoal.name || '').toLowerCase().trim();
+                const newColors = getGoalColor(goalData, routineGoals, lifeGoals, moneyGoals);
 
                 const updatedTemplates = templates.map(t => ({
                     ...t, blocks: t.blocks.map((b: any) => {
-                        if (String(b.routineGoalId) === String(editingRoutineGoalId) || b.name.toLowerCase().trim() === oldTaskLower) {
+                        if (String(b.routineGoalId) === String(editingHabitId) || b.name.toLowerCase().trim() === oldTaskLower) {
                             return {
                                 ...b,
-                                name: goalData.task,
+                                name: goalData.name,
                                 duration: timeString ? parseDuration(timeString) : b.duration,
-                                routineGoalId: String(editingRoutineGoalId),
+                                routineGoalId: String(editingHabitId),
                                 color: newColors[0] || '#ffffff'
                             };
                         }
@@ -391,16 +408,16 @@ export default function RoutinePane({
             };
             setHabits([...(habits || []), newGoal]);
         }
-        setShowRoutineGoalModal(false);
+        setShowHabitModal(false);
     };
 
     const handleDragStart = (e: any, goal: any) => {
-        const hexes = getGoalColor(goal, routineGoals, lifeGoals);
+        const hexes = getGoalColor(goal, routineGoals, lifeGoals, moneyGoals);
 
         e.dataTransfer.setData('source', 'sidebar');
-        e.dataTransfer.setData('task', goal.task);
+        e.dataTransfer.setData('task', goal.name || '');
         e.dataTransfer.setData('desc', goal.desc || '');
-        e.dataTransfer.setData('time', goal.time || '1:15');
+        e.dataTransfer.setData('time', goal.time || (typeof goal.duration === 'number' && goal.duration > 0 ? `${goal.duration}m` : '1:15'));
         e.dataTransfer.setData('color', hexes[0] || '#ffffff');
         e.dataTransfer.setData('routineGoalId', goal.id);
     };
@@ -413,13 +430,13 @@ export default function RoutinePane({
         if (explicitlyReferenced) return true;
 
         // 2. Fallback to text matching
-        const txt = goal.task.toLowerCase().trim();
+        const txt = (goal.name || '').toLowerCase().trim();
         if (!txt) return false;
         return templates.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
     };
 
 
-    const confirmDeleteGoal = (id: string, taskName: string) => {
+    const confirmDeleteHabit = (id: string, taskName: string) => {
         setConfirmConfig({
             title: 'Delete Habit',
             message: `Are you sure you want to delete "${taskName}"? This will also remove any calendar blocks linked to it.`,
@@ -436,7 +453,7 @@ export default function RoutinePane({
                     setTemplates(updatedTemplates);
                 }
 
-                setShowRoutineGoalModal(false);
+                setShowHabitModal(false);
                 setConfirmConfig(null);
             },
             onCancel: () => setConfirmConfig(null)
@@ -491,14 +508,15 @@ export default function RoutinePane({
     if (effectiveDate) {
         displayedRoutineGoals = getScheduledGoalsForDateLocal(effectiveDate);
     } else {
-        displayedRoutineGoals = (habits || []).filter(g => g.task.toLowerCase().includes(searchQuery.toLowerCase()));
+        displayedRoutineGoals = (habits || []).filter(g => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
         if (habitFilterRoutineGoalId) {
             const routineGoal = routineGoals?.find(sg => sg.id === habitFilterRoutineGoalId);
             if (routineGoal) {
-                const txt = routineGoal.text.toLowerCase().trim();
+                const txt = (routineGoal.name || '').toLowerCase().trim();
                 displayedRoutineGoals = displayedRoutineGoals.filter(g => {
                     const rIds = Array.isArray(g.routineGoalIds) ? g.routineGoalIds : (g.routineGoalId ? [g.routineGoalId] : []);
-                    return rIds.includes(habitFilterRoutineGoalId) || (txt && g.task.toLowerCase().trim() === txt) || (txt && g.desc && g.desc.toLowerCase().trim() === txt);
+                    const gName = (g.name || '').toLowerCase().trim();
+                    return rIds.includes(habitFilterRoutineGoalId) || (txt && gName === txt) || (txt && g.desc && g.desc.toLowerCase().trim() === txt);
                 });
             }
         } else if (habitFilterLifeGoalId) {
@@ -508,7 +526,7 @@ export default function RoutinePane({
             });
         }
         if (sortByName) {
-            displayedRoutineGoals.sort((a: any, b: any) => a.task.localeCompare(b.task));
+            displayedRoutineGoals.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
         } else {
             displayedRoutineGoals.sort((a: any, b: any) => {
                 const addrA = checkRoutineAddressed(a);
@@ -542,7 +560,7 @@ export default function RoutinePane({
             const text = String(children).trim();
             if (text.startsWith('@')) {
                 const goalName = text.slice(1);
-                const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === goalName.toLowerCase());
+                const goal = allGoals.find(g => (g.name || '').toLowerCase() === goalName.toLowerCase());
                 if (goal && goal.color) {
                     return (<strong {...props} style={{
                         color: goal.color, background: `${goal.color}20`, padding: '0 4px', borderRadius: '4px'
@@ -607,7 +625,7 @@ export default function RoutinePane({
             {isCalendarTab && effectiveDate && (<button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
-                    setMilestoneForm({date: effectiveDate, tag: '', title: '', desc: '', done: false});
+                    setMilestoneForm({date: effectiveDate, tag: '', name: '', desc: '', done: false});
                     setShowMilestoneModal(true);
                 }}
                 className="secondary"
@@ -645,7 +663,7 @@ export default function RoutinePane({
                 {!effectiveDate && (<>
 
                     <button
-                        onClick={openAddRoutineGoal} className="secondary desktop-only-btn"
+                        onClick={openAddHabit} className="secondary desktop-only-btn"
                         style={{
                             width: '100%',
                             flexShrink: 0,
@@ -688,11 +706,13 @@ export default function RoutinePane({
 
                         const renderGoal = (goal: any) => {
                             const isAddressed = checkRoutineAddressed(goal);
-                            const hexes = getGoalColor(goal, routineGoals, lifeGoals);
+                            const hexes = getGoalColor(goal, routineGoals, lifeGoals, moneyGoals);
                             const hasColor = !!goal.color;
                             const bgStyle = getCardBgStyle(hexes, hasColor);
 
-                            const baseMins = goal.time ? parseDuration(goal.time) : 0;
+                            const baseMins = typeof goal.duration === 'number' && goal.duration > 0
+                                ? goal.duration
+                                : (goal.time ? parseDuration(goal.time) : 0);
                             let scheduledMins = 0;
                             if (currentTemplate) {
                                 currentTemplate.blocks.forEach((b: any) => {
@@ -715,7 +735,7 @@ export default function RoutinePane({
                                     padding: '8px 12px',
                                     touchAction: (!effectiveDate && !isRoutineDrawerOpen) ? 'none' : 'auto', ...bgStyle
                                 }}
-                                title={goal.desc ? `${goal.task}\n\n${goal.desc}` : goal.task}
+                                title={goal.desc ? `${goal.name}\n\n${goal.desc}` : goal.name}
                             >
                                 <div style={{
                                     display: 'flex',
@@ -758,7 +778,7 @@ export default function RoutinePane({
                               fontSize: '13px',
                               fontWeight: '600'
                           }}>
-                            {goal.task}
+                            {goal.name}
                           </span>
                                                 {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
                                                                                style={{
@@ -774,7 +794,7 @@ export default function RoutinePane({
                                                 alignItems: 'center',
                                                 overflow: 'hidden'
                                             }}>
-                                                {goal.time && (<div style={{
+                                                {(goal.time || goal.duration) && (<div style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     gap: '3px',
@@ -782,7 +802,7 @@ export default function RoutinePane({
                                                     fontSize: '11px',
                                                     whiteSpace: 'nowrap'
                                                 }}>
-                                                    <Clock size={10}/> {goal.time}
+                                                    <Clock size={10}/> {goal.time || (typeof goal.duration === 'number' ? `${goal.duration}m` : goal.duration)}
                                                 </div>)}
                                                 {(goalCounts[goal.id] || 0) > 1 && (<div style={{
                                                     display: 'flex',
@@ -822,12 +842,12 @@ export default function RoutinePane({
                                         {!effectiveDate && (<>
                                             <button className="icon-btn" onClick={(e) => {
                                                 e.stopPropagation();
-                                                duplicateGoal(goal);
+                                                duplicateHabit(goal);
                                             }} style={{padding: '6px', cursor: 'pointer'}}>
                                                 <Copy size={14}/>
                                             </button>
                                             <button className="icon-btn"
-                                                    onClick={() => openEditRoutineGoal(goal)}
+                                                    onClick={() => openEditHabit(goal)}
                                                     style={{padding: '6px', cursor: 'pointer'}}>
                                                 <Pencil size={14}/>
                                             </button>
@@ -915,7 +935,7 @@ export default function RoutinePane({
                         setMilestoneForm({
                             date: new Date().toISOString().split('T')[0],
                             tag: '',
-                            title: '',
+                            name: '',
                             desc: '',
                             done: false
                         });
@@ -972,7 +992,7 @@ export default function RoutinePane({
                             if (tagsMatch) {
                                 const uniqueTags = [...new Set(tagsMatch.map((t: any) => t.slice(1).toLowerCase()))];
                                 uniqueTags.forEach((tag: any) => {
-                                    const goal = allGoals.find(g => (g.task || g.text || '').toLowerCase() === tag);
+                                    const goal = allGoals.find(g => (g.name || '').toLowerCase() === tag);
                                     if (goal && goal.color) {
                                         multiColors.push(goal.color);
                                     }
@@ -1101,7 +1121,7 @@ export default function RoutinePane({
 
                     let allocatedCount = 0;
                     if (currentTemplate && currentTemplate.blocks) {
-                        allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.task)).length;
+                        allocatedCount = habits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
                     }
                     return (<>
                         <Activity size={14} color="var(--accent)"/>
@@ -1113,30 +1133,30 @@ export default function RoutinePane({
 
         {/* Habit Modal */}
         <BaseModal
-            isOpen={showRoutineGoalModal}
-            onClose={() => setShowRoutineGoalModal(false)}
+            isOpen={showHabitModal}
+            onClose={() => setShowHabitModal(false)}
             maxWidth="460px"
             title={<div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                     <div style={{background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px'}}>
                         <ListTodo size={20} color="var(--accent)"/>
                     </div>
-                    {editingRoutineGoalId ? `Edit Habit` : `New Habit`}
+                    {editingHabitId ? `Edit Habit` : `New Habit`}
                 </div>
                 <p style={{margin: 0, fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 'normal'}}>
                     Define your habit and connect it to the bigger picture.
                 </p>
             </div>}
         >
-            <form onSubmit={saveRoutineGoal} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <form onSubmit={saveHabit} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
 
                 <div>
                     <label style={{
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Habit Name</label>
                     <input name="auto_field_29"
-                        type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={routineGoalForm.task}
-                        onChange={(e) => setRoutineGoalForm({...routineGoalForm, task: e.target.value})} required
+                        type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
+                        onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
                         style={{width: '100%'}}
                     />
                 </div>
@@ -1145,8 +1165,8 @@ export default function RoutinePane({
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Details / Notes <span style={{opacity: 0.5}}>(optional)</span></label>
                     <textarea name="auto_field_30"
-                        placeholder="Add any specific criteria for success..." value={routineGoalForm.desc}
-                        onChange={(e) => setRoutineGoalForm({...routineGoalForm, desc: e.target.value})}
+                        placeholder="Add any specific criteria for success..." value={habitForm.desc}
+                        onChange={(e) => setHabitForm({...habitForm, desc: e.target.value})}
                         style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
                     />
                 </div>
@@ -1157,8 +1177,8 @@ export default function RoutinePane({
                             fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                         }}>Duration</label>
                         <input name="auto_field_31"
-                            type="text" placeholder="1:20" value={String(routineGoalForm.timeValue)}
-                            onChange={(e) => setRoutineGoalForm({...routineGoalForm, timeValue: e.target.value})}
+                            type="text" placeholder="1:20" value={String(habitForm.timeValue)}
+                            onChange={(e) => setHabitForm({...habitForm, timeValue: e.target.value})}
                             style={{width: '100%'}}
                         />
                     </div>
@@ -1171,13 +1191,13 @@ export default function RoutinePane({
                         </label>
                         <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
                             <div
-                                onClick={() => setRoutineGoalForm({...routineGoalForm, color: ''})}
+                                onClick={() => setHabitForm({...habitForm, color: ''})}
                                 style={{
                                     width: '24px',
                                     height: '24px',
                                     borderRadius: '50%',
                                     cursor: 'pointer',
-                                    border: (!routineGoalForm.color || routineGoalForm.color === '') ? '2px solid white' : '2px solid transparent',
+                                    border: (!habitForm.color || habitForm.color === '') ? '2px solid white' : '2px solid transparent',
                                     background: 'var(--panel-bg)',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -1185,18 +1205,18 @@ export default function RoutinePane({
                                     fontSize: '9px',
                                     color: 'var(--text-secondary)',
                                     transition: 'transform 0.1s',
-                                    transform: (!routineGoalForm.color || routineGoalForm.color === '') ? 'scale(1.1)' : 'scale(1)'
+                                    transform: (!habitForm.color || habitForm.color === '') ? 'scale(1.1)' : 'scale(1)'
                                 }}
                                 title="Auto (inherit from links)"
                             >
                                 Auto
                             </div>
                             {COLORS.slice(0, 7).map(c => {
-                                const isSelected = routineGoalForm.color && routineGoalForm.color.toLowerCase() === c.toLowerCase();
+                                const isSelected = habitForm.color && habitForm.color.toLowerCase() === c.toLowerCase();
                                 return (<button
                                     key={c}
                                     type="button"
-                                    onClick={() => setRoutineGoalForm({...routineGoalForm, color: c})}
+                                    onClick={() => setHabitForm({...habitForm, color: c})}
                                     style={{
                                         width: '24px',
                                         height: '24px',
@@ -1216,23 +1236,23 @@ export default function RoutinePane({
                                 width: '24px',
                                 height: '24px',
                                 borderRadius: '50%',
-                                background: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? routineGoalForm.color : 'rgba(255, 255, 255, 0.1)',
-                                border: `2px solid ${(routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? '#fff' : 'transparent'}`,
+                                background: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? habitForm.color : 'rgba(255, 255, 255, 0.1)',
+                                border: `2px solid ${(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'transparent'}`,
                                 cursor: 'pointer',
                                 transition: 'all 0.1s',
-                                transform: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? 'scale(1.1)' : 'scale(1)',
+                                transform: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? 'scale(1.1)' : 'scale(1)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                color: (routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) ? '#fff' : 'var(--text-secondary)'
+                                color: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'var(--text-secondary)'
                             }}>
-                                {!(routineGoalForm.color && !COLORS.some(c => c.toLowerCase() === routineGoalForm.color.toLowerCase())) &&
+                                {!(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) &&
                                     <Palette size={12}/>}
                                 <input name="auto_field_32"
                                     type="color"
-                                    value={routineGoalForm.color ? routineGoalForm.color.toLowerCase() : '#ffffff'}
-                                    onChange={(e) => setRoutineGoalForm({
-                                        ...routineGoalForm, color: e.target.value
+                                    value={habitForm.color ? habitForm.color.toLowerCase() : '#ffffff'}
+                                    onChange={(e) => setHabitForm({
+                                        ...habitForm, color: e.target.value
                                     })}
                                     style={{
                                         position: 'absolute',
@@ -1262,14 +1282,14 @@ export default function RoutinePane({
                             fontSize: '12px', color: 'var(--text-secondary)'
                         }}>No routine goals available</span>}
                         {(routineGoals || []).map(sg => {
-                            const isSelected = (routineGoalForm.routineGoalIds || []).includes(sg.id);
+                            const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
                             const hex = sg.color || '#3b82f6';
                             return (<div
                                 key={sg.id}
                                 onClick={() => {
-                                    const current = routineGoalForm.routineGoalIds || [];
+                                    const current = habitForm.routineGoalIds || [];
                                     const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
-                                    setRoutineGoalForm({...routineGoalForm, routineGoalIds: next});
+                                    setHabitForm({...habitForm, routineGoalIds: next});
                                 }}
                                 style={{
                                     padding: '6px 12px',
@@ -1283,7 +1303,7 @@ export default function RoutinePane({
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                {sg.text}
+                                {sg.name}
                             </div>);
                         })}
                     </div>
@@ -1301,14 +1321,14 @@ export default function RoutinePane({
                             fontSize: '12px', color: 'var(--text-secondary)'
                         }}>No life goals available</span>}
                         {(lifeGoals || []).map(lg => {
-                            const isSelected = (routineGoalForm.lifeGoalIds || []).includes(lg.id);
+                            const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
                             const hex = lg.color || '#eab308';
                             return (<div
                                 key={lg.id}
                                 onClick={() => {
-                                    const current = routineGoalForm.lifeGoalIds || [];
+                                    const current = habitForm.lifeGoalIds || [];
                                     const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
-                                    setRoutineGoalForm({...routineGoalForm, lifeGoalIds: next});
+                                    setHabitForm({...habitForm, lifeGoalIds: next});
                                 }}
                                 style={{
                                     padding: '6px 12px',
@@ -1322,15 +1342,27 @@ export default function RoutinePane({
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                {lg.text}
+                                {lg.name}
                             </div>);
                         })}
                     </div>
                 </div>
 
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px'}}>
+                    <input 
+                        type="checkbox" 
+                        id="habit-public"
+                        checked={!!habitForm.isPublic}
+                        onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
+                        className="checkbox-square"
+                    />
+                    <label htmlFor="habit-public" style={{color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer'}}>
+                        <Globe size={14} /> Make Public (visible in Public View)
+                    </label>
+                </div>
                 <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
-                    {editingRoutineGoalId && (<button type="button"
-                                                      onClick={() => confirmDeleteGoal(editingRoutineGoalId, routineGoalForm.task)}
+                    {editingHabitId && (<button type="button"
+                                                      onClick={() => confirmDeleteHabit(editingHabitId, habitForm.name)}
                                                       style={{
                                                           flex: '0 0 20%',
                                                           background: '#ef4444',
@@ -1340,9 +1372,9 @@ export default function RoutinePane({
                                                           borderRadius: '6px',
                                                           fontWeight: '500'
                                                       }}>Delete</button>)}
-                    <button type="button" onClick={() => setShowRoutineGoalModal(false)} className="secondary"
+                    <button type="button" onClick={() => setShowHabitModal(false)} className="secondary"
                             style={{
-                                flex: editingRoutineGoalId ? '0 0 25%' : '0 0 30%',
+                                flex: editingHabitId ? '0 0 25%' : '0 0 30%',
                                 padding: '10px 0',
                                 borderRadius: '6px',
                                 fontWeight: '500'
@@ -1350,7 +1382,7 @@ export default function RoutinePane({
                     </button>
                     <button type="submit" className="primary" style={{
                         flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold'
-                    }}>{editingRoutineGoalId ? 'Update' : 'Save'}</button>
+                    }}>{editingHabitId ? 'Update' : 'Save'}</button>
                 </div>
             </form>
         </BaseModal>
@@ -1426,7 +1458,7 @@ export default function RoutinePane({
                                 options={[{
                                     value: '', label: 'No Tag'
                                 }, ...allGoals.map(g => ({
-                                    value: g.task || g.text, label: `[${g.type}] ${g.task || g.text}`
+                                    value: g.name, label: `[${g.type}] ${g.name}`
                                 }))]}
                             />
                         </div>
@@ -1455,16 +1487,16 @@ export default function RoutinePane({
                             marginBottom: '8px',
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
-                        }}>Milestone Title</label>
+                        }}>Milestone Name</label>
                         <input name="auto_field_34"
-                            type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.title}
-                            ref={el => modalInputRefs.current['title'] = el}
-                            onChange={(e) => handleModalInput(e, 'title')}
-                            onKeyDown={(e) => handleModalKeyDown(e, 'title')} required
+                            type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.name}
+                            ref={el => modalInputRefs.current['name'] = el}
+                            onChange={(e) => handleModalInput(e, 'name')}
+                            onKeyDown={(e) => handleModalKeyDown(e, 'name')} required
                             style={{width: '100%', fontSize: '16px', padding: '12px 14px'}}
                         />
 
-                        {showMentionMenu && activeModalField === 'title' && filteredGoals.length > 0 && (<div
+                        {showMentionMenu && activeModalField === 'name' && filteredGoals.length > 0 && (<div
                             style={{
                                 position: 'absolute',
                                 top: mentionCoords.top + 'px',
@@ -1483,7 +1515,7 @@ export default function RoutinePane({
                                 key={g.id}
                                 onMouseDown={(e) => {
                                     e.preventDefault();
-                                    insertModalMention(g, 'title');
+                                    insertModalMention(g, 'name');
                                 }}
                                 onMouseEnter={() => setMentionIndex(i)}
                                 style={{
@@ -1495,7 +1527,7 @@ export default function RoutinePane({
                                 }}
                             >
                     <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
-                      {g.task || g.text}
+                      {g.name}
                     </span>
                                 <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
                       {g.type}
@@ -1560,7 +1592,7 @@ export default function RoutinePane({
                                 }}
                             >
                     <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
-                      {g.task || g.text}
+                      {g.name}
                     </span>
                                 <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
                       {g.type}

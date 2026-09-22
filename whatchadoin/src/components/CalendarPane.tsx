@@ -14,14 +14,14 @@ interface Routine {
 
 interface Goal {
     id?: string;
-    task?: string;
-    text?: string;
+    name?: string;
     color?: string;
 
     [key: string]: any;
 }
 
 interface CalendarPaneProps {
+    isPublicView?: boolean;
     activeRoutine: Routine;
     routineGoals: Goal[];
     lifeGoals: Goal[];
@@ -234,7 +234,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             }
                             tags = [...new Set(tags)];
                             const tagColors = tags.map(tag => {
-                                const goal = routineGoals?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase()) || habits?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase()) || lifeGoals?.find((g: Goal) => (g.task || g.text || '').toLowerCase() === tag?.toLowerCase());
+                                const goal = routineGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) || habits?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) || lifeGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase());
                                 return goal?.color || '#fff';
                             });
 

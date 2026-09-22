@@ -1,18 +1,24 @@
+import { sanitizeRoutine } from '../utils';
+
 export const loadRoutines = () => {
   const saved = localStorage.getItem('whatchadoin_routines');
   
   if (saved) {
-    const parsed = JSON.parse(saved);
-    
-    const validRoutineIds = new Set(parsed.map((v: any) => v.id));
+    const rawParsed = JSON.parse(saved);
+    const parsed = Array.isArray(rawParsed) ? rawParsed.map(sanitizeRoutine) : rawParsed;
+    const validRoutineIds = new Set(parsed.map((r: any) => r.id));
     const keysToRemove = [];
     let keysRemoved = false;
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && (key.startsWith('whatchadoin_plans_') || key.startsWith('whatchadoin_plans_folders_'))) {
+        // Skip life plans keys
+        if (key === 'whatchadoin_life_plans' || key === 'whatchadoin_life_plans_folders') continue;
+        
         const isFolder = key.startsWith('whatchadoin_plans_folders_');
-        const vId = key.replace(isFolder ? 'whatchadoin_plans_folders_' : 'whatchadoin_plans_', '');
-        if (!validRoutineIds.has(vId)) {
+        const routineId = key.replace(isFolder ? 'whatchadoin_plans_folders_' : 'whatchadoin_plans_', '');
+        if (!validRoutineIds.has(routineId)) {
           keysToRemove.push(key);
           keysRemoved = true;
         }
@@ -27,7 +33,7 @@ export const loadRoutines = () => {
   }
   
   return [{
-    id: 'v1',
+    id: 'routine-1',
     name: 'Routine 1',
     desc: 'Default Routine',
     start: '',
@@ -41,7 +47,13 @@ export const loadRoutines = () => {
 };
 
 export const loadActiveRoutineId = () => {
-  const saved = localStorage.getItem('whatchadoin_activeRoutineId');
-  if (saved) return saved;
-  return 'v1';
+  const saved = localStorage.getItem('whatchadoin_active_routine_id') || localStorage.getItem('whatchadoin_activeRoutineId');
+  if (saved) {
+    if (localStorage.getItem('whatchadoin_activeRoutineId')) {
+      localStorage.setItem('whatchadoin_active_routine_id', saved);
+      localStorage.removeItem('whatchadoin_activeRoutineId');
+    }
+    return saved;
+  }
+  return 'routine-1';
 };
