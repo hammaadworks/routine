@@ -18,7 +18,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
     return sanitizeEntities<QuickTask>(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
   });
   const [newQuickTask, setNewQuickTask] = useState('');
-  const [newTaskPublic, setNewTaskPublic] = useState(false);
+  const [newTaskPublic, setNewTaskPublic] = useState(true);
   const [confirmConfig, setConfirmConfig] = useState<any>(null);
 
   const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(quickTasks, setQuickTasks as any);
@@ -179,17 +179,20 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
           )}
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px' }}>
-            <input 
-                type="checkbox" 
-                id="new-task-public"
-                checked={newTaskPublic}
-                onChange={(e) => setNewTaskPublic(e.target.checked)}
-                className="checkbox-square"
-            />
-            <label htmlFor="new-task-public" style={{color: 'var(--text-secondary)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer'}}>
-                <Globe size={12} /> Make Public (visible in Public View)
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '4px', cursor: 'pointer' }} onClick={() => setNewTaskPublic(!newTaskPublic)}>
+            <span style={{ fontSize: '12px', color: !newTaskPublic ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: !newTaskPublic ? 600 : 400, opacity: !newTaskPublic ? 1 : 0.6 }}>Private</span>
+            <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                <input 
+                    type="checkbox" 
+                    id="new-task-public"
+                    checked={newTaskPublic}
+                    onChange={(e) => setNewTaskPublic(e.target.checked)}
+                />
+                <span className="ios-slider"></span>
             </label>
+            <span style={{ fontSize: '12px', color: newTaskPublic ? 'var(--success)' : 'var(--text-secondary)', fontWeight: newTaskPublic ? 600 : 400, display: 'flex', alignItems: 'center', gap: '4px', opacity: newTaskPublic ? 1 : 0.6 }}>
+                <Globe size={12} /> Public (Visible to others)
+            </span>
         </div>
 
         {quickTasks.length > 0 ? (

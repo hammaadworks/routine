@@ -79,7 +79,7 @@ export default function MoneyPane({
         setEditingMoneyGoalId(null);
         setEditingGoalType('money');
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setMoneyGoalForm({name: '', isPublic: false, color: randomColor, cost: '', desc: ''});
+        setMoneyGoalForm({name: '', isPublic: true, color: randomColor, cost: '', desc: ''});
         setShowMoneyGoalModal(true);
     };
 

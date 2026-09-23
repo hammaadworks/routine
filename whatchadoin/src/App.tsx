@@ -3,8 +3,8 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {createTimeline, utils} from 'animejs';
 import RoutineGoalPane from './components/RoutineGoalPane';
 import MyDay from './components/MyDay';
-import PlansPane from './components/PlansPane';
-import CoinsPane from './components/CoinsPane';
+const PlansPane = React.lazy(() => import('./components/PlansPane'));
+const CoinsPane = React.lazy(() => import('./components/CoinsPane'));
 import CalendarPane from './components/CalendarPane';
 import TasksPane from './components/TasksPane';
 import ConfirmModal from './components/ConfirmModal';
@@ -12,7 +12,7 @@ import {saveSyncConfig} from './sync';
 import {BookOpen, Calendar, TrendingUp, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
 import './index.css';
 import LifePane from './components/LifePane';
-import HabitsPane from './components/HabitsPane';
+const HabitsPane = React.lazy(() => import('./components/HabitsPane'));
 import MoneyPane from './components/MoneyPane';
 import AIAgentApp from './components/AIAgentApp';
 import MobileTabBar from './components/MobileTabBar';
@@ -523,7 +523,7 @@ export default function App() {
             />
 
             <main className={`main-content mobile-tab-${mobileTab}`}>
-                <div className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
+                <aside className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
                      style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
                     <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)}
                          style={{
@@ -604,12 +604,12 @@ export default function App() {
                             />;
                         })()}
                     </div>
-                </div>
+                </aside>
 
                 <div className={`timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
                     display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0
                 }}>
-                    <div className="tabs" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{
+                    <div className="tabs hide-on-mobile" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{
                         cursor: 'pointer',
                         marginBottom: '0',
                         borderBottom: '1px solid var(--panel-border)',
@@ -689,14 +689,14 @@ export default function App() {
                             habits={habits}
                             routineGoals={routineGoals}
                             lifeGoals={lifeGoals}
-                        />) : activeCenterTab === 'plans' ? (<PlansPane isPublicView={isPublicView}
+                        />) : activeCenterTab === 'plans' ? (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Plans...</div>}><PlansPane isPublicView={isPublicView}
                             key={activeRoutineId}
                             routineGoals={routineGoals}
                             habits={habits}
                             lifeGoals={lifeGoals}
                             moneyGoals={moneyGoals}
                             activeRoutineId={activeRoutineId}
-                        />) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<CoinsPane walletTotal={walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} />) : (<CalendarPane isPublicView={isPublicView}
+                        /></React.Suspense>) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<React.Suspense fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane walletTotal={walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} /></React.Suspense>) : (<CalendarPane isPublicView={isPublicView}
                             activeRoutine={activeRoutine}
                             setCalendarSubTab={setCalendarSubTab}
                             routineGoals={routineGoals}
@@ -713,7 +713,8 @@ export default function App() {
                         className="mobile-drawer-overlay"
                         onClick={() => setIsRoutineDrawerOpen(false)}
                     />)}
-                <HabitsPane isPublicView={isPublicView}
+                <React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Habits...</div>}>
+                    <HabitsPane isPublicView={isPublicView}
                     habits={habits} setHabits={setHabits as any}
                     templates={templates} setTemplates={setTemplates as any}
                     routineGoals={routineGoals} lifeGoals={lifeGoals}
@@ -735,6 +736,7 @@ export default function App() {
                     isRoutineDrawerOpen={isRoutineDrawerOpen}
                     setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                 />
+                </React.Suspense>
             </main>
 
 

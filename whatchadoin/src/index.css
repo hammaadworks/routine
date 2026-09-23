@@ -33,6 +33,7 @@
 html, body {
     overflow-x: hidden;
     max-width: 100vw;
+    touch-action: manipulation;
 }
 
 #root {
@@ -70,18 +71,30 @@ body {
 
 @keyframes pulseGlow {
     0% {
-        box-shadow: 0 0 5px var(--accent);
+        opacity: 0.3;
     }
     50% {
-        box-shadow: 0 0 15px var(--accent), 0 0 20px var(--accent) inset;
+        opacity: 1;
     }
     100% {
-        box-shadow: 0 0 5px var(--accent);
+        opacity: 0.3;
     }
 }
 
 .sort-active-glow {
+    position: relative;
+}
+
+.sort-active-glow::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 15px var(--accent), 0 0 20px var(--accent) inset;
+    opacity: 0;
+    will-change: opacity;
     animation: pulseGlow 2s infinite ease-in-out;
+    pointer-events: none;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -127,6 +140,9 @@ body {
 }
 
 @media (max-width: 1400px) {
+    .hide-on-mobile {
+        display: none !important;
+    }
     .layout {
         height: auto !important;
         min-height: 100vh;
@@ -223,12 +239,7 @@ body {
 }
 
 
-@media (max-width: 768px) {
-    .layout {
-        gap: 8px;
-        padding: 8px 8px env(safe-area-inset-bottom, 20px) 8px;
-    }
-
+@media (max-width: 900px) {
     .header {
         flex-direction: row !important;
         flex-wrap: wrap !important;
@@ -254,13 +265,17 @@ body {
         gap: 8px;
         justify-content: space-between !important;
     }
+}
 
+@media (max-width: 768px) {
+    .layout {
+        gap: 8px;
+        padding: 8px 8px env(safe-area-inset-bottom, 20px) 8px;
+    }
 
     .mobile-hidden {
         display: none !important;
     }
-
-
 }
 
 
@@ -277,6 +292,8 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
+    contain: content;
     box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
 }
 
@@ -354,6 +371,7 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    contain: content;
 }
 
 .panel h2 {
@@ -430,6 +448,64 @@ input, select, textarea {
         transform: rotate(45deg) scale(1);
         opacity: 1;
     }
+}
+
+/* iOS Style Switch */
+.ios-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.ios-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.ios-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: .3s;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+}
+
+.ios-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    border-radius: 50%;
+}
+
+.ios-switch input:checked + .ios-slider {
+    background-color: rgba(127, 168, 122, 0.15);
+    border-color: var(--success);
+}
+
+.ios-switch input:checked + .ios-slider:before {
+    background-color: var(--success);
+    transform: translateX(20px);
+}
+
+.ios-switch input:not(:checked) + .ios-slider {
+    background-color: rgba(193, 102, 90, 0.15);
+    border-color: var(--danger);
+}
+
+.ios-switch input:not(:checked) + .ios-slider:before {
+    background-color: var(--danger);
+    transform: translateX(0px);
 }
 
 input:focus, select:focus, textarea:focus {
@@ -726,7 +802,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .modal-close-btn {
     background: transparent;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     cursor: pointer;
     padding: 8px;
     border-radius: 8px;
@@ -762,7 +838,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     padding: 12px;
     font-size: 15px;
     border-radius: 0;
@@ -901,7 +977,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 
     .mobile-tab-bar .tab-btn.active span {
-        color: var(--accent);
+        color: #fff;
     }
 
 

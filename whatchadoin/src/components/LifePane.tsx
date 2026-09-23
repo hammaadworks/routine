@@ -72,7 +72,7 @@ export default function LifePane({
     const openAddLifeGoal = () => {
         setEditingLifeGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setLifeGoalForm({name: '', isPublic: false, color: randomColor, desc: '', cost: ''});
+        setLifeGoalForm({name: '', isPublic: true, color: randomColor, desc: '', cost: ''});
         setShowLifeGoalModal(true);
     };
 

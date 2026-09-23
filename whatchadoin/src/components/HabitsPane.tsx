@@ -322,7 +322,7 @@ export default function HabitsPane({
 
     const openAddHabit = () => {
         setEditingHabitId(null);
-        setHabitForm({name: '', isPublic: false, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''});
+        setHabitForm({name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''});
         setShowHabitModal(true);
     };
 
@@ -593,7 +593,7 @@ export default function HabitsPane({
         }
     }), [allGoals]);
 
-    return (<div
+    return (<aside
         className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
         style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
         <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{
@@ -1360,17 +1360,20 @@ export default function HabitsPane({
                     </div>
                 </div>
 
-                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px'}}>
-                    <input 
-                        type="checkbox" 
-                        id="habit-public"
-                        checked={!!habitForm.isPublic}
-                        onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
-                        className="checkbox-square"
-                    />
-                    <label htmlFor="habit-public" style={{color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer'}}>
-                        <Globe size={14} /> Make Public (visible in Public View)
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer' }} onClick={() => setHabitForm({...habitForm, isPublic: !habitForm.isPublic})}>
+                    <span style={{ fontSize: '13px', color: !habitForm.isPublic ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: !habitForm.isPublic ? 600 : 400, opacity: !habitForm.isPublic ? 1 : 0.6 }}>Private</span>
+                    <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                            type="checkbox" 
+                            id="habit-public"
+                            checked={!!habitForm.isPublic}
+                            onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
+                        />
+                        <span className="ios-slider"></span>
                     </label>
+                    <span style={{ fontSize: '13px', color: habitForm.isPublic ? 'var(--success)' : 'var(--text-secondary)', fontWeight: habitForm.isPublic ? 600 : 400, display: 'flex', alignItems: 'center', gap: '4px', opacity: habitForm.isPublic ? 1 : 0.6 }}>
+                        <Globe size={13} /> Public (Visible to others)
+                    </span>
                 </div>
                 <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
                     {editingHabitId && (<button type="button"
@@ -1642,5 +1645,5 @@ export default function HabitsPane({
             onConfirm={confirmConfig.onConfirm}
             onCancel={confirmConfig.onCancel}
         />)}
-    </div>);
+    </aside>);
 }

@@ -1,4 +1,4 @@
-import {BookOpen, CalendarDays, ListTodo, LucideRepeat, Plus, Target, Zap, Coins} from 'lucide-react';
+import {BookOpen, Calendar, ListTodo, LucideRepeat, Plus, Star, Clock, TrendingUp} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
@@ -17,11 +17,14 @@ export default function MobileTabBar({
                                          setIsRoutineDrawerOpen,
                                          activeLeftTab
                                      }: MobileTabBarProps) {
-    const tabs = [{id: 'tasks', icon: ListTodo, label: 'Tasks'}, {
-        id: 'goals', icon: Target, label: 'Goals'
-    }, {id: 'myday', icon: Zap, label: 'MyDay', default: true}, {
-        id: 'calendar', icon: CalendarDays, label: 'Calendar'
-    }, {id: 'plans', icon: BookOpen, label: 'Plans'}, {id: 'coins', icon: Coins, label: 'Coins'}];
+    const tabs = [
+        {id: 'goals', icon: Star, label: 'Goals'},
+        {id: 'tasks', icon: ListTodo, label: 'Tasks'},
+        {id: 'myday', icon: Clock, label: 'MyDay', default: true},
+        {id: 'calendar', icon: Calendar, label: 'Calendar'},
+        {id: 'coins', icon: TrendingUp, label: 'Coins'},
+        {id: 'plans', icon: BookOpen, label: 'Plans'}
+    ];
 
     const handleFabClick = () => {
         if (isRoutineDrawerOpen) {
@@ -70,12 +73,14 @@ export default function MobileTabBar({
         {showFab && (<>
             {!isRoutineDrawerOpen && (<button
                 className="habits-drawer-btn"
+                aria-label="Toggle Habits Drawer"
                 onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(!isRoutineDrawerOpen)}
             >
                 <LucideRepeat size={20} color="#000"/>
             </button>)}
             <button
                 className="tab-btn-fab"
+                aria-label="Add New Item"
                 onClick={handleFabClick}
             >
                 <Plus className="fab-icon"/>

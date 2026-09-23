@@ -149,17 +149,20 @@ export default function GoalForm({
                 </div>
             </div>
 
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px'}}>
-                <input 
-                    type="checkbox" 
-                    id="goal-public"
-                    checked={!!formData.isPublic}
-                    onChange={(e) => setFormData({...formData, isPublic: e.target.checked})}
-                    className="checkbox-square"
-                />
-                <label htmlFor="goal-public" style={{color: 'var(--text-secondary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer'}}>
-                    <Globe size={14} /> Make Public (visible in Public View)
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer' }} onClick={() => setFormData({...formData, isPublic: !formData.isPublic})}>
+                <span style={{ fontSize: '13px', color: !formData.isPublic ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: !formData.isPublic ? 600 : 400, opacity: !formData.isPublic ? 1 : 0.6 }}>Private</span>
+                <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                    <input 
+                        type="checkbox" 
+                        id="goal-public"
+                        checked={!!formData.isPublic}
+                        onChange={(e) => setFormData({...formData, isPublic: e.target.checked})}
+                    />
+                    <span className="ios-slider"></span>
                 </label>
+                <span style={{ fontSize: '13px', color: formData.isPublic ? 'var(--success)' : 'var(--text-secondary)', fontWeight: formData.isPublic ? 600 : 400, display: 'flex', alignItems: 'center', gap: '4px', opacity: formData.isPublic ? 1 : 0.6 }}>
+                    <Globe size={13} /> Public (Visible to others)
+                </span>
             </div>
             <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
                 {isEditing && onDelete && (

@@ -50,7 +50,7 @@ export default function Header({
             gap: '12px'
         }}>
             {/* Left: Brand */}
-            <h1 style={{
+            <h1 className="header-logo" style={{
                 margin: 0,
                 display: 'flex',
                 alignItems: 'center',
@@ -71,12 +71,9 @@ export default function Header({
                 }}>
                     <Command size={18}/>
                 </div>
-                <span style={{
+                <span className="mobile-hidden" style={{
                     fontSize: '20px',
-                    fontWeight: 'bold',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    fontWeight: 'bold'
                 }}>whatchadoin</span>
             </h1>
 

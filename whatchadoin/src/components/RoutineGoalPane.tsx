@@ -98,7 +98,7 @@ export default function RoutineGoalPane({
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#1982C4';
-        setRoutineGoalForm({name: '', isPublic: false, color: randomColor, desc: '', cost: ''});
+        setRoutineGoalForm({name: '', isPublic: true, color: randomColor, desc: '', cost: ''});
         setShowRoutineGoalModal(true);
     };
 
