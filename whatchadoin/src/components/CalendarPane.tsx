@@ -253,7 +253,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                 return goal ? (goal.color || '#fff') : null;
                             }).filter(Boolean) as string[];
 
-                            if (!isPublicView && hasMilestone && tagColors.length === 0) {
+                            if (hasMilestone && tagColors.length === 0 && (!isPublicView || dayMilestonesText.toLowerCase().includes('[public]'))) {
                                 tagColors.push('#fff');
                             }
 

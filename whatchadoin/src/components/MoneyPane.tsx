@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {DollarSign, Plus, Wallet} from 'lucide-react';
+import {ArrowRight, DollarSign, Plus, TrendingUp, Wallet} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
@@ -30,6 +30,7 @@ interface MoneyPaneProps {
     allWalletGoals?: any[];
     setLifeGoals?: React.Dispatch<React.SetStateAction<any[]>>;
     setRoutineGoals?: React.Dispatch<React.SetStateAction<any[]>>;
+    onNavigateToCoins?: () => void;
 }
 
 interface ConfirmConfig {
@@ -47,7 +48,8 @@ export default function MoneyPane({
                                       headerTabs,
                                       allWalletGoals,
                                       setLifeGoals,
-                                      setRoutineGoals
+                                      setRoutineGoals,
+                                      onNavigateToCoins
                                   }: MoneyPaneProps) {
     const [showMoneyGoalModal, setShowMoneyGoalModal] = useState(false);
     const [editingMoneyGoalId, setEditingMoneyGoalId] = useState<string | null>(null);
@@ -354,8 +356,8 @@ export default function MoneyPane({
                 padding: '0 16px',
                 minHeight: '44px',
                 display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: '8px'
             }}>
                 <div style={{
@@ -380,6 +382,29 @@ export default function MoneyPane({
                         </>);
                     })()}
                 </div>
+                {onNavigateToCoins && (
+                    <button
+                        onClick={onNavigateToCoins}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--accent)',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 0',
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap'
+                        }}
+                        title="Go to Coins Ledger"
+                    >
+                        <TrendingUp size={13}/>
+                        <span>Coins Ledger</span>
+                        <ArrowRight size={13}/>
+                    </button>
+                )}
             </div>
 
             {confirmConfig && (<ConfirmModal

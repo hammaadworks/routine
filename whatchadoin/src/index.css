@@ -639,20 +639,22 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 
 .day-btn {
-    width: 28px;
-    height: 28px;
+    width: 38px;
+    height: 38px;
+    aspect-ratio: 1 / 1;
     border-radius: 50%;
     border: 1px solid var(--panel-border);
     background: rgba(0, 0, 0, 0.4);
     color: var(--text-secondary);
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     cursor: pointer;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .day-btn.active {
@@ -1011,9 +1013,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     flex-shrink: 0 !important;
 }
 
-/* Responsive FAB */
+/* Responsive FAB (Hidden on desktop/PC, visible only on mobile <= 1400px) */
 .tab-btn-fab {
-    display: none;
+    display: none !important;
 }
 
 @media (max-width: 1400px) {
@@ -1029,7 +1031,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         color: #000;
         border: none;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-        display: flex;
+        display: flex !important;
         justify-content: center;
         align-items: center;
         cursor: pointer;
@@ -1052,7 +1054,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 }
 
 .habits-drawer-btn {
-    display: none;
+    display: none !important;
 }
 
 @media (max-width: 1400px) {
@@ -1067,7 +1069,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         background: #ffffff;
         border: none;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
-        display: flex;
+        display: flex !important;
         justify-content: center;
         align-items: center;
         cursor: pointer;
@@ -1287,25 +1289,38 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .main-content.mobile-tab-calendar .myday-area {
-        flex: 1 1 50% !important;
-        height: 50% !important;
+        flex: 1 1 35% !important;
+        height: 35% !important;
         min-height: 0 !important;
         margin-bottom: 0 !important;
     }
 
     .main-content.mobile-tab-calendar .right-pane {
         position: static !important;
+        transform: none !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
         width: 100% !important;
         max-width: none !important;
-        height: 50% !important;
-        flex: 1 1 50% !important;
+        height: 65% !important;
+        flex: 1 1 65% !important;
         min-height: 0 !important;
         box-shadow: none !important;
         border-left: none !important;
         border-top: 1px solid var(--panel-border) !important;
         border-radius: 16px !important;
         display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
         z-index: 1 !important;
+    }
+
+    .main-content.mobile-tab-calendar .right-pane .accordion-icon {
+        display: none !important;
+    }
+
+    .main-content.mobile-tab-calendar .right-pane .panel-header {
+        cursor: default !important;
     }
 }
 
@@ -1358,7 +1373,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .main-content.mobile-tab-calendar .calendar-scroll-container,
-    .main-content.mobile-tab-calendar .routine-pane-content > div:nth-child(3) {
+    .main-content.mobile-tab-calendar .routine-pane-content > div:nth-child(3),
+    .main-content.mobile-tab-calendar .routine-pane-content > div:not(.tabs) {
         height: auto !important;
         min-height: 0 !important;
         flex: 1 !important;

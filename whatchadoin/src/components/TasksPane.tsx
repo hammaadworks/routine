@@ -20,6 +20,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
   const [newQuickTask, setNewQuickTask] = useState('');
   const [newTaskPublic, setNewTaskPublic] = useState(true);
   const [confirmConfig, setConfirmConfig] = useState<any>(null);
+  const taskInputRef = React.useRef<HTMLInputElement>(null);
 
   const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(quickTasks, setQuickTasks as any);
 
@@ -37,6 +38,17 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
     };
     window.addEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
     return () => window.removeEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    const handleFabAddTask = () => {
+      taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => {
+        taskInputRef.current?.focus();
+      }, 50);
+    };
+    window.addEventListener('fab:add-task', handleFabAddTask);
+    return () => window.removeEventListener('fab:add-task', handleFabAddTask);
   }, []);
 
   const activeTasks = quickTasks.filter(t => !t.completed && (!isPublicView || t.isPublic || (t.name || '').includes('[public]')));
@@ -137,6 +149,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
       <div className="tasks-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '100%', width: '100%', margin: '0 auto', minWidth: 0 }}>
         <div style={{ position: 'relative', width: '100%', minWidth: 0 }}>
           <input name="auto_field_41" 
+            ref={taskInputRef}
             type="text"
             placeholder="+ Add a new task..."
             value={newQuickTask}

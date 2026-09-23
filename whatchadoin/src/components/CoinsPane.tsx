@@ -4,7 +4,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, ReferenceLine, ComposedChart
 } from "recharts";
-import { Plus, Trash2, Pencil, X, TrendingUp, Wallet, Calendar, Award, Lightbulb, Download, Upload, Target, Calculator, Filter, ChevronDown, ArrowRight } from "lucide-react";
+import { Plus, Trash2, Pencil, X, TrendingUp, Wallet, Calendar, Award, Lightbulb, Download, Upload, Target, Calculator, Filter, ChevronDown, ArrowRight, Lock, Eye, EyeOff } from "lucide-react";
 import { useCurrency } from "../hooks/useCurrency";
 
 
@@ -62,7 +62,7 @@ function buildFullTimeline() {
 }
 const FULL_TIMELINE = buildFullTimeline();
 
-export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { walletTotal?: number, onNavigateToMoneyGoals?: () => void, }) {
+export default function CoinsPane({ isPublicView, walletTotal, onNavigateToMoneyGoals }: { isPublicView?: boolean, walletTotal?: number, onNavigateToMoneyGoals?: () => void, }) {
 
   const { formatCurrency, currency } = useCurrency();
   const currencySymbol = (() => { try { return (0).toLocaleString(undefined, {style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0}).replace(/\d/g, '').trim(); } catch { return currency; } })();
@@ -89,8 +89,13 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
       setMode("single");
       setDraft(emptyDraft() as any);
       setEditingId(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setTimeout(() => document.getElementById("entry-amount-input")?.focus(), 50);
+      const inputEl = document.getElementById("entry-amount-input");
+      if (inputEl) {
+        inputEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => inputEl.focus(), 100);
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     };
     window.addEventListener("storage", handleStorage);
     window.addEventListener("whatchadoin_coins_updated", handleCoinsUpdated);
@@ -102,7 +107,12 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     };
   }, []);
   const [coinsEntries, setEntries] = useState<CoinsEntry[]>([]);
+  const [isRevealed, setIsRevealed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsRevealed(false);
+  }, [isPublicView]);
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
   const [draft, setDraft] = useState(emptyDraft());
   const [rangeDraft, setRangeDraft] = useState(emptyRangeDraft());
@@ -307,13 +317,20 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     if (editingId === id) resetDraft();
   }
 
+  // ---- Public / Private Visibility ----
+  const isCoinPublic = (e: CoinsEntry) => (e.notes || '').includes('[public]') || (e.source || '').includes('[public]');
+  const visibleEntries = useMemo(() => {
+    if (!isPublicView || isRevealed) return coinsEntries;
+    return coinsEntries.filter(isCoinPublic);
+  }, [coinsEntries, isPublicView, isRevealed]);
+
   // ---- Analytics ----
   const stats = useMemo(() => {
-    if (coinsEntries.length === 0) return null;
-    const total = coinsEntries.reduce((s: number, e: CoinsEntry) => s + e.amount, 0);
+    if (visibleEntries.length === 0) return null;
+    const total = visibleEntries.reduce((s: number, e: CoinsEntry) => s + e.amount, 0);
 
     const byMonthKeyTotals: Record<string, number> = {};
-    coinsEntries.forEach(e => {
+    visibleEntries.forEach(e => {
       const k = monthKey(e.year, e.month);
       byMonthKeyTotals[k] = (byMonthKeyTotals[k] || 0) + e.amount;
     });
@@ -333,7 +350,7 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     const lowest = monthTotalsArr.reduce((a, b) => (b.total < a.total ? b : a));
 
     const byYear: Record<number, number> = {};
-    coinsEntries.forEach(e => { byYear[e.year] = (byYear[e.year] || 0) + e.amount; });
+    visibleEntries.forEach(e => { byYear[e.year] = (byYear[e.year] || 0) + e.amount; });
     const yearTrend = Object.entries(byYear).map(([y, v]: [string, any]) => ({ year: Number(y), total: Math.round(v as number) })).sort((a, b) => a.year - b.year);
 
     // Year-over-year growth (only between consecutive years that both have data)
@@ -346,18 +363,18 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     }
 
     const bySource: Record<string, number> = {};
-    coinsEntries.forEach(e => { bySource[e.source] = (bySource[e.source] || 0) + e.amount; });
+    visibleEntries.forEach(e => { bySource[e.source] = (bySource[e.source] || 0) + e.amount; });
     const sourceBreakdown = Object.entries(bySource)
       .map(([name, value]: [string, any]) => ({ name, value: Math.round(value as number), pct: ((value as number) / total) * 100 })) // ({ name, value: Math.round(value), pct: (value / total) * 100 }))
       .sort((a, b) => b.value - a.value);
 
     // Source totals per year, for the stacked view
     const sourceByYear: Record<number, Record<string, number>> = {};
-    coinsEntries.forEach(e => {
+    visibleEntries.forEach(e => {
       (sourceByYear[e.year] as any) = (sourceByYear[e.year] as any) || {};
       (sourceByYear[e.year] as any)[e.source] = ((sourceByYear[e.year] as any)[e.source] || 0) + e.amount;
     });
-    const allSources = [...new Set(coinsEntries.map(e => e.source))];
+    const allSources = [...new Set(visibleEntries.map(e => e.source))];
     const stackedByYear = Object.keys(sourceByYear).map(Number).sort((a, b) => a - b).map(y => {
       const row: Record<string, any> = { year: y };
       allSources.forEach(s => { row[s] = Math.round((sourceByYear[y] as any)[s] || 0); });
@@ -423,7 +440,7 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
       trendLine, cumulative, careerYears, careerMonths, longestGap, streak, bestYear, latestYoy, topSource,
       loggedSet, missingRanges
     };
-  }, [coinsEntries]);
+  }, [visibleEntries]);
 
   const yearlyWithTargets = useMemo(() => {
     if (!stats) return [];
@@ -457,10 +474,10 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
     return { forward: false, target, monthsToTarget, remainingMonths, requiredTotal, stillNeeded, neededPerMonth };
   }, [calcMode, calcTarget, calcEndYear, calcEndMonth, stats]);
 
-  const uniqueSources = useMemo(() => [...new Set(coinsEntries.map(e => e.source))].sort(), [coinsEntries]);
+  const uniqueSources = useMemo(() => [...new Set(visibleEntries.map(e => e.source))].sort(), [visibleEntries]);
 
   const filteredEntries = useMemo(() => {
-    return coinsEntries.filter(en => {
+    return visibleEntries.filter(en => {
       if (filters.source !== "all" && en.source !== filters.source) return false;
       if (en.year < filters.fromYear || en.year > filters.toYear) return false;
       if (filters.minAmount !== "" && en.amount < Number(filters.minAmount)) return false;
@@ -468,7 +485,7 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
       if (filters.search && !(en.notes || "").toLowerCase().includes(filters.search.toLowerCase())) return false;
       return true;
     });
-  }, [coinsEntries, filters]);
+  }, [visibleEntries, filters]);
 
   const filtersActive = filters.source !== "all" || filters.fromYear !== CAREER_START_YEAR || filters.toYear !== CURRENT_YEAR || filters.minAmount !== "" || filters.maxAmount !== "" || filters.search !== "";
 
@@ -518,8 +535,112 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
 
 
 
+  if (isPublicView && !isRevealed) {
+    return (
+      <div style={{
+        padding: '60px 24px',
+        textAlign: 'center',
+        color: 'var(--text-secondary)',
+        fontFamily: 'var(--font-mono)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '380px'
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '16px'
+        }}>
+          <Lock size={26} color="#EF4444" />
+        </div>
+        
+        <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+          Coins Ledger is hidden in public view
+        </div>
+
+        <div style={{ fontSize: '13px', maxWidth: '420px', margin: '0 auto 24px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          Your financial income and ledger entries are protected while in Public Mode.
+        </div>
+
+        {/* Switch / Reveal Control */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--panel-border)',
+            padding: '10px 18px',
+            borderRadius: '24px',
+            cursor: 'pointer',
+            userSelect: 'none',
+            transition: 'all 0.2s'
+          }}
+          onClick={() => setIsRevealed(true)}
+        >
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <EyeOff size={14} /> Hidden
+          </span>
+          <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={isRevealed}
+              onChange={(e) => setIsRevealed(e.target.checked)}
+            />
+            <span className="ios-slider"></span>
+          </label>
+          <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Eye size={14} color="var(--accent)" /> Reveal
+          </span>
+        </div>
+
+        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '16px', opacity: 0.7 }}>
+          Momentary switch: automatically hides again on tab switch or page refresh.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="coins-pane" style={{ padding: "0" }}>
+      {isPublicView && isRevealed && (
+        <div style={{
+          background: 'rgba(234, 179, 8, 0.1)',
+          borderBottom: '1px solid rgba(234, 179, 8, 0.3)',
+          padding: '10px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          fontSize: '12.5px',
+          color: '#EAB308',
+          fontFamily: 'var(--font-mono)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Eye size={15} />
+            <span>Coins Ledger temporarily revealed in Public Mode</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setIsRevealed(false)}>
+            <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><EyeOff size={13} /> Hide</span>
+            <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={isRevealed}
+                onChange={(e) => setIsRevealed(e.target.checked)}
+              />
+              <span className="ios-slider"></span>
+            </label>
+          </div>
+        </div>
+      )}
       <style>{`
         .coins-pane .row-btn { background: transparent; border: none; color: #8A8F98; padding: 6px; border-radius: 3px; display: flex; align-items: center; }
         .coins-pane .row-btn:hover { color: #EDE7D9; background: #262C33; }
@@ -673,7 +794,7 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
                 </div>
                 <div>
                   <Label>Amount ({currencySymbol})</Label>
-                  <input type="number" min="0" step="any" placeholder="0" value={draft.amount}
+                  <input id="entry-amount-input" type="number" min="0" step="any" placeholder="0" value={draft.amount}
                     onChange={e => setDraft({ ...draft, amount: e.target.value })} />
                 </div>
                 <div>
@@ -1062,9 +1183,9 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
         {/* Ledger table */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div className="mono" style={{ fontSize: 11.5, letterSpacing: "0.05em", color: "#8A8F98" }}>
-            LEDGER {coinsEntries.length > 0 && `— ${filteredEntries.length}${filtersActive ? ` of ${coinsEntries.length}` : ""} ${filteredEntries.length === 1 ? "entry" : "entries"}`}
+            LEDGER {visibleEntries.length > 0 && `— ${filteredEntries.length}${filtersActive ? ` of ${visibleEntries.length}` : ""} ${filteredEntries.length === 1 ? "entry" : "entries"}`}
           </div>
-          {coinsEntries.length > 0 && (
+          {visibleEntries.length > 0 && (
             <button onClick={() => setShowFilters(s => !s)} className="mono"
               style={{ display: "flex", alignItems: "center", gap: 6, background: showFilters || filtersActive ? "#2A3038" : "#1A1F25", border: "1px solid #2A3038", color: "#D8D2C4", padding: "6px 10px", borderRadius: 3, fontSize: 11 }}>
               <Filter size={12} /> Filter{filtersActive ? " (active)" : ""}
@@ -1123,8 +1244,8 @@ export default function CoinsPane({ walletTotal, onNavigateToMoneyGoals }: { wal
 
         {activeYears.length === 0 && (
           <div style={{ color: "#5E6570", fontSize: 14, padding: "24px 0", borderTop: "1px solid #2A3038" }}>
-            {coinsEntries.length === 0
-              ? "No entries yet. Add your first month above — start wherever you have records, no need to go in order."
+            {visibleEntries.length === 0
+              ? (isPublicView ? "No public entries found. In Public Mode, only entries containing [public] in notes or source are shown." : "No entries yet. Add your first month above — start wherever you have records, no need to go in order.")
               : "No entries match these filters."}
           </div>
         )}

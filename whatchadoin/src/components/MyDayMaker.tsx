@@ -120,16 +120,25 @@ export default function MyDayMaker({
                     {/* Weekly Schedule Days */}
                     {activeTemplate && (<div className="th-active-on" style={{
                             background: 'rgba(0,0,0,0.15)',
-                            padding: '12px',
+                            padding: '16px 12px',
                             borderRadius: '12px',
-                            border: '1px solid rgba(255,255,255,0.05)'
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            width: '100%',
+                            boxSizing: 'border-box'
                         }}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px'}}>
                                 <CalendarDays size={16} color="var(--accent)"/>
                                 <span style={{fontSize: '14px', color: 'var(--text-primary)', fontWeight: '600'}}>Weekly Schedule:</span>
                             </div>
                             <div className="day-btn-container"
-                                 style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px'}}>
+                                 style={{
+                                     display: 'grid',
+                                     gridTemplateColumns: 'repeat(7, 1fr)',
+                                     justifyItems: 'center',
+                                     alignItems: 'center',
+                                     width: '100%',
+                                     boxSizing: 'border-box'
+                                 }}>
                                 {days.map(day => {
                                     const isActive = dayMapping[day] === activeTemplateId;
                                     const assignedTemplateId = dayMapping[day];
@@ -138,6 +147,7 @@ export default function MyDayMaker({
 
                                     return (<button
                                             key={day}
+                                            type="button"
                                             onClick={() => setDayMapping({
                                                 ...dayMapping,
                                                 [day]: isActive ? '' : activeTemplateId
@@ -145,16 +155,23 @@ export default function MyDayMaker({
                                             className={`day-btn ${isActive ? 'active' : ''} ${isAssignedToOther ? 'assigned-other' : ''}`}
                                             title={isActive ? `${day} (Active)` : assignedTemplate ? `${day} (Assigned to ${assignedTemplate.name})` : day}
                                             style={{
-                                                borderRadius: '6px',
-                                                padding: '6px 2px',
-                                                fontSize: '12px',
-                                                fontWeight: isActive ? 'bold' : '500',
-                                                border: isActive ? '1px solid var(--accent)' : '1px solid transparent',
-                                                background: isActive ? 'rgba(234, 179, 8, 0.1)' : 'rgba(255,255,255,0.05)',
-                                                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                                                width: '38px',
+                                                height: '38px',
+                                                maxWidth: '100%',
+                                                aspectRatio: '1 / 1',
+                                                borderRadius: '50%',
+                                                padding: 0,
+                                                fontSize: '11px',
+                                                fontWeight: isActive ? '700' : '600',
+                                                border: isActive ? '1.5px solid var(--accent)' : isAssignedToOther ? '1px dashed var(--accent)' : '1px solid var(--panel-border)',
+                                                background: isActive ? 'var(--accent)' : isAssignedToOther ? 'rgba(234, 179, 8, 0.15)' : 'rgba(255,255,255,0.05)',
+                                                color: isActive ? '#000' : isAssignedToOther ? 'var(--accent)' : 'var(--text-secondary)',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
-                                                textAlign: 'center'
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0
                                             }}
                                         >
                                             {day.substring(0, 3)}
@@ -162,7 +179,7 @@ export default function MyDayMaker({
                                 })}
                             </div>
                             <div style={{
-                                marginTop: '8px',
+                                marginTop: '12px',
                                 fontSize: '11px',
                                 color: 'var(--text-secondary)',
                                 textAlign: 'center'

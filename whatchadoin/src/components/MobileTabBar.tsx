@@ -39,6 +39,11 @@ export default function MobileTabBar({
             } else {
                 window.dispatchEvent(new CustomEvent('fab:add-life-goal'));
             }
+            return;
+        }
+        if (activeTab === 'tasks') {
+            window.dispatchEvent(new CustomEvent('fab:add-task'));
+            return;
         }
         if (activeTab === 'coins') {
             window.dispatchEvent(new CustomEvent('fab:add-coins'));
@@ -46,12 +51,22 @@ export default function MobileTabBar({
         }
         if (activeTab === 'plans') {
             window.dispatchEvent(new CustomEvent('fab:add-plan'));
+            return;
         }
         if (activeTab === 'myday') {
             window.dispatchEvent(new CustomEvent('fab:add-myday'));
             return;
         }
+        if (activeTab === 'calendar') {
+            window.dispatchEvent(new CustomEvent('fab:add-habits'));
+            return;
+        }
     };
+
+    // Habits drawer button: relevant for goals, tasks, myday.
+    // Not relevant for coins (financial tracker) or plans (document workspace).
+    // On calendar, HabitsPane is already embedded statically on mobile.
+    const canShowHabitsFab = ['goals', 'tasks', 'myday'].includes(activeTab);
 
     return (<>
         <div className="mobile-tab-bar">
@@ -71,21 +86,23 @@ export default function MobileTabBar({
         </div>
 
         {showFab && (<>
-            {!isRoutineDrawerOpen && (<button
+            {canShowHabitsFab && !isRoutineDrawerOpen && (<button
                 className="habits-drawer-btn"
                 aria-label="Toggle Habits Drawer"
                 onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(!isRoutineDrawerOpen)}
             >
                 <LucideRepeat size={20} color="#000"/>
             </button>)}
-            <button
-                className="tab-btn-fab"
-                aria-label="Add New Item"
-                onClick={handleFabClick}
-            >
-                <Plus className="fab-icon"/>
-                <span className="fab-label">Add</span>
-            </button>
+            {activeTab !== 'calendar' && (
+                <button
+                    className="tab-btn-fab"
+                    aria-label="Add New Item"
+                    onClick={handleFabClick}
+                >
+                    <Plus className="fab-icon"/>
+                    <span className="fab-label">Add</span>
+                </button>
+            )}
         </>)}
     </>);
 }

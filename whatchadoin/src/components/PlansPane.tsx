@@ -127,7 +127,9 @@ export default function PlansPane({
             const folder = folders.find(f => f.id === folderId);
             if (folder) isLife = folder.isLife;
         }
-        const defaultName = isLife ? 'Untitled Life Plan' : 'Untitled Routine Plan';
+        const defaultName = isLife
+            ? (isPublicView ? 'Untitled Life Plan [public]' : 'Untitled Life Plan')
+            : (isPublicView ? 'Untitled Routine Plan [public]' : 'Untitled Routine Plan');
         const newNote: Note = {
             id: Date.now().toString(),
             name: defaultName,
@@ -141,23 +143,33 @@ export default function PlansPane({
         if (isMobile) {
             setIsDocBarCollapsed(true);
         }
-    }, [folders, isMobile]);
+    }, [folders, isMobile, isPublicView]);
 
     useEffect(() => {
         const handleFabAddPlan = () => {
             // By default create a routine note, unless they are currently looking at a life folder
             createNote(null, false);
+            setTimeout(() => {
+                const titleInput = document.getElementById('plan-note-title-input');
+                if (titleInput) {
+                    titleInput.focus();
+                    (titleInput as HTMLInputElement).select?.();
+                }
+            }, 100);
         };
         window.addEventListener('fab:add-plan', handleFabAddPlan);
         return () => window.removeEventListener('fab:add-plan', handleFabAddPlan);
     }, [createNote]);
 
-    const activeNote = notes.find(n => n.id === activeNoteId);
+    const isPlanPublic = (n: Note) => (n.name || '').includes('[public]') || (n.content || '').includes('[public]');
+    const visibleNotes = isPublicView ? notes.filter(isPlanPublic) : notes;
+    const activeNote = visibleNotes.find(n => n.id === activeNoteId) || (visibleNotes.length > 0 ? visibleNotes[0] : null);
 
     const createFolder = (parentId: string | null = null, isLife = false) => {
         if (parentId) isLife = folders.find(f => f.id === parentId)?.isLife || false;
+        const defaultFolderName = isPublicView ? 'New Folder [public]' : 'New Folder';
         const newFolder: FolderType = {
-            id: 'folder_' + Date.now().toString(), name: 'New Folder', parentId, isExpanded: true, isLife
+            id: 'folder_' + Date.now().toString(), name: defaultFolderName, parentId, isExpanded: true, isLife
         };
         setFolders([...folders, newFolder]);
     };
@@ -414,15 +426,24 @@ export default function PlansPane({
         }
     };
 
-    const filteredNotes = notes.filter(n => {
+    const isFolderVisible = (f: FolderType): boolean => {
+        if (!isPublicView) return true;
+        if ((f.name || '').includes('[public]')) return true;
+        const hasNote = visibleNotes.some(n => n.folderId === f.id);
+        if (hasNote) return true;
+        const subFolders = folders.filter(sf => sf.parentId === f.id);
+        return subFolders.some(isFolderVisible);
+    };
+
+    const filteredNotes = visibleNotes.filter(n => {
         if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return (n.name || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q);
     });
 
     const renderTree = (parentId: string | null = null, level = 0, isLife = false) => {
-        const childFolders = folders.filter(f => f.parentId === parentId && f.isLife === isLife);
-        let childNotes = notes.filter(n => (n.folderId || null) === parentId && n.isLife === isLife);
+        const childFolders = folders.filter(f => f.parentId === parentId && f.isLife === isLife && isFolderVisible(f));
+        let childNotes = visibleNotes.filter(n => (n.folderId || null) === parentId && n.isLife === isLife);
 
         if (searchQuery) {
             if (parentId !== null) return null;
@@ -561,9 +582,6 @@ export default function PlansPane({
     const showSidebar = isMobile ? !activeNote : !isDocBarCollapsed;
     const showEditor = isMobile ? !!activeNote : true;
 
-    if (isPublicView) return <div style={{ padding: '40px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>[ Private Mode ] Plans are hidden in public view.</div>;
-
-
     return (<div className="plans-pane-container"
                  style={{display: 'flex', flexDirection: 'row', width: '100%', height: '100%'}}>
             <style>{`
@@ -612,28 +630,31 @@ export default function PlansPane({
                             >
                                 <FilePlus size={14}/> + Life Plan
                             </button>
-                            <button
-                                onClick={() => createNote(null, false)}
-                                style={{
-                                    flex: 1,
-                                    background: 'rgba(255, 255, 255, 0.08)',
-                                    color: 'var(--text-primary)',
-                                    border: '1px solid var(--panel-border)',
-                                    padding: '8px 6px',
-                                    borderRadius: '6px',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '4px',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap'
-                                }}
-                                title="Add Routine Plan"
-                            >
-                                <FilePlus size={14}/> + Routine Plan
-                            </button>
+                            {!isMobile && (
+                                <button
+                                    className="hide-on-mobile"
+                                    onClick={() => createNote(null, false)}
+                                    style={{
+                                        flex: 1,
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        color: 'var(--text-primary)',
+                                        border: '1px solid var(--panel-border)',
+                                        padding: '8px 6px',
+                                        borderRadius: '6px',
+                                        fontWeight: '600',
+                                        fontSize: '12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    title="Add Routine Plan"
+                                >
+                                    <FilePlus size={14}/> + Routine Plan
+                                </button>
+                            )}
                             {!isMobile && (<button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)}
                                                    style={{
                                                        padding: '6px',
@@ -732,13 +753,13 @@ export default function PlansPane({
 
                         {renderTree(null, 0, false)}
 
-                        {notes.length === 0 && folders.length === 0 && !searchQuery && (<div style={{
+                        {visibleNotes.length === 0 && folders.length === 0 && !searchQuery && (<div style={{
                                 padding: '20px',
                                 textAlign: 'center',
                                 color: 'var(--text-secondary)',
                                 fontSize: '11px'
                             }}>
-                                No plans yet. Click + to create one.
+                                {isPublicView ? 'No public plans yet. Mark a plan name with [public] to display it here.' : 'No plans yet. Click + to create one.'}
                             </div>)}
                         {searchQuery && filteredNotes.length === 0 && (<div style={{
                                 padding: '20px',
@@ -784,6 +805,7 @@ export default function PlansPane({
                                         <PanelLeftOpen size={18}/>
                                     </button>)}
                                 <input
+                                    id="plan-note-title-input"
                                     type="text"
                                     value={activeNote.name || ''}
                                     onChange={e => updateActiveNote({name: e.target.value})}
@@ -939,7 +961,9 @@ export default function PlansPane({
                                 justifyContent: 'center',
                                 color: 'var(--text-secondary)'
                             }}>
-                                Select or create a plan to start writing
+                                {isPublicView
+                                    ? 'No public plan selected. Plans without [public] in their title are hidden in Public Mode.'
+                                    : 'Select or create a plan to start writing'}
                             </div>
                         </div>)}
                 </div>)}

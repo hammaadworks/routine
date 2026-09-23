@@ -471,7 +471,10 @@ export default function HabitsPane({
         });
     };
 
-    const getScheduledGoalsForDateLocal = (dateStr: string) => getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
+    const getScheduledGoalsForDateLocal = (dateStr: string) => {
+        const goals = getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
+        return goals.filter(g => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    };
 
     const getTodayStr = () => {
         const d = new Date();
@@ -551,7 +554,27 @@ export default function HabitsPane({
         }
     }
 
-    const milestoneDates = Object.keys(activeRoutine.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '');
+    const isMilestoneBlockPublic = (block: string) => {
+        if (block.toLowerCase().includes('[public]')) return true;
+        const tagsMatch = block.match(/@([^\s*]+)/g);
+        if (tagsMatch) {
+            return tagsMatch.some((t: string) => {
+                const tagName = t.slice(1).toLowerCase();
+                return allGoals.some((g: any) =>
+                    (g.name || '').toLowerCase() === tagName && (g.isPublic || (g.name || '').toLowerCase().includes('[public]'))
+                );
+            });
+        }
+        return false;
+    };
+
+    const milestoneDates = Object.keys(activeRoutine.milestones || {}).filter(d => {
+        const text = (activeRoutine.milestones[d] || '').trim();
+        if (!text) return false;
+        if (!isPublicView) return true;
+        const blocks = text.split('\n\n');
+        return blocks.some(b => b.trim() && isMilestoneBlockPublic(b));
+    });
     milestoneDates.sort((a: any, b: any) => new Date(a).getTime() - new Date(b).getTime());
 
     useEffect(() => {
@@ -1083,6 +1106,7 @@ export default function HabitsPane({
 
                                 {blocks.map((block: string, idx: number) => {
                                     if (!block.trim()) return null;
+                                    if (isPublicView && !isMilestoneBlockPublic(block)) return null;
                                     return (<div
                                         key={idx}
                                         style={{
@@ -1123,7 +1147,7 @@ export default function HabitsPane({
             }}>
                 {(() => {
                     if (calendarSubTab === 'milestones') {
-                        const count = Object.keys(activeRoutine?.milestones || {}).filter(d => (activeRoutine.milestones[d] || '').trim() !== '').length;
+                        const count = milestoneDates.length;
                         return (<>
                             <Target size={14} color="var(--accent)"/>
                             <span>Total Milestones : {count}</span>

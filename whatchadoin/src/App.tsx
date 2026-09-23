@@ -266,6 +266,7 @@ export default function App() {
         const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
         const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
         const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+        const currency = localStorage.getItem('whatchadoin_currency') || 'USD';
 
         const backupData = {
             isFullBackup: true,
@@ -279,7 +280,8 @@ export default function App() {
             coinsEntries,
             coinsTargets,
             lifePlans,
-            lifeFolders
+            lifeFolders,
+            currency
         };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -343,6 +345,11 @@ export default function App() {
                             if (data.lifeFolders) {
                                 localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify(data.lifeFolders));
                             }
+                            if (data.currency) {
+                                localStorage.setItem('whatchadoin_currency', data.currency);
+                                window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
+                            }
+                            window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
                             setShowRoutineModal(false);
                             setConfirmConfig(null);
                         },
@@ -386,6 +393,7 @@ export default function App() {
                         const newFolders = data.lifeFolders.filter((f: any) => !existingFolderIds.has(f.id));
                         localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify([...existingFolders, ...newFolders]));
                     }
+                    window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
                     setActiveRoutineId(newId);
                     setShowRoutineModal(false);
                 } else {
@@ -488,6 +496,7 @@ export default function App() {
                     setMobileTab(tab);
                     if (tab === 'goals') {
                         setActiveLeftTab('life');
+                        setIsLeftPaneExpanded(true);
                         setIsRoutineDrawerOpen(false);
                     }
                     if (tab === 'myday') {
@@ -516,7 +525,7 @@ export default function App() {
                         setIsRoutineDrawerOpen(false);
                     }
                 }}
-                showFab={!['calendar', 'tasks'].includes(mobileTab)}
+                showFab={mobileTab !== 'calendar'}
                 isRoutineDrawerOpen={isRoutineDrawerOpen}
                 setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                 activeLeftTab={activeLeftTab}
@@ -593,6 +602,10 @@ export default function App() {
                                     allWalletGoals={allWalletGoals}
                                     setLifeGoals={setLifeGoals}
                                     setRoutineGoals={setRoutineGoals as any}
+                                    onNavigateToCoins={() => {
+                                        setActiveCenterTab('coins');
+                                        setMobileTab('coins');
+                                    }}
                                 />;
                             }
                             return <LifePane isPublicView={isPublicView}
@@ -606,7 +619,7 @@ export default function App() {
                     </div>
                 </aside>
 
-                <div className={`timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
+                <div className={`myday-area timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
                     display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0
                 }}>
                     <div className="tabs hide-on-mobile" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{
@@ -696,7 +709,7 @@ export default function App() {
                             lifeGoals={lifeGoals}
                             moneyGoals={moneyGoals}
                             activeRoutineId={activeRoutineId}
-                        /></React.Suspense>) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<React.Suspense fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane walletTotal={walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} /></React.Suspense>) : (<CalendarPane isPublicView={isPublicView}
+                        /></React.Suspense>) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<React.Suspense fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane isPublicView={isPublicView} walletTotal={isPublicView ? headerWalletTotal : walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} /></React.Suspense>) : (<CalendarPane isPublicView={isPublicView}
                             activeRoutine={activeRoutine}
                             setCalendarSubTab={setCalendarSubTab}
                             routineGoals={routineGoals}
