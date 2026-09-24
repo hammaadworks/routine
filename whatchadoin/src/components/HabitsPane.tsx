@@ -522,36 +522,42 @@ export default function HabitsPane({
     if (effectiveDate) {
         displayedRoutineGoals = getScheduledGoalsForDateLocal(effectiveDate);
     } else {
-        displayedRoutineGoals = (habits || []).filter(g => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
-        if (habitFilterRoutineGoalId) {
-            const routineGoal = routineGoals?.find(sg => sg.id === habitFilterRoutineGoalId);
-            if (routineGoal) {
-                const txt = (routineGoal.name || '').toLowerCase().trim();
-                displayedRoutineGoals = displayedRoutineGoals.filter(g => {
-                    const rIds = Array.isArray(g.routineGoalIds) ? g.routineGoalIds : (g.routineGoalId ? [g.routineGoalId] : []);
-                    const gName = (g.name || '').toLowerCase().trim();
-                    return rIds.includes(habitFilterRoutineGoalId) || (txt && gName === txt) || (txt && g.desc && g.desc.toLowerCase().trim() === txt);
-                });
-            }
-        } else if (habitFilterLifeGoalId) {
+        displayedRoutineGoals = (habits || []).filter(g => (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+    }
+
+    if (searchQuery) {
+        displayedRoutineGoals = displayedRoutineGoals.filter(g => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    if (habitFilterRoutineGoalId) {
+        const routineGoal = routineGoals?.find(sg => sg.id === habitFilterRoutineGoalId);
+        if (routineGoal) {
+            const txt = (routineGoal.name || '').toLowerCase().trim();
             displayedRoutineGoals = displayedRoutineGoals.filter(g => {
-                const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
-                return lIds.includes(habitFilterLifeGoalId);
+                const rIds = Array.isArray(g.routineGoalIds) ? g.routineGoalIds : (g.routineGoalId ? [g.routineGoalId] : []);
+                const gName = (g.name || '').toLowerCase().trim();
+                return rIds.includes(habitFilterRoutineGoalId) || (txt && gName === txt) || (txt && g.desc && g.desc.toLowerCase().trim() === txt);
             });
         }
-        if (sortByName) {
-            displayedRoutineGoals.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-        } else {
-            displayedRoutineGoals.sort((a: any, b: any) => {
-                const addrA = checkRoutineAddressed(a);
-                const addrB = checkRoutineAddressed(b);
-                if (addrA !== addrB) {
-                    return addrA ? 1 : -1;
-                }
-                return 0;
-            });
-            displayedRoutineGoals = sortHabits(displayedRoutineGoals);
-        }
+    } else if (habitFilterLifeGoalId) {
+        displayedRoutineGoals = displayedRoutineGoals.filter(g => {
+            const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
+            return lIds.includes(habitFilterLifeGoalId);
+        });
+    }
+
+    if (sortByName) {
+        displayedRoutineGoals.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+    } else if (!effectiveDate) {
+        displayedRoutineGoals.sort((a: any, b: any) => {
+            const addrA = checkRoutineAddressed(a);
+            const addrB = checkRoutineAddressed(b);
+            if (addrA !== addrB) {
+                return addrA ? 1 : -1;
+            }
+            return 0;
+        });
+        displayedRoutineGoals = sortHabits(displayedRoutineGoals);
     }
 
     const isMilestoneBlockPublic = (block: string) => {
@@ -628,9 +634,15 @@ export default function HabitsPane({
             borderBottom: '1px solid var(--panel-border)'
         }}>
             <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
-                {effectiveDate ? <><Target size={18} color="var(--accent)"/> Goals
-                    for {formatHeaderDate(effectiveDate)}</> : <><ListTodo size={18}
-                                                                           color="var(--accent)"/> Routine</>}
+                {effectiveDate ? (
+                    <>
+                        <CheckCircle2 size={18} color="var(--accent)"/> Check {formatHeaderDate(effectiveDate)}
+                    </>
+                ) : (
+                    <>
+                        <ListTodo size={18} color="var(--accent)"/> Routine
+                    </>
+                )}
             </h2>
             <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
                 <ChevronDown size={16} style={{
@@ -656,26 +668,6 @@ export default function HabitsPane({
                     <X size={18}/>
                 </button>
             </div>)}
-            {isCalendarTab && effectiveDate && (<button
-                onClick={() => {
-                    setEditingMilestoneIdx(null);
-                    setMilestoneForm({date: effectiveDate, tag: '', name: '', desc: '', done: false});
-                    setShowMilestoneModal(true);
-                }}
-                className="secondary"
-                style={{
-                    width: '100%',
-                    marginBottom: '16px',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px',
-                    borderStyle: 'dashed',
-                    flexShrink: 0
-                }}
-            >
-                <Plus size={16}/> Add Milestone
-            </button>)}
             <div className="tabs" style={{
                 marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent'
             }}>
@@ -694,37 +686,36 @@ export default function HabitsPane({
             </div>
 
             {calendarSubTab === 'mark_goals' && (<>
-                {!effectiveDate && (<>
+                <button
+                    onClick={openAddHabit} className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
+                    style={{
+                        width: '100%',
+                        flexShrink: 0,
+                        marginBottom: '16px',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        padding: '12px',
+                        borderStyle: 'dashed'
+                    }}
+                >
+                    <Plus size={16}/> Add Habit
+                </button>
 
-                    <button
-                        onClick={openAddHabit} className="secondary desktop-only-btn"
-                        style={{
-                            width: '100%',
-                            flexShrink: 0,
-                            marginBottom: '16px',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: '12px',
-                            borderStyle: 'dashed'
-                        }}
-                    >
-                        <Plus size={16}/> Add Habit
-                    </button>
+                <SearchSortBar
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    sortByName={sortByName}
+                    setSortByName={setSortByName}
+                    isFilterActive={!!habitFilterRoutineGoalId || !!habitFilterLifeGoalId}
+                    onFilterClear={() => {
+                        if (setHabitFilterRoutineGoalId) setHabitFilterRoutineGoalId(null);
+                        if (setHabitFilterLifeGoalId) setHabitFilterLifeGoalId(null);
+                    }}
+                />
 
-                    <SearchSortBar
-                        searchQuery={searchQuery}
-                        setSearchQuery={setSearchQuery}
-                        sortByName={sortByName}
-                        setSortByName={setSortByName}
-                        isFilterActive={!!habitFilterRoutineGoalId || !!habitFilterLifeGoalId}
-                        onFilterClear={() => {
-                            if (setHabitFilterRoutineGoalId) setHabitFilterRoutineGoalId(null);
-                            if (setHabitFilterLifeGoalId) setHabitFilterLifeGoalId(null);
-                        }}
-                    />
-                </>)}
-
-                <div style={{
+                <div
+                    className="habits-list-scroll-container"
+                    style={{
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '12px',
@@ -960,14 +951,16 @@ export default function HabitsPane({
                 </div>
             </>)}
 
-            {calendarSubTab === 'milestones' && (<div style={{
+            {calendarSubTab === 'milestones' && (<div
+                className="milestones-list-scroll-container"
+                style={{
                 flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto'
             }}>
-                {!effectiveDate && (<button
+                <button
                     onClick={() => {
                         setEditingMilestoneIdx(null);
                         setMilestoneForm({
-                            date: new Date().toISOString().split('T')[0],
+                            date: effectiveDate || new Date().toISOString().split('T')[0],
                             tag: '',
                             name: '',
                             desc: '',
@@ -975,7 +968,7 @@ export default function HabitsPane({
                         });
                         setShowMilestoneModal(true);
                     }}
-                    className="secondary desktop-only-btn"
+                    className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
                     style={{
                         width: '100%',
                         flexShrink: 0,
@@ -987,7 +980,7 @@ export default function HabitsPane({
                     }}
                 >
                     <Plus size={16}/> Add Milestone
-                </button>)}
+                </button>
                 {milestoneDates.length === 0 ? (
                     <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
                         {isCalendarTab ? "No milestones found. Click 'Add Milestone' to create one." : "No milestones found."}

@@ -8,7 +8,23 @@ import {scrollBehaviourDragImageTranslateOverride} from "mobile-drag-drop/scroll
 import "mobile-drag-drop/default.css";
 
 polyfill({
-    dragImageTranslateOverride: scrollBehaviourDragImageTranslateOverride
+    dragImageTranslateOverride: scrollBehaviourDragImageTranslateOverride,
+    holdToDrag: 150,
+    tryFindDraggableTarget: (event: TouchEvent) => {
+        const target = event.target as HTMLElement | null;
+        if (target && target.closest('input, button, select, textarea, .no-drag, [data-no-drag]')) {
+            return undefined;
+        }
+        let el = target;
+        while (el && el !== document.body) {
+            if (el.getAttribute && el.getAttribute('draggable') === 'false') return undefined;
+            if (el.draggable === true || (el.getAttribute && el.getAttribute('draggable') === 'true')) {
+                return el;
+            }
+            el = el.parentElement;
+        }
+        return undefined;
+    }
 });
 
 window.addEventListener('touchmove', function () {

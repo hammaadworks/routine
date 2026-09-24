@@ -699,7 +699,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .timeline-grid {
     position: relative;
-    min-height: calc(1320px * var(--zoom, 1));
+    min-height: calc(1440px * var(--zoom, 1));
     margin-left: 70px;
     margin-top: 12px;
     margin-bottom: 12px;
@@ -713,13 +713,14 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .time-label {
     position: absolute;
-    left: -60px;
+    left: -64px;
     top: -10px;
     font-size: 12px;
     color: var(--text-secondary);
-    width: 50px;
+    width: 54px;
     text-align: right;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .time-block {
@@ -1373,12 +1374,18 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .main-content.mobile-tab-calendar .calendar-scroll-container,
-    .main-content.mobile-tab-calendar .routine-pane-content > div:nth-child(3),
-    .main-content.mobile-tab-calendar .routine-pane-content > div:not(.tabs) {
+    .main-content.mobile-tab-calendar .habits-list-scroll-container,
+    .main-content.mobile-tab-calendar .milestones-list-scroll-container {
         height: auto !important;
         min-height: 0 !important;
         flex: 1 !important;
         overflow-y: auto !important;
+    }
+
+    .main-content.mobile-tab-calendar .search-sort-bar-container {
+        flex: none !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 }
 

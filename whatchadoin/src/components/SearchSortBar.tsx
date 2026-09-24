@@ -24,7 +24,7 @@ export default function SearchSortBar({
                                       }: SearchSortBarProps) {
     const isActive = isFilterActive || sortByName;
 
-    return (<div style={{display: 'flex', gap: '8px', marginBottom: '16px'}}>
+    return (<div className="search-sort-bar-container" style={{display: 'flex', gap: '8px', marginBottom: '16px', flexShrink: 0, alignItems: 'center'}}>
         <div style={{flex: 1, position: 'relative'}}>
             <div style={{
                 position: 'absolute',
@@ -62,7 +62,12 @@ export default function SearchSortBar({
                 background: isActive ? 'var(--accent)' : '',
                 boxShadow: isActive ? '0 0 12px var(--accent)' : 'none',
                 color: isActive ? '#000' : 'currentColor',
-                borderColor: isActive ? 'var(--accent)' : ''
+                borderColor: isActive ? 'var(--accent)' : '',
+                height: '37px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
             }}
             title={isFilterActive ? "Clear Filter" : "Sort by Name"}
         >

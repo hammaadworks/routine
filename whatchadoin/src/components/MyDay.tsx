@@ -21,10 +21,321 @@ const formatTime24 = (minutes: number) => {
     return `${h}:${m}`;
 };
 
-const parseTime = (timeStr: string) => {
-    if (!timeStr) return 0;
-    const [h, m] = timeStr.split(':').map(Number);
-    return (h || 0) * 60 + (m || 0);
+const parseTime = (timeStr: string, referenceMins?: number): number | null => {
+    if (!timeStr || typeof timeStr !== 'string') return null;
+    const raw = timeStr.trim().toLowerCase();
+    if (!raw) return null;
+
+    const hasPM = raw.includes('pm') || raw.includes('p');
+    const hasAM = raw.includes('am') || raw.includes('a');
+
+    // Remove letters and whitespace to extract numeric time parts
+    const clean = raw.replace(/[apm\s]/g, '');
+    if (!clean) return null;
+
+    let h = 0;
+    let m = 0;
+
+    if (clean.includes(':')) {
+        const parts = clean.split(':');
+        if (parts[0] === undefined || parts[1] === undefined) return null;
+        h = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+    } else if (clean.includes('.')) {
+        const parts = clean.split('.');
+        if (parts[0] === undefined || parts[1] === undefined) return null;
+        h = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+    } else if (clean.length === 3 || clean.length === 4) {
+        // Handle military / compact time like "930", "1030", "1100"
+        const splitIdx = clean.length === 3 ? 1 : 2;
+        const candidateH = parseInt(clean.slice(0, splitIdx), 10);
+        const candidateM = parseInt(clean.slice(splitIdx), 10);
+        if (!isNaN(candidateH) && !isNaN(candidateM) && candidateM >= 0 && candidateM <= 59 && candidateH <= 24) {
+            h = candidateH;
+            m = candidateM;
+        } else {
+            h = parseInt(clean, 10);
+            m = referenceMins !== undefined ? (referenceMins % 60) : 0;
+        }
+    } else {
+        h = parseInt(clean, 10);
+        // If minutes were not entered (e.g. user just typed or changed the hour "11" or "9"),
+        // preserve the existing minutes from referenceMins instead of wiping them out
+        m = referenceMins !== undefined ? (referenceMins % 60) : 0;
+    }
+
+    if (isNaN(h) || isNaN(m)) return null;
+    if (m < 0 || m > 59) return null;
+
+    if (hasPM) {
+        if (h < 12) h += 12;
+    } else if (hasAM) {
+        if (h === 12) h = 0;
+    } else if (referenceMins !== undefined) {
+        // If AM/PM wasn't explicitly typed, check context of reference time (e.g. block is PM)
+        const refH = Math.floor(referenceMins / 60);
+        if (refH >= 12 && refH < 24) {
+            if (h < 12) h += 12;
+        } else if (refH === 0 && h === 12) {
+            h = 0;
+        }
+    }
+
+    if (h < 0 || h > 24) return null;
+    if (h === 24) h = 0;
+
+    return h * 60 + m;
+};
+
+interface BlockTimeInputsProps {
+    block: any;
+    hex: string;
+    onUpdate: (blockId: string, newStartTime: number, newDuration: number) => void;
+}
+
+const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate }) => {
+    const actualStart = block.actualStartTime ?? block.startTime;
+    const actualDuration = block.actualDuration ?? block.duration;
+
+    const [startVal, setStartVal] = useState(formatTime(actualStart));
+    const [endVal, setEndVal] = useState(formatTime((actualStart + actualDuration) % 1440));
+    const isEditingRef = React.useRef(false);
+    const hiddenPickerStartRef = React.useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!isEditingRef.current) {
+            setStartVal(formatTime(actualStart));
+            setEndVal(formatTime((actualStart + actualDuration) % 1440));
+        }
+    }, [actualStart, actualDuration]);
+
+    const handleCommitStart = (newStartStr: string) => {
+        isEditingRef.current = false;
+        const sMins = parseTime(newStartStr, actualStart);
+        if (sMins === null) {
+            setStartVal(formatTime(actualStart));
+            return;
+        }
+
+        // Maintain duration when shifting start time
+        const currentDur = actualDuration;
+        const newEndMins = (sMins + currentDur) % 1440;
+        setStartVal(formatTime(sMins));
+        setEndVal(formatTime(newEndMins));
+
+        if (sMins !== actualStart) {
+            onUpdate(block.originalId || block.id, sMins, currentDur);
+        }
+    };
+
+    const handleCommitEnd = (newEndStr: string) => {
+        isEditingRef.current = false;
+        const currentStartMins = parseTime(startVal, actualStart) ?? actualStart;
+        const currentEndMins = (currentStartMins + actualDuration) % 1440;
+        const eMins = parseTime(newEndStr, currentEndMins);
+
+        if (eMins === null) {
+            setEndVal(formatTime((currentStartMins + actualDuration) % 1440));
+            return;
+        }
+
+        let newDuration = eMins - currentStartMins;
+
+        if (newDuration <= 0) {
+            // Check for overnight wrap (e.g. 11:00 PM to 12:00 AM midnight or 1:00 AM)
+            if (currentStartMins >= 12 * 60 && eMins <= 12 * 60) {
+                newDuration = (1440 - currentStartMins) + eMins;
+            } else {
+                newDuration = 15;
+            }
+        }
+
+        if (newDuration > 1440) newDuration = 1440;
+
+        const committedEndMins = (currentStartMins + newDuration) % 1440;
+        setStartVal(formatTime(currentStartMins));
+        setEndVal(formatTime(committedEndMins));
+
+        if (currentStartMins !== actualStart || newDuration !== actualDuration) {
+            onUpdate(block.originalId || block.id, currentStartMins, newDuration);
+        }
+    };
+
+    return (
+        <div
+            className="time-block-meta no-drag"
+            draggable={false}
+            onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+                color: `rgba(${hexToRgb(hex)}, 0.95)`,
+                fontSize: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '3px',
+                flexShrink: 0,
+                cursor: 'default',
+                userSelect: 'none',
+                position: 'relative'
+            }}
+        >
+            <Clock
+                size={11}
+                color={hex}
+                style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.85 }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (hiddenPickerStartRef.current && (hiddenPickerStartRef.current as any).showPicker) {
+                        try {
+                            (hiddenPickerStartRef.current as any).showPicker();
+                        } catch (err) {}
+                    }
+                }}
+            />
+            {/* Hidden native time picker input for Clock icon trigger */}
+            <input
+                ref={hiddenPickerStartRef}
+                type="time"
+                value={formatTime24(actualStart)}
+                onChange={(e) => {
+                    handleCommitStart(e.target.value);
+                }}
+                style={{
+                    position: 'absolute',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    width: 0,
+                    height: 0
+                }}
+                tabIndex={-1}
+            />
+            <input
+                name={`start_time_${block.id}`}
+                type="text"
+                value={startVal}
+                draggable={false}
+                onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onFocus={() => {
+                    isEditingRef.current = true;
+                }}
+                onChange={(e) => {
+                    setStartVal(e.target.value);
+                }}
+                onBlur={(e) => {
+                    handleCommitStart(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        (e.target as HTMLInputElement).blur();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const cur = parseTime(startVal, actualStart) ?? actualStart;
+                        const step = e.shiftKey ? 15 : 60;
+                        const next = (cur + step) % 1440;
+                        setStartVal(formatTime(next));
+                        setEndVal(formatTime((next + actualDuration) % 1440));
+                        onUpdate(block.originalId || block.id, next, actualDuration);
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const cur = parseTime(startVal, actualStart) ?? actualStart;
+                        const step = e.shiftKey ? 15 : 60;
+                        const prev = (cur - step + 1440) % 1440;
+                        setStartVal(formatTime(prev));
+                        setEndVal(formatTime((prev + actualDuration) % 1440));
+                        onUpdate(block.originalId || block.id, prev, actualDuration);
+                    }
+                }}
+                style={{
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '4px',
+                    color: 'inherit',
+                    fontSize: '10.5px',
+                    fontFamily: 'inherit',
+                    letterSpacing: '-0.2px',
+                    padding: '1px 2px',
+                    outline: 'none',
+                    cursor: 'text',
+                    width: '70px',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    flexShrink: 0
+                }}
+                title="Edit start time (e.g. 11pm, 10:30am, 23:00). Arrow keys adjust hour."
+            />
+            <span style={{ opacity: 0.6 }}>-</span>
+            <input
+                name={`end_time_${block.id}`}
+                type="text"
+                value={endVal}
+                draggable={false}
+                onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onFocus={() => {
+                    isEditingRef.current = true;
+                }}
+                onChange={(e) => {
+                    setEndVal(e.target.value);
+                }}
+                onBlur={(e) => {
+                    handleCommitEnd(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        (e.target as HTMLInputElement).blur();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const currentStartMins = parseTime(startVal, actualStart) ?? actualStart;
+                        const currentEndMins = parseTime(endVal, (currentStartMins + actualDuration) % 1440) ?? ((currentStartMins + actualDuration) % 1440);
+                        const step = e.shiftKey ? 15 : 60;
+                        const nextEnd = (currentEndMins + step) % 1440;
+                        let newDur = nextEnd - currentStartMins;
+                        if (newDur <= 0) newDur = (1440 - currentStartMins) + nextEnd;
+                        if (newDur > 1440) newDur = 1440;
+                        setEndVal(formatTime((currentStartMins + newDur) % 1440));
+                        onUpdate(block.originalId || block.id, currentStartMins, newDur);
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const currentStartMins = parseTime(startVal, actualStart) ?? actualStart;
+                        const currentEndMins = parseTime(endVal, (currentStartMins + actualDuration) % 1440) ?? ((currentStartMins + actualDuration) % 1440);
+                        const step = e.shiftKey ? 15 : 60;
+                        const prevEnd = (currentEndMins - step + 1440) % 1440;
+                        let newDur = prevEnd - currentStartMins;
+                        if (newDur <= 0 && currentStartMins >= 12 * 60) newDur = (1440 - currentStartMins) + prevEnd;
+                        if (newDur < 15) newDur = 15;
+                        setEndVal(formatTime((currentStartMins + newDur) % 1440));
+                        onUpdate(block.originalId || block.id, currentStartMins, newDur);
+                    }
+                }}
+                style={{
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '4px',
+                    color: 'inherit',
+                    fontSize: '10.5px',
+                    fontFamily: 'inherit',
+                    letterSpacing: '-0.2px',
+                    padding: '1px 2px',
+                    outline: 'none',
+                    cursor: 'text',
+                    width: '70px',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    flexShrink: 0
+                }}
+                title="Edit end time (e.g. 11pm, 12am, 23:00). Arrow keys adjust hour."
+            />
+        </div>
+    );
 };
 
 const hexToRgb = (hex: string) => {
@@ -394,6 +705,35 @@ export default function MyDay({
         });
     };
 
+    const timelineGridRef = React.useRef<HTMLDivElement>(null);
+
+    const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const updateBlockTime = (blockId: string, newStartTime: number, newDuration: number) => {
+        let updatedTemplates = templates.map((t: Template) => {
+            if (t.id === activeTemplateId) {
+                return {
+                    ...t,
+                    blocks: t.blocks.map((b: Block) => b.id === blockId ? {
+                        ...b,
+                        startTime: newStartTime,
+                        duration: newDuration
+                    } : b)
+                };
+            }
+            return t;
+        });
+
+        if (updateActiveRoutine) {
+            updateActiveRoutine({templates: updatedTemplates});
+        } else {
+            setTemplates(updatedTemplates);
+        }
+    };
+
     const getSnappedMinutes = (y: number) => {
         let mins = Math.floor(y / (15 * zoomLevel)) * 15;
         if (mins < 0) return 0;
@@ -407,8 +747,11 @@ export default function MyDay({
         setShowMobileGoals(false);
         if (!activeTemplateId) return;
 
-        const rect = e.currentTarget.getBoundingClientRect();
-        const clientY = e.clientY || (e.nativeEvent as any).clientY || (e.nativeEvent as any).changedTouches?.[0]?.clientY || 0;
+        const gridEl = timelineGridRef.current || e.currentTarget;
+        const rect = gridEl.getBoundingClientRect();
+        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0)
+            ? e.clientY
+            : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
         const y = clientY - rect.top;
 
         const startMinutes = getSnappedMinutes(y);
@@ -459,8 +802,11 @@ export default function MyDay({
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        const rect = e.currentTarget.getBoundingClientRect();
-        const clientY = e.clientY || (e.nativeEvent as any).clientY || (e.nativeEvent as any).changedTouches?.[0]?.clientY || 0;
+        const gridEl = timelineGridRef.current || e.currentTarget;
+        const rect = gridEl.getBoundingClientRect();
+        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0)
+            ? e.clientY
+            : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
         const y = clientY - rect.top;
         let startMinutes = Math.floor(y / (15 * zoomLevel)) * 15;
         if (startMinutes < 0) startMinutes = 0;
@@ -523,11 +869,18 @@ export default function MyDay({
             deleteTemplate={deleteTemplate}
         />
 
-        <div className="timeline-scroll">
+        <div 
+            className="timeline-scroll"
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
             <div
+                ref={timelineGridRef}
                 className="timeline-grid"
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
+                onDragEnter={handleDragEnter}
                 style={{'--zoom': zoomLevel} as React.CSSProperties}
             >
                 {/* Hours Grid (12 AM to 11 PM) */}
@@ -666,6 +1019,7 @@ export default function MyDay({
                         onDragStart={isMasked ? undefined : (e) => {
                             e.dataTransfer.setData('source', 'timeline');
                             e.dataTransfer.setData('blockId', block.originalId || block.id);
+                            e.dataTransfer.effectAllowed = 'move';
                         }}
                         style={{
                             top: `${(block.startTime) * zoomLevel}px`,
@@ -678,14 +1032,15 @@ export default function MyDay({
                             borderLeftStyle: 'solid',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                             position: 'absolute',
-                            padding: block.duration <= 60 ? '4px 8px' : '8px',
+                            padding: block.duration <= 30 ? '2px 26px 2px 6px' : '6px 22px 6px 8px',
                             borderRadius: '4px',
                             overflow: 'hidden',
                             display: 'flex',
-                            flexDirection: block.duration <= 60 ? 'row' : 'column',
-                            alignItems: block.duration <= 60 ? 'center' : 'flex-start',
-                            gap: block.duration <= 60 ? '8px' : '0',
-                            touchAction: 'none',
+                            flexDirection: block.duration <= 30 ? 'row' : 'column',
+                            alignItems: block.duration <= 30 ? 'center' : 'flex-start',
+                            justifyContent: block.duration <= 30 ? 'flex-start' : 'center',
+                            gap: block.duration <= 30 ? '6px' : '3px',
+                            touchAction: 'pan-y',
                             opacity: block.isWrapSecond ? 0.9 : 1
                         }}
                     >
@@ -694,114 +1049,25 @@ export default function MyDay({
                             color: hex,
                             fontWeight: '600',
                             fontSize: '13px',
-                            marginBottom: block.duration <= 60 ? '0' : '2px',
-                            paddingRight: block.duration <= 60 ? '0' : '16px',
-                            whiteSpace: block.duration <= 60 ? 'nowrap' : 'normal',
+                            marginBottom: block.duration <= 30 ? '0' : '2px',
+                            paddingRight: block.duration <= 30 ? '0' : '16px',
+                            whiteSpace: block.duration <= 30 ? 'nowrap' : 'normal',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            flex: block.duration <= 60 ? 1 : 'none',
+                            flex: block.duration <= 30 ? 1 : 'none',
                             minWidth: 0
                         }}
                         >
                             {block.name}
                         </div>
-                        <div className="time-block-meta" style={{
-                            color: `rgba(${hexToRgb(hex)}, 0.8)`,
-                            fontSize: '11px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            flexShrink: 0
-                        }}>
-                            <Clock
-                                size={10}
-                                color="#fff"
-                                style={{cursor: 'pointer'}}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    const nextSibling = e.currentTarget.nextElementSibling as HTMLInputElement;
-                                    if (nextSibling && nextSibling.showPicker) nextSibling.showPicker();
-                                }}
-                            />
-                            <input name="auto_field_14"
-                                   type="time"
-                                   value={formatTime24(block.startTime)}
-                                   onChange={(e) => {
-                                       const newMins = parseTime(e.target.value);
-                                       if (newMins !== null && !isNaN(newMins)) {
-                                           const updatedTemplates = templates.map((t: Template) => {
-                                               if (t.id === activeTemplateId) {
-                                                   return {
-                                                       ...t,
-                                                       blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                           ...b, startTime: newMins
-                                                       } : b)
-                                                   };
-                                               }
-                                               return t;
-                                           });
-                                           if (updateActiveRoutine) {
-                                               updateActiveRoutine({templates: updatedTemplates});
-                                           } else {
-                                               setTemplates(updatedTemplates);
-                                           }
-                                       }
-                                   }}
-                                   style={{
-                                       background: 'transparent',
-                                       border: 'none',
-                                       color: 'inherit',
-                                       fontSize: 'inherit',
-                                       fontFamily: 'inherit',
-                                       padding: 0,
-                                       outline: 'none',
-                                       cursor: 'pointer'
-                                   }}
-                                   onPointerDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => e.stopPropagation()}
-                            />
-                            <span>-</span>
-                            <input name="auto_field_15"
-                                   type="time"
-                                   value={formatTime24((block.startTime + block.duration) % 1440)}
-                                   onChange={(e) => {
-                                       const newEndMins = parseTime(e.target.value);
-                                       if (newEndMins !== null && !isNaN(newEndMins)) {
-                                           let newDuration = newEndMins - block.startTime;
-                                           if (newDuration < 0) newDuration += 1440;
-                                           const updatedTemplates = templates.map((t: Template) => {
-                                               if (t.id === activeTemplateId) {
-                                                   return {
-                                                       ...t,
-                                                       blocks: t.blocks.map((b: Block) => b.id === block.originalId ? {
-                                                           ...b, duration: newDuration
-                                                       } : b)
-                                                   };
-                                               }
-                                               return t;
-                                           });
-                                           if (updateActiveRoutine) {
-                                               updateActiveRoutine({templates: updatedTemplates});
-                                           } else {
-                                               setTemplates(updatedTemplates);
-                                           }
-                                       }
-                                   }}
-                                   style={{
-                                       background: 'transparent',
-                                       border: 'none',
-                                       color: 'inherit',
-                                       fontSize: 'inherit',
-                                       fontFamily: 'inherit',
-                                       padding: 0,
-                                       outline: 'none',
-                                       cursor: 'pointer'
-                                   }}
-                                   onPointerDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => e.stopPropagation()}
-                            />
-                        </div>
+                        <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime} />
                         <button
+                            className="no-drag"
+                            draggable={false}
+                            onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 deleteBlock(block.originalId);
