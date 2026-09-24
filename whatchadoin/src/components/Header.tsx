@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import {Bot, Command, Settings, Wallet, Globe, Lock} from 'lucide-react';
 import RoutineSelector from './RoutineSelector';
 import { useCurrency } from '../hooks/useCurrency';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 
 interface Routine {
     id?: string;
@@ -35,6 +36,23 @@ export default function Header({
                                    setIsPublicView
                                }: HeaderProps) {
     const { formatCurrency } = useCurrency();
+    const syncState = useSyncStatus();
+
+    const getLogoTooltip = () => {
+        if (syncState.status === 'error') {
+            return `Cloud Sync Error: ${syncState.lastError || 'Failed to sync'} (Click to fix in Settings)`;
+        }
+        if (syncState.status === 'syncing') {
+            return 'Cloud Sync: Syncing with GitHub Gist...';
+        }
+        if (syncState.status === 'idle') {
+            const timeStr = syncState.lastSyncedAt
+                ? ` (${new Date(syncState.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`
+                : '';
+            return `Cloud Sync: Synced${timeStr} (Click to open settings)`;
+        }
+        return 'whatchadoin';
+    };
 
     return (
         <div className="header" style={{
@@ -50,14 +68,22 @@ export default function Header({
             gap: '12px'
         }}>
             {/* Left: Brand */}
-            <h1 className="header-logo" style={{
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                flex: 1,
-                minWidth: 0
-            }}>
+            <h1 
+                className="header-logo" 
+                onClick={() => {
+                    window.dispatchEvent(new CustomEvent('open_global_settings', { detail: 'sync' }));
+                }}
+                style={{
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flex: 1,
+                    minWidth: 0,
+                    cursor: 'pointer'
+                }}
+                title={getLogoTooltip()}
+            >
                 <div style={{
                     width: '32px',
                     height: '32px',
@@ -67,9 +93,37 @@ export default function Header({
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: '#000',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    position: 'relative'
                 }}>
                     <Command size={18}/>
+                    {/* Subtle Cloud Sync Status Indicator on the logo box */}
+                    {syncState.status !== 'unconfigured' && (
+                        <span 
+                            style={{
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-2px',
+                                width: '9px',
+                                height: '9px',
+                                borderRadius: '50%',
+                                background: 
+                                    syncState.status === 'error'
+                                        ? '#EF4444'
+                                        : syncState.status === 'syncing'
+                                        ? '#3B82F6'
+                                        : '#10B981',
+                                border: '2px solid var(--panel-bg)',
+                                boxShadow: 
+                                    syncState.status === 'error'
+                                        ? '0 0 6px rgba(239, 68, 68, 0.9)'
+                                        : syncState.status === 'syncing'
+                                        ? '0 0 6px rgba(59, 130, 246, 0.8)'
+                                        : undefined,
+                                animation: syncState.status === 'syncing' ? 'syncPulse 1.2s infinite' : undefined
+                            }}
+                        />
+                    )}
                 </div>
                 <span className="mobile-hidden" style={{
                     fontSize: '20px',

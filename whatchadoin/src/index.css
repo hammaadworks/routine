@@ -81,6 +81,30 @@ body {
     }
 }
 
+@keyframes syncPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.4;
+        transform: scale(0.85);
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
 .sort-active-glow {
     position: relative;
 }
@@ -1349,6 +1373,11 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .routine-pane-content {
     padding: 16px 24px 24px;
+    overflow: hidden;
+}
+
+.timelog-tab-container {
+    overflow: hidden;
 }
 
 @media (max-width: 1400px) {

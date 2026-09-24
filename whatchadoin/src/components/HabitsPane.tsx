@@ -840,7 +840,7 @@ export default function HabitsPane({
             </button>
         </div>
         <div ref={routinePaneContentRef} className="routine-pane-content" style={{
-            display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
+            display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0
         }}>
             {isRoutineDrawerOpen && (<div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
@@ -1318,7 +1318,7 @@ export default function HabitsPane({
             </div>)}
 
             {calendarSubTab === 'timelog' && (
-                <div className="timelog-tab-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                <div className="timelog-tab-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     {/* Inline Quick Form */}
                     <form
                         onSubmit={handleSaveTimeLog}

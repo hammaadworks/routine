@@ -1,10 +1,12 @@
 import * as React from 'react';
-import {DatabaseBackup, Import, Settings} from 'lucide-react';
+import {DatabaseBackup, Import, Settings, CheckCircle2, AlertTriangle, RefreshCw, CloudOff, Loader2, ExternalLink} from 'lucide-react';
 import BaseModal from './BaseModal';
 import AIConfigEditor from './AIConfigEditor';
 import CopyBanner from './CopyBanner';
 import Dropdown from './Dropdown';
 import { useCurrency, CURRENCIES } from '../hooks/useCurrency';
+import { useSyncStatus } from '../hooks/useSyncStatus';
+import { triggerManualSync } from '../sync';
 
 interface SyncForm {
     token: string;
@@ -19,7 +21,7 @@ interface SettingsModalProps {
     setSettingsTab: (tab: string) => void;
     syncForm: SyncForm;
     setSyncForm: (form: SyncForm) => void;
-    saveSyncConfig: (token: string, id: string, filename: string) => void;
+    saveSyncConfig: (token: string, id: string, filename: string) => Promise<any> | any;
     aiConfig: any;
     setAiConfig: (config: any) => void;
     exportAllData: () => void;
@@ -40,6 +42,83 @@ export default function SettingsModal({
                                           fileInputRef
                                       }: SettingsModalProps) {
     const { currency, setCurrency } = useCurrency();
+    const syncState = useSyncStatus();
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [isSyncingNow, setIsSyncingNow] = React.useState(false);
+    const [isForcePushing, setIsForcePushing] = React.useState(false);
+    const [feedbackMsg, setFeedbackMsg] = React.useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+    const handleSaveAndSync = async () => {
+        setIsSaving(true);
+        setFeedbackMsg(null);
+        try {
+            const res: any = await saveSyncConfig(syncForm.token, syncForm.id, syncForm.filename);
+            if (res && res.success) {
+                setFeedbackMsg({
+                    type: 'success',
+                    text: res.action === 'imported'
+                        ? 'Connected! Downloaded routines from remote Gist.'
+                        : 'Connected & synced successfully to GitHub Gist!'
+                });
+                if (res.reloaded) {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                } else {
+                    setTimeout(() => {
+                        setShowSettingsModal(false);
+                    }, 1200);
+                }
+            } else {
+                setFeedbackMsg({
+                    type: 'error',
+                    text: (res && res.error) || 'Failed to connect to GitHub Gist.'
+                });
+            }
+        } catch (e: any) {
+            setFeedbackMsg({
+                type: 'error',
+                text: e?.message || 'Error occurred while saving sync settings.'
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSyncNow = async () => {
+        setIsSyncingNow(true);
+        setFeedbackMsg(null);
+        try {
+            const res = await triggerManualSync(false);
+            if (res.success) {
+                setFeedbackMsg({ type: 'success', text: 'Synced to Gist successfully!' });
+            } else {
+                setFeedbackMsg({ type: 'error', text: res.error || 'Sync failed.' });
+            }
+        } catch (e: any) {
+            setFeedbackMsg({ type: 'error', text: e?.message || 'Sync failed.' });
+        } finally {
+            setIsSyncingNow(false);
+        }
+    };
+
+    const handleForcePush = async () => {
+        if (!window.confirm("Overwrite remote Gist with your current local routines and data?")) return;
+        setIsForcePushing(true);
+        setFeedbackMsg(null);
+        try {
+            const res = await triggerManualSync(true);
+            if (res.success) {
+                setFeedbackMsg({ type: 'success', text: 'Local state force-pushed to Gist successfully!' });
+            } else {
+                setFeedbackMsg({ type: 'error', text: res.error || 'Force push failed.' });
+            }
+        } catch (e: any) {
+            setFeedbackMsg({ type: 'error', text: e?.message || 'Force push failed.' });
+        } finally {
+            setIsForcePushing(false);
+        }
+    };
 
     return (<BaseModal
             isOpen={showSettingsModal}
@@ -127,6 +206,225 @@ export default function SettingsModal({
                         }
                     }}
                 >
+                    {/* Live Sync Status Banner */}
+                    <div style={{
+                        borderRadius: '10px',
+                        padding: '14px 16px',
+                        border: 
+                            syncState.status === 'error'
+                                ? '1px solid rgba(239, 68, 68, 0.4)'
+                                : syncState.status === 'syncing'
+                                ? '1px solid rgba(59, 130, 246, 0.4)'
+                                : syncState.status === 'idle'
+                                ? '1px solid rgba(16, 185, 129, 0.3)'
+                                : '1px solid var(--panel-border)',
+                        background: 
+                            syncState.status === 'error'
+                                ? 'rgba(239, 68, 68, 0.08)'
+                                : syncState.status === 'syncing'
+                                ? 'rgba(59, 130, 246, 0.08)'
+                                : syncState.status === 'idle'
+                                ? 'rgba(16, 185, 129, 0.06)'
+                                : 'rgba(255, 255, 255, 0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                    }}>
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0}}>
+                                {syncState.status === 'error' ? (
+                                    <AlertTriangle size={20} color="#EF4444" style={{flexShrink: 0}} />
+                                ) : syncState.status === 'syncing' ? (
+                                    <Loader2 size={20} color="#3B82F6" className="spin" style={{flexShrink: 0}} />
+                                ) : syncState.status === 'idle' ? (
+                                    <CheckCircle2 size={20} color="#10B981" style={{flexShrink: 0}} />
+                                ) : (
+                                    <CloudOff size={20} color="var(--text-secondary)" style={{flexShrink: 0}} />
+                                )}
+                                <div style={{minWidth: 0}}>
+                                    <div style={{
+                                        fontWeight: 'bold',
+                                        fontSize: '14px',
+                                        color: 
+                                            syncState.status === 'error'
+                                                ? '#EF4444'
+                                                : syncState.status === 'syncing'
+                                                ? '#3B82F6'
+                                                : syncState.status === 'idle'
+                                                ? '#10B981'
+                                                : 'var(--text-primary)'
+                                    }}>
+                                        {syncState.status === 'error' && 'Sync Error'}
+                                        {syncState.status === 'syncing' && 'Syncing with GitHub Gist...'}
+                                        {syncState.status === 'idle' && 'Connected & In Sync'}
+                                        {syncState.status === 'unconfigured' && 'Cloud Sync Disconnected'}
+                                    </div>
+                                    <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', wordBreak: 'break-word'}}>
+                                        {syncState.status === 'idle' && (
+                                            syncState.lastSyncedAt
+                                                ? `Last synced: ${new Date(syncState.lastSyncedAt).toLocaleTimeString()}`
+                                                : 'Ready and in sync'
+                                        )}
+                                        {syncState.status === 'syncing' && 'Transferring data with api.github.com...'}
+                                        {syncState.status === 'error' && (syncState.lastError || 'Failed to sync with GitHub Gist')}
+                                        {syncState.status === 'unconfigured' && 'Sync your routines, tasks, and goals across devices using a secret GitHub Gist.'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Quick Sync Button if configured */}
+                            {syncState.status !== 'unconfigured' && (
+                                <button
+                                    type="button"
+                                    onClick={handleSyncNow}
+                                    disabled={isSyncingNow || syncState.status === 'syncing'}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid var(--panel-border)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        cursor: (isSyncingNow || syncState.status === 'syncing') ? 'not-allowed' : 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        flexShrink: 0
+                                    }}
+                                    title="Sync immediately"
+                                >
+                                    <RefreshCw size={14} className={(isSyncingNow || syncState.status === 'syncing') ? 'spin' : ''} />
+                                    <span>{isSyncingNow ? 'Syncing...' : 'Sync Now'}</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Connected details row & quick actions */}
+                        {syncState.status === 'idle' && syncForm.id && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                paddingTop: '8px',
+                                fontSize: '11px',
+                                color: 'var(--text-secondary)',
+                                flexWrap: 'wrap',
+                                gap: '8px'
+                            }}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <span>Gist:</span>
+                                    <a
+                                        href={`https://gist.github.com/${syncForm.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{color: 'var(--accent)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px'}}
+                                    >
+                                        {syncForm.id.slice(0, 10)}... <ExternalLink size={10} />
+                                    </a>
+                                    <span>&bull;</span>
+                                    <span style={{fontFamily: 'monospace'}}>{syncForm.filename || 'whatchadoin_data.json'}</span>
+                                </div>
+                                <div style={{display: 'flex', gap: '8px'}}>
+                                    <button
+                                        type="button"
+                                        onClick={handleForcePush}
+                                        disabled={isForcePushing}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--accent)',
+                                            cursor: isForcePushing ? 'not-allowed' : 'pointer',
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            padding: 0,
+                                            textDecoration: 'underline'
+                                        }}
+                                        title="Force push all local data to overwrite Gist"
+                                    >
+                                        {isForcePushing ? 'Pushing...' : 'Force Push Local Data'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Contextual help for errors */}
+                        {syncState.status === 'error' && (
+                            <div style={{
+                                background: 'rgba(239, 68, 68, 0.12)',
+                                borderRadius: '6px',
+                                padding: '10px 12px',
+                                fontSize: '12px',
+                                color: '#FCA5A5',
+                                lineHeight: 1.5,
+                                border: '1px solid rgba(239, 68, 68, 0.25)'
+                            }}>
+                                {syncState.lastError?.includes('403') || syncState.lastError?.includes('scope') ? (
+                                    <div>
+                                        <strong>Fix: Missing 'gist' Scope</strong><br />
+                                        Your GitHub Personal Access Token needs the <code>gist</code> permission scope.<br />
+                                        <a
+                                            href="https://github.com/settings/tokens/new?scopes=gist&description=whatchadoin+Sync"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{color: '#67E8F9', fontWeight: 'bold', textDecoration: 'underline', display: 'inline-block', marginTop: '6px'}}
+                                        >
+                                            Generate Classic Token with 'gist' Scope &rarr;
+                                        </a>
+                                    </div>
+                                ) : syncState.lastError?.includes('401') ? (
+                                    <div>
+                                        <strong>Fix: Invalid Token</strong><br />
+                                        Your token was rejected as Bad Credentials. Please create a new token with the <code>gist</code> scope and paste it below.
+                                    </div>
+                                ) : syncState.lastError?.includes('404') ? (
+                                    <div>
+                                        <strong>Fix: Gist ID Not Found</strong><br />
+                                        Verify the Gist ID from your Gist's URL. If your Gist is Secret/Private, GitHub returns 404 unless your token has the <code>gist</code> scope.
+                                    </div>
+                                ) : syncState.lastError?.includes('parse') || syncState.lastError?.includes('JSON') ? (
+                                    <div>
+                                        <strong>Fix: Gist Content is Not JSON</strong><br />
+                                        The file in your Gist must contain valid JSON (or <code>{"{}"}</code>). You can click <strong>Force Push Local Data</strong> above to overwrite it with your current routines.
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <strong>Troubleshooting:</strong><br />
+                                        Check your token permissions and make sure you have internet access. You can open Developer Tools (F12) for detailed network logs.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Feedback message banner if triggered by actions */}
+                    {feedbackMsg && (
+                        <div style={{
+                            padding: '10px 14px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            border: feedbackMsg.type === 'error' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)',
+                            background: feedbackMsg.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            color: feedbackMsg.type === 'error' ? '#F87171' : '#34D399',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px'
+                        }}>
+                            <span>{feedbackMsg.text}</span>
+                            <button
+                                type="button"
+                                onClick={() => setFeedbackMsg(null)}
+                                style={{background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 'bold'}}
+                            >
+                                &times;
+                            </button>
+                        </div>
+                    )}
+
                     <CopyBanner 
                         title="Setup another device? Copy this config."
                         textToCopy={`PAT=${syncForm.token || ''}\nGID=${syncForm.id || ''}\nFILE=${syncForm.filename || ''}`}
@@ -238,9 +536,10 @@ export default function SettingsModal({
                     <div style={{display: 'flex', gap: '8px', marginTop: '16px'}}>
                         <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                                 setSyncForm({token: '', id: '', filename: 'whatchadoin_data.json'});
-                                saveSyncConfig('', '', '');
+                                await saveSyncConfig('', '', '');
+                                setFeedbackMsg({ type: 'info', text: 'Cloud sync disconnected.' });
                             }}
                             style={{
                                 flex: 1,
@@ -257,15 +556,30 @@ export default function SettingsModal({
                         </button>
                         <button
                             type="button"
-                            onClick={() => {
-                                saveSyncConfig(syncForm.token, syncForm.id, syncForm.filename);
-                                setShowSettingsModal(false);
-                            }}
+                            onClick={handleSaveAndSync}
                             className="primary"
-                            style={{flex: 2, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold'}}
-                            disabled={Boolean((syncForm.id && !/^[a-f0-9]{32}$/i.test(syncForm.id)) || (syncForm.token && !syncForm.token.startsWith('ghp_') && !syncForm.token.startsWith('github_pat_')))}
+                            style={{
+                                flex: 2, 
+                                padding: '10px 0', 
+                                borderRadius: '6px', 
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                opacity: isSaving ? 0.8 : 1,
+                                cursor: isSaving ? 'wait' : 'pointer'
+                            }}
+                            disabled={Boolean(isSaving || (syncForm.id && !/^[a-f0-9]{32}$/i.test(syncForm.id)) || (syncForm.token && !syncForm.token.startsWith('ghp_') && !syncForm.token.startsWith('github_pat_')))}
                         >
-                            Save & Sync
+                            {isSaving ? (
+                                <>
+                                    <Loader2 size={16} className="spin" />
+                                    <span>Connecting & Testing...</span>
+                                </>
+                            ) : (
+                                'Save & Sync'
+                            )}
                         </button>
                     </div>
                 </div>)}
