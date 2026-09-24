@@ -207,6 +207,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate})
                 onChange={(e) => {
                     handleCommitStart(e.target.value);
                 }}
+                aria-hidden="true"
                 style={{
                     position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0
                 }}
@@ -214,6 +215,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate})
             />
             <input
                 name={`start_time_${block.id}`}
+                aria-label="Start time"
                 type="text"
                 value={startVal}
                 draggable={false}
@@ -275,6 +277,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate})
             <span style={{opacity: 0.6}}>-</span>
             <input
                 name={`end_time_${block.id}`}
+                aria-label="End time"
                 type="text"
                 value={endVal}
                 draggable={false}
@@ -1061,6 +1064,7 @@ export default function MyDay({
                             <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime}/>
                             <button
                                 className="no-drag"
+                                aria-label="Delete time block"
                                 draggable={false}
                                 onDragStart={(e) => {
                                     e.stopPropagation();

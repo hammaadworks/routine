@@ -18,9 +18,9 @@ import AIAgentApp from './components/AIAgentApp';
 import MobileTabBar from './components/MobileTabBar';
 import QuotesWidget from './components/QuotesWidget';
 import Header from './components/Header';
-import WalletModal from './components/WalletModal';
-import RoutineModal from './components/RoutineModal';
-import SettingsModal from './components/SettingsModal';
+const WalletModal = React.lazy(() => import('./components/WalletModal'));
+const RoutineModal = React.lazy(() => import('./components/RoutineModal'));
+const SettingsModal = React.lazy(() => import('./components/SettingsModal'));
 import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
 import {sanitizeAllStorage} from './utils';
 import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
@@ -472,11 +472,15 @@ export default function App() {
 
     return (<div className={`layout dock-${aiDockState}`}>
 
-        <WalletModal
-            isOpen={isWalletModalOpen}
-            onClose={() => setIsWalletModalOpen(false)}
-            allGoals={visibleWalletGoals}
-        />
+        {isWalletModalOpen && (
+            <React.Suspense fallback={null}>
+                <WalletModal
+                    isOpen={isWalletModalOpen}
+                    onClose={() => setIsWalletModalOpen(false)}
+                    allGoals={visibleWalletGoals}
+                />
+            </React.Suspense>
+        )}
 
         {/* Main App Container */}
         <div className="main-app-wrapper"
@@ -765,21 +769,25 @@ export default function App() {
 
 
             {/* Routine Modal */}
-            <RoutineModal
-                showRoutineModal={showRoutineModal}
-                setShowRoutineModal={setShowRoutineModal}
-                routineModalView={routineModalView}
-                setRoutineModalView={setRoutineModalView}
-                routines={routines}
-                setRoutines={setRoutines}
-                activeRoutineId={activeRoutineId}
-                setActiveRoutineId={setActiveRoutineId}
-                editingRoutineId={editingRoutineId}
-                setEditingRoutineId={setEditingRoutineId}
-                activeRoutine={activeRoutine}
-                lifeGoals={lifeGoals}
-                setConfirmConfig={setConfirmConfig}
-            />
+            {showRoutineModal && (
+                <React.Suspense fallback={null}>
+                    <RoutineModal
+                        showRoutineModal={showRoutineModal}
+                        setShowRoutineModal={setShowRoutineModal}
+                        routineModalView={routineModalView}
+                        setRoutineModalView={setRoutineModalView}
+                        routines={routines}
+                        setRoutines={setRoutines}
+                        activeRoutineId={activeRoutineId}
+                        setActiveRoutineId={setActiveRoutineId}
+                        editingRoutineId={editingRoutineId}
+                        setEditingRoutineId={setEditingRoutineId}
+                        activeRoutine={activeRoutine}
+                        lifeGoals={lifeGoals}
+                        setConfirmConfig={setConfirmConfig}
+                    />
+                </React.Suspense>
+            )}
 
             {/* Confirm Modal */}
             {confirmConfig && (<ConfirmModal
@@ -792,19 +800,23 @@ export default function App() {
                 confirmText={confirmConfig.onCancel ? "Confirm" : "OK"}
             />)}
 
-            <SettingsModal
-                showSettingsModal={showSettingsModal}
-                setShowSettingsModal={setShowSettingsModal}
-                settingsTab={settingsTab}
-                setSettingsTab={setSettingsTab}
-                syncForm={syncForm}
-                setSyncForm={setSyncForm}
-                saveSyncConfig={saveSyncConfig}
-                aiConfig={aiConfig}
-                setAiConfig={setAiConfig}
-                exportAllData={exportAllData}
-                fileInputRef={fileInputRef as any}
-            />
+            {showSettingsModal && (
+                <React.Suspense fallback={null}>
+                    <SettingsModal
+                        showSettingsModal={showSettingsModal}
+                        setShowSettingsModal={setShowSettingsModal}
+                        settingsTab={settingsTab}
+                        setSettingsTab={setSettingsTab}
+                        syncForm={syncForm}
+                        setSyncForm={setSyncForm}
+                        saveSyncConfig={saveSyncConfig}
+                        aiConfig={aiConfig}
+                        setAiConfig={setAiConfig}
+                        exportAllData={exportAllData}
+                        fileInputRef={fileInputRef as any}
+                    />
+                </React.Suspense>
+            )}
 
             {/* Footer to convey end of scroll */}
             <footer style={{

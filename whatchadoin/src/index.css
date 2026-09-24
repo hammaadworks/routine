@@ -778,6 +778,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.2s, background 0.2s;
     overflow: hidden;
+    contain: content;
     z-index: 10;
 }
 
@@ -1427,15 +1428,21 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     /* Entire Habits Pane content scrolls as one unified view in mobile calendar tab */
+    .main-content.mobile-tab-calendar .pane.right-pane .routine-pane-content,
+    .main-content.mobile-tab-calendar .right-pane .routine-pane-content,
     .main-content.mobile-tab-calendar .routine-pane-content {
         height: 100% !important;
         min-height: 0 !important;
-        flex: 1 !important;
+        max-height: 100% !important;
+        flex: 1 1 0% !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        -webkit-overflow-scrolling: touch;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+        padding-bottom: 32px !important;
     }
 
+    .main-content.mobile-tab-calendar .pane.right-pane .routine-pane-content .tabs,
     .main-content.mobile-tab-calendar .routine-pane-content .tabs {
         position: sticky !important;
         top: -12px !important;
@@ -1448,25 +1455,33 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         border-bottom: 1px solid var(--panel-border) !important;
     }
 
+    .main-content.mobile-tab-calendar .pane.right-pane .timelog-tab-container,
     .main-content.mobile-tab-calendar .timelog-tab-container {
         height: auto !important;
         min-height: auto !important;
+        max-height: none !important;
         flex: none !important;
         overflow: visible !important;
         display: flex !important;
         flex-direction: column !important;
     }
 
+    .main-content.mobile-tab-calendar .pane.right-pane .habits-list-scroll-container,
+    .main-content.mobile-tab-calendar .pane.right-pane .milestones-list-scroll-container,
+    .main-content.mobile-tab-calendar .pane.right-pane .timelog-list-scroll-container,
     .main-content.mobile-tab-calendar .habits-list-scroll-container,
     .main-content.mobile-tab-calendar .milestones-list-scroll-container,
     .main-content.mobile-tab-calendar .timelog-list-scroll-container {
         height: auto !important;
         min-height: auto !important;
+        max-height: none !important;
         flex: none !important;
         overflow: visible !important;
         overflow-y: visible !important;
     }
 
+    .main-content.mobile-tab-calendar .pane.right-pane .search-sort-bar-container,
+    .main-content.mobile-tab-calendar .pane.right-pane .timelog-inline-form,
     .main-content.mobile-tab-calendar .search-sort-bar-container,
     .main-content.mobile-tab-calendar .timelog-inline-form {
         flex: none !important;
