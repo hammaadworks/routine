@@ -94,7 +94,7 @@ interface BlockTimeInputsProps {
     onUpdate: (blockId: string, newStartTime: number, newDuration: number) => void;
 }
 
-const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate }) => {
+const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate}) => {
     const actualStart = block.actualStartTime ?? block.startTime;
     const actualDuration = block.actualDuration ?? block.duration;
 
@@ -162,11 +162,13 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
         }
     };
 
-    return (
-        <div
+    return (<div
             className="time-block-meta no-drag"
             draggable={false}
-            onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+            onDragStart={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+            }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
@@ -186,13 +188,14 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
             <Clock
                 size={11}
                 color={hex}
-                style={{ cursor: 'pointer', flexShrink: 0, opacity: 0.85 }}
+                style={{cursor: 'pointer', flexShrink: 0, opacity: 0.85}}
                 onClick={(e) => {
                     e.stopPropagation();
                     if (hiddenPickerStartRef.current && (hiddenPickerStartRef.current as any).showPicker) {
                         try {
                             (hiddenPickerStartRef.current as any).showPicker();
-                        } catch (err) {}
+                        } catch (err) {
+                        }
                     }
                 }}
             />
@@ -205,11 +208,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
                     handleCommitStart(e.target.value);
                 }}
                 style={{
-                    position: 'absolute',
-                    opacity: 0,
-                    pointerEvents: 'none',
-                    width: 0,
-                    height: 0
+                    position: 'absolute', opacity: 0, pointerEvents: 'none', width: 0, height: 0
                 }}
                 tabIndex={-1}
             />
@@ -218,7 +217,10 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
                 type="text"
                 value={startVal}
                 draggable={false}
-                onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -270,13 +272,16 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
                 }}
                 title="Edit start time (e.g. 11pm, 10:30am, 23:00). Arrow keys adjust hour."
             />
-            <span style={{ opacity: 0.6 }}>-</span>
+            <span style={{opacity: 0.6}}>-</span>
             <input
                 name={`end_time_${block.id}`}
                 type="text"
                 value={endVal}
                 draggable={false}
-                onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }}
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
@@ -334,8 +339,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({ block, hex, onUpdate 
                 }}
                 title="Edit end time (e.g. 11pm, 12am, 23:00). Arrow keys adjust hour."
             />
-        </div>
-    );
+        </div>);
 };
 
 const hexToRgb = (hex: string) => {
@@ -448,6 +452,7 @@ export interface Habit {
     color?: string;
     routineGoalId?: string;
     isPublic?: boolean;
+
     [key: string]: any;
 }
 
@@ -467,6 +472,7 @@ export interface Block {
     width?: number;
     left?: number;
     isPublic?: boolean;
+
     [key: string]: any;
 }
 
@@ -494,7 +500,7 @@ export interface MyDayProps {
 
 
 export default function MyDay({
-    isPublicView,
+                                  isPublicView,
                                   templates,
                                   setTemplates,
                                   activeTemplateId,
@@ -716,11 +722,8 @@ export default function MyDay({
         let updatedTemplates = templates.map((t: Template) => {
             if (t.id === activeTemplateId) {
                 return {
-                    ...t,
-                    blocks: t.blocks.map((b: Block) => b.id === blockId ? {
-                        ...b,
-                        startTime: newStartTime,
-                        duration: newDuration
+                    ...t, blocks: t.blocks.map((b: Block) => b.id === blockId ? {
+                        ...b, startTime: newStartTime, duration: newDuration
                     } : b)
                 };
             }
@@ -749,9 +752,7 @@ export default function MyDay({
 
         const gridEl = timelineGridRef.current || e.currentTarget;
         const rect = gridEl.getBoundingClientRect();
-        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0)
-            ? e.clientY
-            : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
+        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0) ? e.clientY : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
         const y = clientY - rect.top;
 
         const startMinutes = getSnappedMinutes(y);
@@ -804,9 +805,7 @@ export default function MyDay({
         e.dataTransfer.dropEffect = 'move';
         const gridEl = timelineGridRef.current || e.currentTarget;
         const rect = gridEl.getBoundingClientRect();
-        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0)
-            ? e.clientY
-            : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
+        const clientY = (typeof e.clientY === 'number' && e.clientY !== 0) ? e.clientY : ((e.nativeEvent as any)?.clientY ?? (e.nativeEvent as any)?.changedTouches?.[0]?.clientY ?? (e.nativeEvent as any)?.touches?.[0]?.clientY ?? 0);
         const y = clientY - rect.top;
         let startMinutes = Math.floor(y / (15 * zoomLevel)) * 15;
         if (startMinutes < 0) startMinutes = 0;
@@ -869,7 +868,7 @@ export default function MyDay({
             deleteTemplate={deleteTemplate}
         />
 
-        <div 
+        <div
             className="timeline-scroll"
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
@@ -1011,7 +1010,7 @@ export default function MyDay({
                     const linkedHabit = habits?.find((h: any) => h.id === block.routineGoalId);
                     const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]') || linkedHabit?.isPublic || (linkedHabit?.name || '').includes('[public]');
                     const isMasked = isPublicView && !isBlockPublic;
-                    
+
                     return (<div
                         key={block.id}
                         className="time-block"
@@ -1034,7 +1033,6 @@ export default function MyDay({
                             position: 'absolute',
                             padding: block.duration <= 30 ? '2px 26px 2px 6px' : '6px 22px 6px 8px',
                             borderRadius: '4px',
-                            overflow: 'hidden',
                             display: 'flex',
                             flexDirection: block.duration <= 30 ? 'row' : 'column',
                             alignItems: block.duration <= 30 ? 'center' : 'flex-start',
@@ -1045,49 +1043,52 @@ export default function MyDay({
                         }}
                     >
                         {!isMasked && (<>
-                        <div className="time-block-title" style={{
-                            color: hex,
-                            fontWeight: '600',
-                            fontSize: '13px',
-                            marginBottom: block.duration <= 30 ? '0' : '2px',
-                            paddingRight: block.duration <= 30 ? '0' : '16px',
-                            whiteSpace: block.duration <= 30 ? 'nowrap' : 'normal',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            flex: block.duration <= 30 ? 1 : 'none',
-                            minWidth: 0
-                        }}
-                        >
-                            {block.name}
-                        </div>
-                        <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime} />
-                        <button
-                            className="no-drag"
-                            draggable={false}
-                            onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                deleteBlock(block.originalId);
-                            }}
-                            style={{
-                                position: 'absolute',
-                                top: '4px',
-                                right: '4px',
-                                background: 'transparent',
-                                border: 'none',
+                            <div className="time-block-title" style={{
                                 color: hex,
-                                cursor: 'pointer',
-                                opacity: 0.6,
-                                padding: '2px'
+                                fontWeight: '600',
+                                fontSize: '13px',
+                                marginBottom: block.duration <= 30 ? '0' : '2px',
+                                paddingRight: block.duration <= 30 ? '0' : '16px',
+                                whiteSpace: block.duration <= 30 ? 'nowrap' : 'normal',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                flex: block.duration <= 30 ? 1 : 'none',
+                                minWidth: 0
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
-                        >
-                            <X size={14}/>
-                        </button>
+                            >
+                                {block.name}
+                            </div>
+                            <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime}/>
+                            <button
+                                className="no-drag"
+                                draggable={false}
+                                onDragStart={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteBlock(block.originalId);
+                                }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '4px',
+                                    right: '4px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: hex,
+                                    cursor: 'pointer',
+                                    opacity: 0.6,
+                                    padding: '2px'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                            >
+                                <X size={14}/>
+                            </button>
                         </>)}
                     </div>);
                 })}
@@ -1320,10 +1321,7 @@ export default function MyDay({
                             }}
                         >
                             <span style={{
-                                flex: 1,
-                                wordBreak: 'break-word',
-                                whiteSpace: 'pre-wrap',
-                                lineHeight: 1.4
+                                flex: 1, wordBreak: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.4
                             }}>{habit.name}</span>
                             <span style={{
                                 color: 'var(--text-secondary)', fontSize: '10px', flexShrink: 0

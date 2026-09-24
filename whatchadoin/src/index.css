@@ -209,12 +209,12 @@ body {
     .panel, .myday-area, .mid-pane-content,
     .pane > div,
     .mid-pane-content > div,
-    .pane div[style*="overflow: hidden"],
-    .pane div[style*="overflow-y: auto"],
-    .pane div[style*="overflowY: auto"],
-    .mid-pane-content div[style*="overflow: hidden"],
-    .mid-pane-content div[style*="overflow-y: auto"],
-    .mid-pane-content div[style*="overflowY: auto"] {
+    .pane div[style*="overflow: hidden"]:not(.time-block),
+    .pane div[style*="overflow-y: auto"]:not(.time-block),
+    .pane div[style*="overflowY: auto"]:not(.time-block),
+    .mid-pane-content div[style*="overflow: hidden"]:not(.time-block),
+    .mid-pane-content div[style*="overflow-y: auto"]:not(.time-block),
+    .mid-pane-content div[style*="overflowY: auto"]:not(.time-block) {
         height: auto !important;
         min-height: auto !important;
         overflow: visible !important;
@@ -1308,8 +1308,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 
     .main-content.mobile-tab-calendar .myday-area {
-        flex: 1 1 35% !important;
-        height: 35% !important;
+        flex: 1 1 30% !important;
+        height: 30% !important;
         min-height: 0 !important;
         margin-bottom: 0 !important;
     }
@@ -1321,8 +1321,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         pointer-events: auto !important;
         width: 100% !important;
         max-width: none !important;
-        height: 65% !important;
-        flex: 1 1 65% !important;
+        height: 70% !important;
+        flex: 1 1 70% !important;
         min-height: 0 !important;
         box-shadow: none !important;
         border-left: none !important;
@@ -1383,22 +1383,59 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     /* Override the mobile accordion "expand all" rules for the calendar tab so they can actually scroll! */
     .main-content.mobile-tab-calendar .mid-pane-content,
     .main-content.mobile-tab-calendar .mid-pane-content > div,
-    .main-content.mobile-tab-calendar .pane > div,
-    .main-content.mobile-tab-calendar .routine-pane-content {
+    .main-content.mobile-tab-calendar .pane:not(.right-pane) > div {
         height: 100% !important;
         min-height: 0 !important;
         flex: 1 !important;
         overflow: hidden !important;
     }
 
-    .main-content.mobile-tab-calendar .calendar-scroll-container,
-    .main-content.mobile-tab-calendar .habits-list-scroll-container,
-    .main-content.mobile-tab-calendar .milestones-list-scroll-container,
-    .main-content.mobile-tab-calendar .timelog-list-scroll-container {
+    .main-content.mobile-tab-calendar .calendar-scroll-container {
         height: auto !important;
         min-height: 0 !important;
         flex: 1 !important;
         overflow-y: auto !important;
+    }
+
+    /* Entire Habits Pane content scrolls as one unified view in mobile calendar tab */
+    .main-content.mobile-tab-calendar .routine-pane-content {
+        height: 100% !important;
+        min-height: 0 !important;
+        flex: 1 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .main-content.mobile-tab-calendar .routine-pane-content .tabs {
+        position: sticky !important;
+        top: -12px !important;
+        z-index: 10 !important;
+        background: #1a1f25 !important;
+        margin-left: -12px !important;
+        margin-right: -12px !important;
+        margin-top: -12px !important;
+        padding: 12px 12px 8px 12px !important;
+        border-bottom: 1px solid var(--panel-border) !important;
+    }
+
+    .main-content.mobile-tab-calendar .timelog-tab-container {
+        height: auto !important;
+        min-height: auto !important;
+        flex: none !important;
+        overflow: visible !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .main-content.mobile-tab-calendar .habits-list-scroll-container,
+    .main-content.mobile-tab-calendar .milestones-list-scroll-container,
+    .main-content.mobile-tab-calendar .timelog-list-scroll-container {
+        height: auto !important;
+        min-height: auto !important;
+        flex: none !important;
+        overflow: visible !important;
+        overflow-y: visible !important;
     }
 
     .main-content.mobile-tab-calendar .search-sort-bar-container,

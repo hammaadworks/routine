@@ -41,7 +41,7 @@ export default function App() {
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
     const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
-    const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
+    const [calendarSubTab, setCalendarSubTab] = useState<string>('timelog');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
     const [habitFilterRoutineGoalId, setHabitFilterRoutineGoalId] = useState<string | null>(null);
     const [habitFilterLifeGoalId, setHabitFilterLifeGoalId] = useState<string | null>(null);

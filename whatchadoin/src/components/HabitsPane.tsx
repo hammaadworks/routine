@@ -84,7 +84,7 @@ export default function HabitsPane({
                                         isCalendarTab,
                                         activeRoutine,
                                         updateActiveRoutine,
-                                        calendarSubTab,
+                                        calendarSubTab = 'timelog',
                                         setCalendarSubTab,
                                         isRoutineDrawerOpen,
                                         setIsRoutineDrawerOpen
@@ -311,6 +311,13 @@ export default function HabitsPane({
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
     };
     const modalInputRefs = useRef<any>({});
+    const routinePaneContentRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (routinePaneContentRef.current) {
+            routinePaneContentRef.current.scrollTop = 0;
+        }
+    }, [calendarSubTab]);
 
     let quickTasks: any[] = [];
     try {
@@ -832,7 +839,7 @@ export default function HabitsPane({
                 }}/>
             </button>
         </div>
-        <div className="routine-pane-content" style={{
+        <div ref={routinePaneContentRef} className="routine-pane-content" style={{
             display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
         }}>
             {isRoutineDrawerOpen && (<div style={{
@@ -855,21 +862,21 @@ export default function HabitsPane({
             }}>
                 <button
                     className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab('mark_goals')}
+                    onClick={() => setCalendarSubTab?.('mark_goals')}
                 >
                     {isCalendarTab ? 'Mark Habits' : 'Habits'}
                 </button>
                 <button
-                    className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab('milestones')}
-                >
-                    Milestones
-                </button>
-                <button
                     className={`tab ${calendarSubTab === 'timelog' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab('timelog')}
+                    onClick={() => setCalendarSubTab?.('timelog')}
                 >
                     Timelog
+                </button>
+                <button
+                    className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`}
+                    onClick={() => setCalendarSubTab?.('milestones')}
+                >
+                    Milestones
                 </button>
             </div>
 
@@ -1311,7 +1318,7 @@ export default function HabitsPane({
             </div>)}
 
             {calendarSubTab === 'timelog' && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                <div className="timelog-tab-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
                     {/* Inline Quick Form */}
                     <form
                         onSubmit={handleSaveTimeLog}
