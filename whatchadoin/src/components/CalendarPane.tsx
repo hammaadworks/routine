@@ -31,6 +31,7 @@ interface CalendarPaneProps {
     templates: any;
     dayMapping: Record<string, string>;
     setCalendarSubTab?: (tab: string) => void;
+    calendarSubTab?: string;
 }
 
 const CalendarPane: React.FC<CalendarPaneProps> = ({
@@ -43,7 +44,8 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        habits,
                                                        templates,
                                                        dayMapping,
-                                                       setCalendarSubTab
+                                                       setCalendarSubTab,
+                                                       calendarSubTab
                                                    }) => {
 
     const visibleHabits = useMemo(() => {
@@ -298,7 +300,9 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                 onClick={() => {
                                     if (inRange) {
                                         setSelectedTargetDate(isSelected ? null : dateStr);
-                                        if (setCalendarSubTab) setCalendarSubTab('mark_goals');
+                                        if (setCalendarSubTab && calendarSubTab !== 'timelog' && calendarSubTab !== 'milestones') {
+                                            setCalendarSubTab('mark_goals');
+                                        }
                                     }
                                 }}
                                 style={{

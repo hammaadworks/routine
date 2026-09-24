@@ -42,7 +42,8 @@ export const loadRoutines = () => {
     habits: [],
     templates: [{"id":"t1","name":"Vanilla whatchadoin","blocks":[]}],
     activeTemplateId: 't1',
-    dayMapping: {"Monday":"","Tuesday":"","Wednesday":"","Thursday":"","Friday":"","Saturday":"","Sunday":""}
+    dayMapping: {"Monday":"","Tuesday":"","Wednesday":"","Thursday":"","Friday":"","Saturday":"","Sunday":""},
+    timeLogs: {}
   }];
 };
 

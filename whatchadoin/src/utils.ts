@@ -156,6 +156,11 @@ export function sanitizeRoutine(routine: any): any {
       };
     });
   }
+  if (clean.timeLogs && typeof clean.timeLogs === 'object') {
+    clean.timeLogs = { ...clean.timeLogs };
+  } else if (!clean.timeLogs) {
+    clean.timeLogs = {};
+  }
   return clean;
 }
 

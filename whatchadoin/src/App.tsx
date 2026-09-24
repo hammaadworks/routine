@@ -156,26 +156,36 @@ export default function App() {
     }, [routines]);
 
     useEffect(() => {
+        if (routines.length > 0 && !routines.some(r => r.id === activeRoutineId)) {
+            setActiveRoutineId(routines[0].id);
+        }
+    }, [routines, activeRoutineId]);
+
+    useEffect(() => {
         localStorage.setItem('whatchadoin_active_routine_id', activeRoutineId);
     }, [activeRoutineId]);
 
     const activeRoutine = routines.find(v => v.id === activeRoutineId) || routines[0];
 
     const updateActiveRoutine = useCallback((updates: Record<string, any>) => {
-        setRoutines(prev => prev.map((v: any) => {
-            if (v.id === activeRoutineId) {
-                let newUpdates: Record<string, any> = {};
-                for (let key in updates) {
-                    if (typeof updates[key] === 'function') {
-                        newUpdates[key] = updates[key](v[key]);
-                    } else {
-                        newUpdates[key] = updates[key];
+        setRoutines(prev => {
+            const currentActive = prev.find(v => v.id === activeRoutineId) || prev[0];
+            const targetId = currentActive?.id || activeRoutineId;
+            return prev.map((v: any) => {
+                if (v.id === targetId || String(v.id) === String(targetId)) {
+                    let newUpdates: Record<string, any> = {};
+                    for (let key in updates) {
+                        if (typeof updates[key] === 'function') {
+                            newUpdates[key] = updates[key](v[key]);
+                        } else {
+                            newUpdates[key] = updates[key];
+                        }
                     }
+                    return {...v, ...newUpdates};
                 }
-                return {...v, ...newUpdates};
-            }
-            return v;
-        }));
+                return v;
+            });
+        });
     }, [activeRoutineId]);
 
     const { executeTool } = useWebMCPIntegration({
@@ -711,6 +721,7 @@ export default function App() {
                             activeRoutineId={activeRoutineId}
                         /></React.Suspense>) : activeCenterTab === 'tasks' ? (<TasksPane isPublicView={isPublicView}/>) : activeCenterTab === 'coins' ? (<React.Suspense fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane isPublicView={isPublicView} walletTotal={isPublicView ? headerWalletTotal : walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} /></React.Suspense>) : (<CalendarPane isPublicView={isPublicView}
                             activeRoutine={activeRoutine}
+                            calendarSubTab={calendarSubTab}
                             setCalendarSubTab={setCalendarSubTab}
                             routineGoals={routineGoals}
                             lifeGoals={lifeGoals}

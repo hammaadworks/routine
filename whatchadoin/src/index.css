@@ -139,6 +139,24 @@ body {
     overflow: hidden;
 }
 
+@media (min-width: 1401px) {
+    .main-content > .left-pane {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+    .main-content > .myday-area {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+    .main-content > .right-pane {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+    }
+    .mobile-drawer-overlay {
+        display: none !important;
+    }
+}
+
 @media (max-width: 1400px) {
     .hide-on-mobile {
         display: none !important;
@@ -1375,14 +1393,16 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
     .main-content.mobile-tab-calendar .calendar-scroll-container,
     .main-content.mobile-tab-calendar .habits-list-scroll-container,
-    .main-content.mobile-tab-calendar .milestones-list-scroll-container {
+    .main-content.mobile-tab-calendar .milestones-list-scroll-container,
+    .main-content.mobile-tab-calendar .timelog-list-scroll-container {
         height: auto !important;
         min-height: 0 !important;
         flex: 1 !important;
         overflow-y: auto !important;
     }
 
-    .main-content.mobile-tab-calendar .search-sort-bar-container {
+    .main-content.mobile-tab-calendar .search-sort-bar-container,
+    .main-content.mobile-tab-calendar .timelog-inline-form {
         flex: none !important;
         height: auto !important;
         overflow: visible !important;
