@@ -4,7 +4,7 @@
     --panel-bg: rgba(26, 31, 37, 0.8);
     --panel-border: #2A3038;
     --text-primary: #EDE7D9;
-    --text-secondary: #8A8F98;
+    --text-secondary: #9DA3AE;
 
     /* Gold Theme */
     --accent: #C9A227;
@@ -274,7 +274,7 @@ body {
     }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
     .mobile-hidden {
         display: none !important;
     }
@@ -618,6 +618,11 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     cursor: grab;
+    contain: content;
+}
+
+.item-card span {
+    color: var(--text-secondary);
 }
 
 .item-card:hover {
@@ -1370,6 +1375,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .calendar-month-card {
     padding: 20px;
+    contain: content;
 }
 
 .routine-pane-content {

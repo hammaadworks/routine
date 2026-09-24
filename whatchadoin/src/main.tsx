@@ -1,7 +1,8 @@
+import * as React from 'react'
 import {createRoot} from 'react-dom/client'
 import './index.css'
 import App from './App'
-import AIAgentApp from './components/AIAgentApp'
+const AIAgentApp = React.lazy(() => import('./components/AIAgentApp'))
 import {initSync} from './sync'
 import {polyfill} from "mobile-drag-drop";
 import {scrollBehaviourDragImageTranslateOverride} from "mobile-drag-drop/scroll-behaviour";
@@ -36,4 +37,12 @@ initSync(() => {
 
 const path = window.location.pathname;
 
-createRoot(document.getElementById('root')!).render(path === '/ai' ? <AIAgentApp/> : <App/>)
+createRoot(document.getElementById('root')!).render(
+    path === '/ai' ? (
+        <React.Suspense fallback={<div style={{padding: '20px', color: 'var(--text-secondary)'}}>Loading Assistant...</div>}>
+            <AIAgentApp/>
+        </React.Suspense>
+    ) : (
+        <App/>
+    )
+)

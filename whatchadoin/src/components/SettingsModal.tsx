@@ -67,7 +67,7 @@ export default function SettingsModal({
                 } else {
                     setTimeout(() => {
                         setShowSettingsModal(false);
-                    }, 1200);
+                    }, 1400);
                 }
             } else {
                 setFeedbackMsg({

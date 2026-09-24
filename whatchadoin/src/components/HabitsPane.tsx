@@ -1347,10 +1347,11 @@ export default function HabitsPane({
                         {/* Row 1: Start Time, End Time, Now Button */}
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                                <label htmlFor="timelog-start-time" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
                                     Start
                                 </label>
                                 <input
+                                    id="timelog-start-time"
                                     type="time"
                                     value={timeLogForm.startTime}
                                     onChange={e => setTimeLogForm(prev => ({ ...prev, startTime: e.target.value }))}
@@ -1359,10 +1360,11 @@ export default function HabitsPane({
                                 />
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                                <label htmlFor="timelog-end-time" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
                                     End
                                 </label>
                                 <input
+                                    id="timelog-end-time"
                                     type="time"
                                     value={timeLogForm.endTime}
                                     onChange={e => setTimeLogForm(prev => ({ ...prev, endTime: e.target.value }))}
@@ -1393,10 +1395,11 @@ export default function HabitsPane({
 
                         {/* Row 2: Tag selector */}
                         <div>
-                            <label style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                            <label htmlFor="timelog-tag-goal" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
                                 Tag Goal / Habit (Optional)
                             </label>
                             <select
+                                id="timelog-tag-goal"
                                 value={timeLogForm.tagGoalId}
                                 onChange={e => setTimeLogForm(prev => ({ ...prev, tagGoalId: e.target.value }))}
                                 style={{
@@ -1422,7 +1425,9 @@ export default function HabitsPane({
                         {/* Row 3: Description input & Submit button */}
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <input
+                                id="timelog-desc"
                                 type="text"
+                                aria-label="Time log activity description"
                                 placeholder="What did you do? (e.g. read 20 pages)"
                                 value={timeLogForm.desc}
                                 onChange={e => setTimeLogForm(prev => ({ ...prev, desc: e.target.value }))}

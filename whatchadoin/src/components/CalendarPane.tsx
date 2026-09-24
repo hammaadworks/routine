@@ -192,7 +192,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                 marginBottom: '16px',
                                 flexShrink: 0
                             }}>
-                                <h3 style={{margin: 0, color: '#fff', fontSize: '18px'}}>{m.monthName} {m.year}</h3>
+                                <h2 style={{margin: 0, color: '#fff', fontSize: '18px', fontWeight: 600}}>{m.monthName} {m.year}</h2>
                                 {totalDays > 0 && (<div style={{
                                         fontSize: '12px',
                                         fontWeight: 'bold',

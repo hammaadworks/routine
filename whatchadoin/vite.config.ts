@@ -10,8 +10,10 @@ export default defineConfig({
             output: {
                 manualChunks(id) {
                     if (id.includes('node_modules')) {
-                        if (id.includes('recharts')) return 'recharts';
+                        if (id.includes('recharts') || id.includes('d3-')) return 'recharts';
                         if (id.includes('lucide-react')) return 'lucide';
+                        if (id.includes('@uiw') || id.includes('react-md-editor') || id.includes('react-markdown')) return 'markdown-editor';
+                        if (id.includes('animejs')) return 'animejs';
                         return 'vendor';
                     }
                 }
