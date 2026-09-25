@@ -231,8 +231,8 @@ export default function RoutineGoalPane({
                     gap: '12px',
                     overflowY: 'auto',
                     flex: 1,
-                    padding: '8px 12px 8px 4px',
-                    marginTop: '-8px'
+                    padding: '12px 12px 12px 6px',
+                    marginTop: '0px'
                 }}>
                     {(() => {
                         const activeGoals = displayedGoals.filter((g) => !g.completed);

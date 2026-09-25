@@ -106,6 +106,7 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
                     name: { type: "string", description: "The name of the money goal" },
                     cost: { type: "number", description: "Target financial amount or cost" },
                     desc: { type: "string", description: "Optional description or note" },
+                    color: { type: "string", description: "Optional hex color code (e.g. #8AC926)" },
                     isPublic: { type: "boolean", description: "Whether this goal is visible in Public Mode (default false)" }
                 },
                 required: ["name", "cost"]
@@ -116,12 +117,13 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
         type: "function",
         function: {
             name: "add_habit",
-            description: "Adds an atomic recurring habit to the Habits bank in the active routine.",
+            description: "Adds an atomic recurring habit to the Habits bank in the active routine. Note: Habits should always be created here first before being scheduled on templates or timelines, so color and goal links are preserved.",
             parameters: {
                 type: "object",
                 properties: {
                     name: { type: "string", description: "The name of the habit" },
                     desc: { type: "string", description: "Optional description of the habit" },
+                    color: { type: "string", description: "Optional hex color code (e.g. #3498db). If omitted and linked to a goal, inherits goal color." },
                     duration: { type: "string", description: "Duration of the habit (e.g. '15 min', '30m', or minutes)" },
                     time: { type: "string", description: "Optional duration string (e.g. '15m', '1:15')" },
                     type: { type: "string", enum: ["daily", "weekly"], description: "Whether it is a daily or weekly habit" },
@@ -167,7 +169,7 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
         type: "function",
         function: {
             name: "schedule_myday_block",
-            description: "Schedules a habit or custom block onto a specific day of the week (e.g. 'Monday', 'Tuesday') or template in the active routine.",
+            description: "Schedules a habit or custom block onto a specific day of the week or template in the active routine. Automatically inherits habit color or linked goal color if habit is in Habits bank.",
             parameters: {
                 type: "object",
                 properties: {
@@ -175,7 +177,8 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
                     startTime: { type: "string", description: "Start time (e.g. '9am', '14:00', '2:30 PM', or minutes from midnight)" },
                     duration: { type: "string", description: "Duration in minutes or string (e.g. 60, '45m', '1h')" },
                     day: { type: "string", description: "Optional day of the week (e.g. 'Monday', 'Wednesday') to schedule on" },
-                    templateId: { type: "string", description: "Optional template ID to schedule on" }
+                    templateId: { type: "string", description: "Optional template ID to schedule on" },
+                    color: { type: "string", description: "Optional hex color code (e.g. #3498db). If omitted, resolves color from matching Habit or linked Goal." }
                 },
                 required: ["name", "startTime", "duration"]
             }

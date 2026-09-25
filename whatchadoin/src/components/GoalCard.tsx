@@ -60,6 +60,7 @@ export default function GoalCard({
             onDrop={(e) => e.preventDefault()}
             style={{
                 position: 'relative',
+                overflow: 'visible',
                 minHeight: '48px',
                 padding: '10px 12px',
                 display: 'flex',
@@ -167,22 +168,22 @@ export default function GoalCard({
                 title="Total Linked Routine & Habits (Click to view)"
                 style={{
                     position: 'absolute',
-                    top: '-4px',
-                    right: '6px',
+                    top: '-8px',
+                    right: '-8px',
                     cursor: 'pointer',
-                    background: linkedCount > 0 ? hex : 'rgba(255, 255, 255, 0.1)',
-                    color: linkedCount > 0 ? '#000' : 'var(--text-secondary)',
-                    fontSize: '10px',
+                    background: linkedCount > 0 ? hex : '#fff',
+                    color: '#000',
+                    fontSize: '11px',
                     fontWeight: '900',
-                    minWidth: '20px',
-                    height: '20px',
-                    padding: '0 5px',
-                    borderRadius: '10px',
+                    minWidth: '22px',
+                    height: '22px',
+                    padding: '0 6px',
+                    borderRadius: '11px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: linkedCount > 0 ? `0 2px 6px ${hex}66` : 'none',
-                    border: `1.5px solid ${linkedCount > 0 ? '#fff' : 'rgba(255, 255, 255, 0.2)'}`,
+                    boxShadow: linkedCount > 0 ? `0 4px 8px ${hex}4D` : '0 2px 8px rgba(255,255,255,0.4)',
+                    border: '2px solid var(--panel-bg)',
                     zIndex: 10
                 }}>
                 {linkedCount}

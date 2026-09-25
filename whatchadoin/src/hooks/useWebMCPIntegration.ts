@@ -447,6 +447,7 @@ export function useWebMCPIntegration({
                 name: goalName,
                 desc: inputs.desc || '',
                 cost: Number(inputs.cost) || 0,
+                color: inputs.color || '#8AC926',
                 isPublic: Boolean(inputs.isPublic),
                 completed: false,
                 createdAt: new Date().toISOString()
@@ -471,6 +472,20 @@ export function useWebMCPIntegration({
         const durationMins = inputs.duration ? parseDuration(inputs.duration) : (inputs.time ? parseDuration(inputs.time) : 15);
         const timeStr = inputs.time || (inputs.duration ? String(inputs.duration) : `${durationMins}m`);
 
+        let resolvedColor = inputs.color || null;
+        if (!resolvedColor) {
+            if (inputs.linkedRoutineGoalId) {
+                const rg = (activeRoutine?.routineGoals || []).find((g: any) => g.id === inputs.linkedRoutineGoalId);
+                if (rg?.color) resolvedColor = rg.color;
+            } else if (inputs.linkedLifeGoalId) {
+                const lg = (lifeGoals || []).find((g: any) => g.id === inputs.linkedLifeGoalId);
+                if (lg?.color) resolvedColor = lg.color;
+            } else if (inputs.linkedMoneyGoalId) {
+                const mg = (moneyGoals || []).find((g: any) => g.id === inputs.linkedMoneyGoalId);
+                if (mg?.color) resolvedColor = mg.color;
+            }
+        }
+
         const newHabit = {
             id: crypto.randomUUID(),
             name: habitName,
@@ -478,6 +493,7 @@ export function useWebMCPIntegration({
             duration: durationMins,
             time: timeStr,
             type: inputs.type || 'daily',
+            color: resolvedColor,
             routineGoalId: inputs.linkedRoutineGoalId || null,
             routineGoalIds: inputs.linkedRoutineGoalId ? [inputs.linkedRoutineGoalId] : [],
             lifeGoalIds: inputs.linkedLifeGoalId ? [inputs.linkedLifeGoalId] : [],
@@ -500,7 +516,7 @@ export function useWebMCPIntegration({
 
         updateActiveRoutine({habits: newHabitsState});
         return {success: true, message: `Habit '${habitName}' created in active routine.`};
-    }, [activeRoutine, updateActiveRoutine]);
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, moneyGoals]);
 
     useWebMCP({
         name: 'add_habit',
@@ -618,12 +634,40 @@ export function useWebMCPIntegration({
             overlapWarning = ` (Note: Overlaps with ${names}.)`;
         }
 
+        let blockColor = inputs.color || null;
+        if (!blockColor && activeRoutine?.habits) {
+            const habitsList: any[] = Array.isArray(activeRoutine.habits)
+                ? activeRoutine.habits
+                : [...(activeRoutine.habits.daily || []), ...(activeRoutine.habits.weekly || [])];
+            const matchingHabit = habitsList.find((h: any) =>
+                h.name?.trim().toLowerCase() === inputs.name?.trim().toLowerCase()
+            );
+            if (matchingHabit) {
+                if (matchingHabit.color) {
+                    blockColor = matchingHabit.color;
+                } else if (matchingHabit.routineGoalId || (matchingHabit.routineGoalIds && matchingHabit.routineGoalIds.length > 0)) {
+                    const rId = matchingHabit.routineGoalId || matchingHabit.routineGoalIds[0];
+                    const rg = (activeRoutine?.routineGoals || []).find((g: any) => g.id === rId);
+                    if (rg?.color) blockColor = rg.color;
+                } else if (matchingHabit.lifeGoalIds && matchingHabit.lifeGoalIds.length > 0) {
+                    const lg = (lifeGoals || []).find((g: any) => g.id === matchingHabit.lifeGoalIds[0]);
+                    if (lg?.color) blockColor = lg.color;
+                } else if (matchingHabit.moneyGoalIds && matchingHabit.moneyGoalIds.length > 0) {
+                    const mg = (moneyGoals || []).find((g: any) => g.id === matchingHabit.moneyGoalIds[0]);
+                    if (mg?.color) blockColor = mg.color;
+                }
+            }
+        }
+        if (!blockColor) {
+            blockColor = '#3498db';
+        }
+
         const newBlock = {
             id: crypto.randomUUID(),
             name: inputs.name,
             startTime: startMinutes,
             duration: durationMinutes,
-            color: '#3498db'
+            color: blockColor
         };
 
         const updatedTarget = {
@@ -644,7 +688,7 @@ export function useWebMCPIntegration({
             time: `${formatMinutesToTime(startMinutes)} - ${formatMinutesToTime(endMinutes)}`,
             message: `Block '${inputs.name}' scheduled on ${normalizedDay || targetTemplate.name} at ${formatMinutesToTime(startMinutes)} (${durationMinutes} min).${overlapWarning}`
         };
-    }, [activeRoutine, updateActiveRoutine]);
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, moneyGoals]);
 
     useWebMCP({
         name: 'schedule_myday_block',
