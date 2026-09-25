@@ -68,9 +68,9 @@ export default function MobileTabBar({
 
     const handleHabitsDrawerClick = () => {
         if (!isRoutineDrawerOpen) {
-            if (activeTab === 'goals') {
+            if (activeTab === 'goals' || activeTab === 'myday') {
                 setCalendarSubTab?.('mark_goals');
-            } else if (activeTab === 'tasks' || activeTab === 'myday' || activeTab === 'coins') {
+            } else if (activeTab === 'tasks' || activeTab === 'coins') {
                 setCalendarSubTab?.('timelog');
             } else if (activeTab === 'plans') {
                 setCalendarSubTab?.('milestones');

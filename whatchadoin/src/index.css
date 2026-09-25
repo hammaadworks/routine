@@ -36,6 +36,10 @@ html, body {
     touch-action: manipulation;
 }
 
+button, a, input, select, textarea, .item-card, [role="button"] {
+    touch-action: manipulation;
+}
+
 #root {
     width: 100%;
     overflow-x: hidden;
@@ -143,7 +147,7 @@ body {
 }
 
 .header h1 {
-    font-family: var(--font-header);
+    font-family: var(--font-header), serif;
     font-size: 24px;
     font-weight: 700;
     background: var(--accent-gradient);
@@ -318,6 +322,18 @@ body {
     .mobile-hidden {
         display: none !important;
     }
+
+    /* Prevent mobile browser auto-zoom when focusing inputs */
+    input, select, textarea,
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"] {
+        font-size: 14px !important;
+    }
 }
 
 
@@ -433,7 +449,7 @@ input, select, textarea {
     color: var(--text-primary);
     border-radius: 4px;
     padding: 10px 14px;
-    font-family: var(--font-mono);
+    font-family: var(--font-mono), monospace;
     font-size: 14px;
     outline: none;
     transition: all 0.2s;
@@ -1440,7 +1456,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         height: 100% !important;
         min-height: 0 !important;
         max-height: 100% !important;
-        flex: 1 1 0% !important;
+        flex: 1 1 0 !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         -webkit-overflow-scrolling: touch !important;
@@ -1483,7 +1499,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         max-height: none !important;
         flex: none !important;
         overflow: visible !important;
-        overflow-y: visible !important;
     }
 
     .main-content.mobile-tab-calendar .pane.right-pane .search-sort-bar-container,
