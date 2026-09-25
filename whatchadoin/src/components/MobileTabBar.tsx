@@ -1,4 +1,4 @@
-import {BookOpen, Calendar, ListTodo, LucideRepeat, Plus, Star, Clock, TrendingUp} from 'lucide-react';
+import {BookOpen, Calendar, Clock, ListTodo, LucideRepeat, Plus, Star, TrendingUp} from 'lucide-react';
 
 interface MobileTabBarProps {
     activeTab: string;
@@ -7,6 +7,7 @@ interface MobileTabBarProps {
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
     activeLeftTab?: string;
+    setCalendarSubTab?: (tab: string) => void;
 }
 
 export default function MobileTabBar({
@@ -15,16 +16,18 @@ export default function MobileTabBar({
                                          showFab,
                                          isRoutineDrawerOpen,
                                          setIsRoutineDrawerOpen,
-                                         activeLeftTab
+                                         activeLeftTab,
+                                         setCalendarSubTab
                                      }: MobileTabBarProps) {
-    const tabs = [
-        {id: 'goals', icon: Star, label: 'Goals'},
-        {id: 'tasks', icon: ListTodo, label: 'Tasks'},
-        {id: 'myday', icon: Clock, label: 'MyDay', default: true},
-        {id: 'calendar', icon: Calendar, label: 'Calendar'},
-        {id: 'coins', icon: TrendingUp, label: 'Coins'},
-        {id: 'plans', icon: BookOpen, label: 'Plans'}
-    ];
+    const tabs = [{id: 'goals', icon: Star, label: 'Goals'}, {
+        id: 'tasks',
+        icon: ListTodo,
+        label: 'Tasks'
+    }, {id: 'myday', icon: Clock, label: 'MyDay', default: true}, {
+        id: 'calendar',
+        icon: Calendar,
+        label: 'Calendar'
+    }, {id: 'coins', icon: TrendingUp, label: 'Coins'}, {id: 'plans', icon: BookOpen, label: 'Plans'}];
 
     const handleFabClick = () => {
         if (isRoutineDrawerOpen) {
@@ -63,10 +66,22 @@ export default function MobileTabBar({
         }
     };
 
-    // Habits drawer button: relevant for goals, tasks, myday.
-    // Not relevant for coins (financial tracker) or plans (document workspace).
+    const handleHabitsDrawerClick = () => {
+        if (!isRoutineDrawerOpen) {
+            if (activeTab === 'goals') {
+                setCalendarSubTab?.('mark_goals');
+            } else if (activeTab === 'tasks' || activeTab === 'myday' || activeTab === 'coins') {
+                setCalendarSubTab?.('timelog');
+            } else if (activeTab === 'plans') {
+                setCalendarSubTab?.('milestones');
+            }
+        }
+        setIsRoutineDrawerOpen?.(!isRoutineDrawerOpen);
+    };
+
+    // Habits drawer button: relevant for goals, tasks, myday, coins, plans.
     // On calendar, HabitsPane is already embedded statically on mobile.
-    const canShowHabitsFab = ['goals', 'tasks', 'myday'].includes(activeTab);
+    const canShowHabitsFab = ['goals', 'tasks', 'myday', 'coins', 'plans'].includes(activeTab);
 
     return (<>
         <div className="mobile-tab-bar">
@@ -89,20 +104,18 @@ export default function MobileTabBar({
             {canShowHabitsFab && !isRoutineDrawerOpen && (<button
                 className="habits-drawer-btn"
                 aria-label="Toggle Habits Drawer"
-                onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(!isRoutineDrawerOpen)}
+                onClick={handleHabitsDrawerClick}
             >
                 <LucideRepeat size={20} color="#000"/>
             </button>)}
-            {activeTab !== 'calendar' && (
-                <button
+            {activeTab !== 'calendar' && (<button
                     className="tab-btn-fab"
                     aria-label="Add New Item"
                     onClick={handleFabClick}
                 >
                     <Plus className="fab-icon"/>
                     <span className="fab-label">Add</span>
-                </button>
-            )}
+                </button>)}
         </>)}
     </>);
 }

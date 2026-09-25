@@ -65,24 +65,36 @@ export function getScheduledGoalsForDate(
   templates: Record<string, any>[] | null | undefined
 ): Record<string, any>[] {
   if (!habits || habits.length === 0) return [];
+  if (!dateStr) return habits;
 
   const parts = dateStr.split('-');
+  if (parts.length !== 3) return [];
   const dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  if (isNaN(dateObj.getTime())) return [];
   const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
   const templateId = dayMapping ? dayMapping[dayName] : null;
 
-  if (templateId && templates) {
-    const template = templates.find((t: any) => t.id === templateId);
-    if (template) {
-      const blockGoalIds = template.blocks.map((b: any) => b.routineGoalId).filter(Boolean);
-      const scheduledGoals = habits.filter((g: any) => blockGoalIds.includes(g.id));
-      if (scheduledGoals.length > 0) {
-        return scheduledGoals;
-      }
+  if (templateId && templates && Array.isArray(templates)) {
+    const template = templates.find((t: any) => String(t.id) === String(templateId));
+    if (template && Array.isArray(template.blocks)) {
+      const blockGoalIds = new Set(
+        template.blocks.map((b: any) => b.routineGoalId ? String(b.routineGoalId) : null).filter(Boolean)
+      );
+      const blockNames = new Set(
+        template.blocks.map((b: any) => (b.name || '').toLowerCase().trim()).filter(Boolean)
+      );
+
+      return habits.filter((g: any) => {
+        if (g.id && blockGoalIds.has(String(g.id))) return true;
+        const gName = (g.name || '').toLowerCase().trim();
+        if (gName && blockNames.has(gName)) return true;
+        return false;
+      });
     }
   }
-  return habits;
+  return [];
 }
+
 
 export function getAllGoalsForMention(
   routineGoals: Record<string, any>[] | null | undefined,

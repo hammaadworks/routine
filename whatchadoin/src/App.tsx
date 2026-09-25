@@ -95,8 +95,18 @@ export default function App() {
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
     const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
-    const [calendarSubTab, setCalendarSubTab] = useState<string>('timelog');
+    const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (activeCenterTab === 'tasks' || activeCenterTab === 'coins') {
+            setCalendarSubTab('timelog');
+        } else if (activeCenterTab === 'plans'){
+            setCalendarSubTab('milestones');
+        }else if (activeCenterTab === 'myday' || activeCenterTab === 'calendar') {
+            setCalendarSubTab('mark_goals');
+        }
+    }, [activeCenterTab]);
     const [habitFilterRoutineGoalId, setHabitFilterRoutineGoalId] = useState<string | null>(null);
     const [habitFilterLifeGoalId, setHabitFilterLifeGoalId] = useState<string | null>(null);
     const [showRoutineModal, setShowRoutineModal] = useState<boolean>(false);
@@ -611,6 +621,7 @@ export default function App() {
                 isRoutineDrawerOpen={isRoutineDrawerOpen}
                 setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                 activeLeftTab={activeLeftTab}
+                setCalendarSubTab={setCalendarSubTab}
             />
 
             <main className={`main-content mobile-tab-${mobileTab}`}>

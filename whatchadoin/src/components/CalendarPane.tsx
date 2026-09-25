@@ -300,7 +300,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                 onClick={() => {
                                     if (inRange) {
                                         setSelectedTargetDate(isSelected ? null : dateStr);
-                                        if (setCalendarSubTab && calendarSubTab !== 'timelog' && calendarSubTab !== 'milestones') {
+                                        if (setCalendarSubTab) {
                                             setCalendarSubTab('mark_goals');
                                         }
                                     }

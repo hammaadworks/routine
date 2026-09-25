@@ -84,7 +84,7 @@ export default function HabitsPane({
                                         isCalendarTab,
                                         activeRoutine,
                                         updateActiveRoutine,
-                                        calendarSubTab = 'timelog',
+                                        calendarSubTab = 'mark_goals',
                                         setCalendarSubTab,
                                         isRoutineDrawerOpen,
                                         setIsRoutineDrawerOpen
@@ -1124,7 +1124,7 @@ export default function HabitsPane({
                             {completedGoals.map(renderGoal)}
                         </>);
                     })()}
-                    {(habits || []).length === 0 && (<div style={{
+                    {displayedRoutineGoals.length === 0 && (<div style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -1138,9 +1138,11 @@ export default function HabitsPane({
                     }}>
                         <ListTodo size={32}
                                   style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
-                        <div style={{fontSize: '14px', fontWeight: '500', color: '#fff'}}>No goals yet</div>
-                        <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>Start adding goals
-                            and drag them to schedule.
+                        <div style={{fontSize: '14px', fontWeight: '500', color: '#fff'}}>
+                            {effectiveDate ? 'No habits scheduled for this day' : 'No goals yet'}
+                        </div>
+                        <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>
+                            {effectiveDate ? 'Assign a template with habits to this day in My Day.' : 'Start adding goals and drag them to schedule.'}
                         </div>
                     </div>)}
                 </div>
