@@ -1,19 +1,13 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { CalendarDays, ChevronDown, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import Dropdown from './Dropdown';
 import BaseModal from './BaseModal';
-
-export interface Template {
-    id: string;
-    name: string;
-    [key: string]: any;
-}
+import type { Template } from '../types/routine';
 
 export interface MyDayMakerProps {
     templates: Template[];
     activeTemplateId: string;
-    setActiveTemplateId: (id: any) => void;
+    setActiveTemplateId: (id: string) => void;
     activeTemplate?: Template | null;
     dayMapping: Record<string, string>;
     setDayMapping: (mapping: Record<string, string>) => void;
@@ -26,19 +20,19 @@ export interface MyDayMakerProps {
 }
 
 export default function MyDayMaker({
-                                       templates,
-                                       activeTemplateId,
-                                       setActiveTemplateId,
-                                       activeTemplate,
-                                       dayMapping,
-                                       setDayMapping,
-                                       days,
-                                       handleNewClick,
-                                       setIsEditingTemplateName,
-                                       setEditingTemplateName,
-                                       duplicateTemplate,
-                                       deleteTemplate
-                                   }: MyDayMakerProps) {
+    templates,
+    activeTemplateId,
+    setActiveTemplateId,
+    activeTemplate,
+    dayMapping,
+    setDayMapping,
+    days,
+    handleNewClick,
+    setIsEditingTemplateName,
+    setEditingTemplateName,
+    duplicateTemplate,
+    deleteTemplate
+}: MyDayMakerProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const activeDaysArray = days.filter(d => dayMapping[d] === activeTemplateId);
@@ -56,10 +50,16 @@ export default function MyDayMaker({
         const hasAllWeekdays = hasMon && hasTue && hasWed && hasThu && hasFri;
         const hasBothWeekends = hasSat && hasSun;
 
-        if (activeDaysArray.length === 7) activeDaysStr = 'Everyday'; else if (hasAllWeekdays && hasSat && !hasSun) activeDaysStr = 'Weekdays & Saturday'; else if (hasAllWeekdays && !hasSat && !hasSun) activeDaysStr = 'Weekdays'; else if (hasBothWeekends && !hasMon && !hasTue && !hasWed && !hasThu && !hasFri) activeDaysStr = 'Weekends'; else if (hasBothWeekends && hasMon && !hasTue && !hasWed && !hasThu && !hasFri) activeDaysStr = 'Monday & Weekends'; else activeDaysStr = activeDaysArray.map(d => d.substring(0, 3)).join(', ');
+        if (activeDaysArray.length === 7) activeDaysStr = 'Everyday';
+        else if (hasAllWeekdays && hasSat && !hasSun) activeDaysStr = 'Weekdays & Saturday';
+        else if (hasAllWeekdays && !hasSat && !hasSun) activeDaysStr = 'Weekdays';
+        else if (hasBothWeekends && !hasMon && !hasTue && !hasWed && !hasThu && !hasFri) activeDaysStr = 'Weekends';
+        else if (hasBothWeekends && hasMon && !hasTue && !hasWed && !hasThu && !hasFri) activeDaysStr = 'Monday & Weekends';
+        else activeDaysStr = activeDaysArray.map(d => d.substring(0, 3)).join(', ');
     }
 
-    return (<>
+    return (
+        <>
             {/* Minimal Sticky Header */}
             <div
                 className="myday-maker-sticky"
@@ -79,18 +79,18 @@ export default function MyDayMaker({
                 onClick={() => setIsModalOpen(true)}
             >
                 <div className="myday-maker-badge">
-          <div className="myday-maker-top-row">
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Template:</span>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {activeTemplate?.name || 'Select'}
-              <ChevronDown size={14} />
-            </span>
-          </div>
-          <div className="myday-maker-divider" />
-          <span className="myday-maker-days" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }} title={`Weekly Schedule: ${activeDaysStr}`}>
-            {activeDaysStr}
-          </span>
-        </div>
+                    <div className="myday-maker-top-row">
+                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Template:</span>
+                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {activeTemplate?.name || 'Select'}
+                            <ChevronDown size={14} />
+                        </span>
+                    </div>
+                    <div className="myday-maker-divider" />
+                    <span className="myday-maker-days" style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: '500' }} title={`Weekly Schedule: ${activeDaysStr}`}>
+                        {activeDaysStr}
+                    </span>
+                </div>
             </div>
 
             {/* Configuration Modal */}
@@ -111,14 +111,15 @@ export default function MyDayMaker({
                         }}>Current Template</label>
                         <Dropdown
                             value={activeTemplateId}
-                            onChange={setActiveTemplateId}
+                            onChange={(val) => setActiveTemplateId(String(val))}
                             options={templates.map((t: Template) => ({value: t.id, label: t.name}))}
                             placeholder="Select Template..."
                         />
                     </div>
 
                     {/* Weekly Schedule Days */}
-                    {activeTemplate && (<div className="th-active-on" style={{
+                    {activeTemplate && (
+                        <div className="th-active-on" style={{
                             background: 'rgba(0,0,0,0.15)',
                             padding: '16px 12px',
                             borderRadius: '12px',
@@ -145,7 +146,8 @@ export default function MyDayMaker({
                                     const isAssignedToOther = assignedTemplateId && assignedTemplateId !== activeTemplateId;
                                     const assignedTemplate = isAssignedToOther ? templates.find((t: Template) => t.id === assignedTemplateId) : null;
 
-                                    return (<button
+                                    return (
+                                        <button
                                             key={day}
                                             type="button"
                                             onClick={() => setDayMapping({
@@ -175,7 +177,8 @@ export default function MyDayMaker({
                                             }}
                                         >
                                             {day.substring(0, 3)}
-                                        </button>)
+                                        </button>
+                                    );
                                 })}
                             </div>
                             <div style={{
@@ -186,7 +189,8 @@ export default function MyDayMaker({
                             }}>
                                 Assign this template to days of the week in your Weekly Schedule.
                             </div>
-                        </div>)}
+                        </div>
+                    )}
 
                     {/* Actions */}
                     <div>
@@ -233,5 +237,6 @@ export default function MyDayMaker({
 
                 </div>
             </BaseModal>
-        </>);
+        </>
+    );
 }

@@ -1,12 +1,12 @@
-// @ts-nocheck
 import * as React from 'react';
-import { useEffect, useRef, useState} from 'react';
-import { 
+import {useEffect, useRef, useState} from 'react';
+import {
     Activity,
     CheckCircle2,
     ChevronDown,
     Clock,
     Copy,
+    Globe,
     GripVertical,
     ListTodo,
     Palette,
@@ -14,8 +14,7 @@ import {
     Plus,
     Target,
     Trash2,
-    X,
-    Globe
+    X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
@@ -23,7 +22,7 @@ import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import SearchSortBar from './SearchSortBar';
-import { 
+import {
     getAllGoalsForMention,
     getCardBgStyle,
     getGoalColor,
@@ -31,6 +30,7 @@ import {
     parseDuration,
     sortHabits
 } from '../utils';
+import type {CalendarSubTab} from '../types/ui';
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
@@ -55,46 +55,58 @@ interface HabitsPaneProps {
     isCalendarTab: boolean;
     activeRoutine: any;
     updateActiveRoutine?: (updates: any) => void;
-    calendarSubTab?: string;
-    setCalendarSubTab?: (tab: string) => void;
+    calendarSubTab?: CalendarSubTab;
+    setCalendarSubTab?: (tab: CalendarSubTab) => void;
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
     moneyGoals?: any[];
 }
 
 export default function HabitsPane({
-    isPublicView,
-                                        habits,
-                                        setHabits,
-                                        templates,
-                                        setTemplates,
-                                        routineGoals,
-                                        lifeGoals,
-                                        moneyGoals,
-                                        activeTemplateId,
-                                        habitFilterRoutineGoalId,
-                                        setHabitFilterRoutineGoalId,
-                                        habitFilterLifeGoalId,
-                                        setHabitFilterLifeGoalId,
-                                        selectedTargetDate,
-                                        setSelectedTargetDate,
-                                        dailyLogs,
-                                        toggleDailyGoal,
-                                        dayMapping,
-                                        isCalendarTab,
-                                        activeRoutine,
-                                        updateActiveRoutine,
-                                        calendarSubTab = 'mark_goals',
-                                        setCalendarSubTab,
-                                        isRoutineDrawerOpen,
-                                        setIsRoutineDrawerOpen
-                                    }: HabitsPaneProps) {
+                                       isPublicView,
+                                       habits,
+                                       setHabits,
+                                       templates,
+                                       setTemplates,
+                                       routineGoals,
+                                       lifeGoals,
+                                       moneyGoals,
+                                       activeTemplateId,
+                                       habitFilterRoutineGoalId,
+                                       setHabitFilterRoutineGoalId,
+                                       habitFilterLifeGoalId,
+                                       setHabitFilterLifeGoalId,
+                                       selectedTargetDate,
+                                       setSelectedTargetDate,
+                                       dailyLogs,
+                                       toggleDailyGoal,
+                                       dayMapping,
+                                       isCalendarTab,
+                                       activeRoutine,
+                                       updateActiveRoutine,
+                                       calendarSubTab = 'mark_goals',
+                                       setCalendarSubTab,
+                                       isRoutineDrawerOpen,
+                                       setIsRoutineDrawerOpen
+                                   }: HabitsPaneProps) {
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
-        name: string; desc: string; timeValue: string; routineGoalIds: string[]; lifeGoalIds: string[]; color: string; isPublic?: boolean;
+        name: string;
+        desc: string;
+        timeValue: string;
+        routineGoalIds: string[];
+        lifeGoalIds: string[];
+        color: string;
+        isPublic?: boolean;
     }>({
-        name: '', desc: '', timeValue: '1:15', routineGoalIds: [] as string[], lifeGoalIds: [] as string[], color: '', isPublic: false
+        name: '',
+        desc: '',
+        timeValue: '1:15',
+        routineGoalIds: [] as string[],
+        lifeGoalIds: [] as string[],
+        color: '',
+        isPublic: false
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [sortByName, setSortByName] = useState(false);
@@ -104,15 +116,9 @@ export default function HabitsPane({
     const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', name: '', desc: '', done: false});
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
     const [timeLogForm, setTimeLogForm] = useState<{
-        startTime: string;
-        endTime: string;
-        tagGoalId: string;
-        desc: string;
+        startTime: string; endTime: string; tagGoalId: string; desc: string;
     }>({
-        startTime: '',
-        endTime: '',
-        tagGoalId: '',
-        desc: ''
+        startTime: '', endTime: '', tagGoalId: '', desc: ''
     });
     const [editingTimeLogId, setEditingTimeLogId] = useState<string | null>(null);
 
@@ -124,24 +130,24 @@ export default function HabitsPane({
     const [activeModalField, setActiveModalField] = useState<any>(null);
 
     const openEditMilestone = (dateStr: string, idx: number, block: string) => {
-        let tag;
-        let name;
-        let desc;
+        let tag = '';
+        let name = '';
+        let desc = '';
         let done = false;
         const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
         const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
 
         if (matchWithTag) {
-            tag = matchWithTag[1];
-            name = matchWithTag[2];
+            tag = matchWithTag[1] || '';
+            name = matchWithTag[2] || '';
             desc = (matchWithTag[3] || '').trim().replace(/ {2}\n/g, '\n');
         } else if (matchWithoutTag) {
             tag = '';
-            name = matchWithoutTag[1];
+            name = matchWithoutTag[1] || '';
             desc = (matchWithoutTag[2] || '').trim().replace(/ {2}\n/g, '\n');
         } else {
             tag = '';
-            name = block;
+            name = block || '';
             desc = '';
         }
 
@@ -176,9 +182,11 @@ export default function HabitsPane({
                     delete newMilestones[dateStr];
                 }
 
-                updateActiveRoutine({
-                    ...activeRoutine, milestones: newMilestones
-                });
+                if (updateActiveRoutine) {
+                    updateActiveRoutine({
+                        ...activeRoutine, milestones: newMilestones
+                    });
+                }
 
                 setShowMilestoneModal(false);
                 setConfirmConfig(null);
@@ -194,7 +202,7 @@ export default function HabitsPane({
 
         const cursor = e.target.selectionStart;
         const textBefore = val.slice(0, cursor);
-        const lastWord = textBefore.split(/\s/).pop();
+        const lastWord = textBefore.split(/\s/).pop() || '';
 
         if (lastWord.startsWith('@')) {
             const q = lastWord.slice(1).toLowerCase();
@@ -217,11 +225,11 @@ export default function HabitsPane({
     };
 
     const insertModalMention = (goal: any, field: string) => {
-        const val = milestoneForm[field as keyof typeof milestoneForm];
+        const val = String(milestoneForm[field as keyof typeof milestoneForm] || '');
         const el = modalInputRefs.current[field];
         if (!el) return;
 
-        const cursor = el.selectionStart;
+        const cursor = el.selectionStart || 0;
         const textBefore = val.slice(0, cursor);
         const textAfter = val.slice(cursor);
         const words = textBefore.split(/\s/);
@@ -300,14 +308,16 @@ export default function HabitsPane({
             }
         });
 
-        updateActiveRoutine({
-            ...activeRoutine, milestones: newMilestones
-        });
+        if (updateActiveRoutine) {
+            updateActiveRoutine({
+                ...activeRoutine, milestones: newMilestones
+            });
+        }
 
         setShowMilestoneModal(false);
         setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
         setEditingMilestoneIdx(null);
-        setCalendarSubTab('milestones');
+        if (setCalendarSubTab) setCalendarSubTab('milestones');
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
     };
     const modalInputRefs = useRef<any>({});
@@ -327,14 +337,9 @@ export default function HabitsPane({
     }
 
     const publicFilter = (item: any) => !isPublicView || item.isPublic || (item.name || '').includes('[public]');
-    const {allGoals, filteredGoals} = getAllGoalsForMention(
-        (routineGoals || []).filter(publicFilter),
-        (habits || []).filter(publicFilter),
-        (lifeGoals || []).filter(publicFilter),
-        mentionQuery,
-        (moneyGoals || []).filter(publicFilter),
-        (quickTasks || []).filter(publicFilter)
-    );
+    const {
+        allGoals, filteredGoals
+    } = getAllGoalsForMention((routineGoals || []).filter(publicFilter), (habits || []).filter(publicFilter), (lifeGoals || []).filter(publicFilter), mentionQuery, (moneyGoals || []).filter(publicFilter), (quickTasks || []).filter(publicFilter));
 
 
     // Removed inline editing handlers
@@ -342,7 +347,9 @@ export default function HabitsPane({
 
     const openAddHabit = () => {
         setEditingHabitId(null);
-        setHabitForm({name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''});
+        setHabitForm({
+            name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''
+        });
         setShowHabitModal(true);
     };
 
@@ -374,7 +381,7 @@ export default function HabitsPane({
             routineGoalIds: rIds,
             lifeGoalIds: lIds,
             color: goal.color || '',
-                isPublic: !!goal.isPublic
+            isPublic: !!goal.isPublic
         });
         setShowHabitModal(true);
     };
@@ -405,7 +412,8 @@ export default function HabitsPane({
             duration: durationMins,
             routineGoalIds: habitForm.routineGoalIds,
             lifeGoalIds: habitForm.lifeGoalIds,
-            isPublic: !!habitForm.isPublic, color: habitForm.color
+            isPublic: !!habitForm.isPublic,
+            color: habitForm.color
         };
 
         if (editingHabitId) {
@@ -520,8 +528,8 @@ export default function HabitsPane({
 
     const calcDurationMinutes = (start: string, end: string) => {
         if (!start || !end) return 0;
-        const [h1, m1] = start.split(':').map(Number);
-        const [h2, m2] = end.split(':').map(Number);
+        const [h1 = 0, m1 = 0] = start.split(':').map(Number);
+        const [h2 = 0, m2 = 0] = end.split(':').map(Number);
         if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
         let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
         if (diff < 0) diff += 24 * 60;
@@ -539,7 +547,7 @@ export default function HabitsPane({
 
     const formatTime12h = (time24: string) => {
         if (!time24) return '';
-        const [hStr, mStr] = time24.split(':');
+        const [hStr = '0', mStr = '00'] = time24.split(':');
         let h = parseInt(hStr, 10);
         const m = mStr || '00';
         if (isNaN(h)) return time24;
@@ -570,9 +578,7 @@ export default function HabitsPane({
             }
         }
         setTimeLogForm(prev => ({
-            ...prev,
-            startTime: newStart,
-            endTime: nowStr
+            ...prev, startTime: newStart, endTime: nowStr
         }));
     };
 
@@ -600,8 +606,7 @@ export default function HabitsPane({
                         ...entry,
                         startTime: timeLogForm.startTime,
                         endTime: timeLogForm.endTime,
-                        desc: timeLogForm.desc.trim(),
-                        ...tagData,
+                        desc: timeLogForm.desc.trim(), ...tagData,
                         tagGoalId: selectedGoal ? selectedGoal.id : undefined,
                         tagName: selectedGoal ? selectedGoal.name : undefined,
                         tagColor: selectedGoal ? (selectedGoal.color || 'var(--accent)') : undefined,
@@ -615,8 +620,7 @@ export default function HabitsPane({
                 id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                 startTime: timeLogForm.startTime,
                 endTime: timeLogForm.endTime,
-                desc: timeLogForm.desc.trim(),
-                ...tagData,
+                desc: timeLogForm.desc.trim(), ...tagData,
                 createdAt: Date.now()
             };
             updatedDay = [...dayTimeLogs, newLog];
@@ -624,19 +628,15 @@ export default function HabitsPane({
 
         updatedDay.sort((a, b) => a.startTime.localeCompare(b.startTime));
         const updatedTimeLogs = {
-            ...currentTimeLogs,
-            [timelogDate]: updatedDay
+            ...currentTimeLogs, [timelogDate]: updatedDay
         };
 
         if (updateActiveRoutine) {
-            updateActiveRoutine({ timeLogs: updatedTimeLogs });
+            updateActiveRoutine({timeLogs: updatedTimeLogs});
         }
 
         setTimeLogForm({
-            startTime: timeLogForm.endTime,
-            endTime: '',
-            tagGoalId: '',
-            desc: ''
+            startTime: timeLogForm.endTime, endTime: '', tagGoalId: '', desc: ''
         });
         setEditingTimeLogId(null);
     };
@@ -654,10 +654,7 @@ export default function HabitsPane({
     const handleCancelEdit = () => {
         setEditingTimeLogId(null);
         setTimeLogForm({
-            startTime: '',
-            endTime: '',
-            tagGoalId: '',
-            desc: ''
+            startTime: '', endTime: '', tagGoalId: '', desc: ''
         });
     };
 
@@ -669,11 +666,10 @@ export default function HabitsPane({
             onConfirm: () => {
                 const updatedDay = dayTimeLogs.filter(entry => entry.id !== id);
                 const updatedTimeLogs = {
-                    ...currentTimeLogs,
-                    [timelogDate]: updatedDay
+                    ...currentTimeLogs, [timelogDate]: updatedDay
                 };
                 if (updateActiveRoutine) {
-                    updateActiveRoutine({ timeLogs: updatedTimeLogs });
+                    updateActiveRoutine({timeLogs: updatedTimeLogs});
                 }
                 if (editingTimeLogId === id) {
                     handleCancelEdit();
@@ -755,22 +751,20 @@ export default function HabitsPane({
         if (tagsMatch) {
             return tagsMatch.some((t: string) => {
                 const tagName = t.slice(1).toLowerCase();
-                return allGoals.some((g: any) =>
-                    (g.name || '').toLowerCase() === tagName && (g.isPublic || (g.name || '').toLowerCase().includes('[public]'))
-                );
+                return allGoals.some((g: any) => (g.name || '').toLowerCase() === tagName && (g.isPublic || (g.name || '').toLowerCase().includes('[public]')));
             });
         }
         return false;
     };
 
-    const milestoneDates = Object.keys(activeRoutine.milestones || {}).filter(d => {
-        const text = (activeRoutine.milestones[d] || '').trim();
+    const milestoneDates = Object.keys(activeRoutine?.milestones || {}).filter(d => {
+        const text = (activeRoutine?.milestones?.[d] || '').trim();
         if (!text) return false;
         if (!isPublicView) return true;
         const blocks = text.split('\n\n');
-        return blocks.some(b => b.trim() && isMilestoneBlockPublic(b));
+        return blocks.some((b: string) => b.trim() && isMilestoneBlockPublic(b));
     });
-    milestoneDates.sort((a: any, b: any) => new Date(a).getTime() - new Date(b).getTime());
+    milestoneDates.sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime());
 
     useEffect(() => {
         if (isCalendarTab && calendarSubTab === 'milestones' && effectiveDate) {
@@ -823,15 +817,11 @@ export default function HabitsPane({
             borderBottom: '1px solid var(--panel-border)'
         }}>
             <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
-                {effectiveDate ? (
-                    <>
-                        <CheckCircle2 size={18} color="var(--accent)"/> Check {formatHeaderDate(effectiveDate)}
-                    </>
-                ) : (
-                    <>
-                        <ListTodo size={18} color="var(--accent)"/> Routine
-                    </>
-                )}
+                {effectiveDate ? (<>
+                    <CheckCircle2 size={18} color="var(--accent)"/> Check {formatHeaderDate(effectiveDate)}
+                </>) : (<>
+                    <ListTodo size={18} color="var(--accent)"/> Routine
+                </>)}
             </h2>
             <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
                 <ChevronDown size={16} style={{
@@ -911,13 +901,13 @@ export default function HabitsPane({
                 <div
                     className="habits-list-scroll-container"
                     style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                    overflowY: 'auto',
-                    flex: 1,
-                    paddingRight: '4px'
-                }}>
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        overflowY: 'auto',
+                        flex: 1,
+                        paddingRight: '4px'
+                    }}>
 
                     {(() => {
                         const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
@@ -930,9 +920,7 @@ export default function HabitsPane({
                             const hasColor = !!goal.color;
                             const bgStyle = getCardBgStyle(hexes, hasColor);
 
-                            const baseMins = typeof goal.duration === 'number' && goal.duration > 0
-                                ? goal.duration
-                                : (goal.time ? parseDuration(goal.time) : 0);
+                            const baseMins = typeof goal.duration === 'number' && goal.duration > 0 ? goal.duration : (goal.time ? parseDuration(goal.time) : 0);
                             let scheduledMins = 0;
                             if (currentTemplate) {
                                 currentTemplate.blocks.forEach((b: any) => {
@@ -966,20 +954,19 @@ export default function HabitsPane({
                                     <div style={{
                                         display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                                     }}>
-                                        {!effectiveDate && !isRoutineDrawerOpen && (<GripVertical size={16} color="var(--text-secondary)"
-                                                                          style={{
-                                                                              cursor: 'grab',
-                                                                              flexShrink: 0,
-                                                                              opacity: 0.5
-                                                                          }}/>)}
+                                        {!effectiveDate && !isRoutineDrawerOpen && (
+                                            <GripVertical size={16} color="var(--text-secondary)"
+                                                          style={{
+                                                              cursor: 'grab', flexShrink: 0, opacity: 0.5
+                                                          }}/>)}
                                         {effectiveDate ? (<input name="auto_field_28"
-                                            type="checkbox"
-                                            className="checkbox-square"
-                                            style={{
-                                                flexShrink: 0, '--accent': hexes[0] || '#ffffff'
-                                            } as React.CSSProperties}
-                                            checked={isCompletedForView}
-                                            onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
+                                                                 type="checkbox"
+                                                                 className="checkbox-square"
+                                                                 style={{
+                                                                     flexShrink: 0, '--accent': hexes[0] || '#ffffff'
+                                                                 } as React.CSSProperties}
+                                                                 checked={isCompletedForView}
+                                                                 onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
                                         />) : (<div style={{width: '16px', flexShrink: 0}}/>)}
                                         <div style={{
                                             flex: 1,
@@ -1002,8 +989,7 @@ export default function HabitsPane({
                           </span>
                                                 {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
                                                                                style={{
-                                                                                   flexShrink: 0,
-                                                                                   marginTop: '2px'
+                                                                                   flexShrink: 0, marginTop: '2px'
                                                                                }}/>)}
                                             </div>
 
@@ -1022,7 +1008,8 @@ export default function HabitsPane({
                                                     fontSize: '11px',
                                                     whiteSpace: 'nowrap'
                                                 }}>
-                                                    <Clock size={10}/> {goal.time || (typeof goal.duration === 'number' ? `${goal.duration}m` : goal.duration)}
+                                                    <Clock
+                                                        size={10}/> {goal.time || (typeof goal.duration === 'number' ? `${goal.duration}m` : goal.duration)}
                                                 </div>)}
                                                 {(goalCounts[goal.id] || 0) > 1 && (<div style={{
                                                     display: 'flex',
@@ -1151,13 +1138,13 @@ export default function HabitsPane({
             {calendarSubTab === 'milestones' && (<div
                 className="milestones-list-scroll-container"
                 style={{
-                flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto'
-            }}>
+                    flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto'
+                }}>
                 <button
                     onClick={() => {
                         setEditingMilestoneIdx(null);
                         setMilestoneForm({
-                            date: effectiveDate || new Date().toISOString().split('T')[0],
+                            date: effectiveDate || new Date().toISOString().split('T')[0] || '',
                             tag: '',
                             name: '',
                             desc: '',
@@ -1202,11 +1189,11 @@ export default function HabitsPane({
                             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
                             const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
 
-                            const validBlocks = blocks.filter(b => b.trim());
-                            const isAllDone = validBlocks.length > 0 && validBlocks.every(b => {
+                            const validBlocks = blocks.filter((b: string) => b.trim());
+                            const isAllDone = validBlocks.length > 0 && validBlocks.every((b: string) => {
                                 const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
                                 const titleMatchWithoutTag = b.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
-                                const title = titleMatchWithTag ? titleMatchWithTag[2] : (titleMatchWithoutTag ? titleMatchWithoutTag[1] : b);
+                                const title = titleMatchWithTag ? (titleMatchWithTag[2] || '') : (titleMatchWithoutTag ? (titleMatchWithoutTag[1] || '') : b);
                                 return title.startsWith('[x] ');
                             });
 
@@ -1214,11 +1201,11 @@ export default function HabitsPane({
                             let multiColors: string[] = [];
                             const tagsMatch = contentStr.match(/@([^\s*]+)/g);
                             if (tagsMatch) {
-                                const uniqueTags = [...new Set(tagsMatch.map((t: any) => t.slice(1).toLowerCase()))];
-                                uniqueTags.forEach((tag: any) => {
+                                const uniqueTags: string[] = Array.from(new Set(tagsMatch.map((t: string) => t.slice(1).toLowerCase())));
+                                uniqueTags.forEach((tag: string) => {
                                     const goal = allGoals.find(g => (g.name || '').toLowerCase() === tag);
                                     if (goal && goal.color) {
-                                        multiColors.push(goal.color);
+                                        multiColors.push(String(goal.color));
                                     }
                                 });
                             }
@@ -1319,268 +1306,302 @@ export default function HabitsPane({
                 </div>)}
             </div>)}
 
-            {calendarSubTab === 'timelog' && (
-                <div className="timelog-tab-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    {/* Inline Quick Form */}
-                    <form
-                        onSubmit={handleSaveTimeLog}
-                        className="timelog-inline-form"
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid var(--panel-border)',
-                            borderRadius: '12px',
-                            padding: '12px',
-                            marginBottom: '16px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px',
-                            flexShrink: 0
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {calendarSubTab === 'timelog' && (<div className="timelog-tab-container" style={{
+                flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
+            }}>
+                {/* Inline Quick Form */}
+                <form
+                    onSubmit={handleSaveTimeLog}
+                    className="timelog-inline-form"
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        border: '1px solid var(--panel-border)',
+                        borderRadius: '12px',
+                        padding: '12px',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        flexShrink: 0
+                    }}
+                >
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <span style={{
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: 'var(--accent)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                            }}>
                                 {editingTimeLogId ? 'Edit Time Log' : 'Quick Log Time'}
                             </span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        <span style={{fontSize: '11px', color: 'var(--text-secondary)'}}>
                                 {isCalendarTab ? formatHeaderDate(timelogDate) : `Today (${formatHeaderDate(timelogDate)})`}
                             </span>
-                        </div>
+                    </div>
 
-                        {/* Row 1: Start Time, End Time, Now Button */}
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <label htmlFor="timelog-start-time" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
-                                    Start
-                                </label>
-                                <input
-                                    id="timelog-start-time"
-                                    type="time"
-                                    value={timeLogForm.startTime}
-                                    onChange={e => setTimeLogForm(prev => ({ ...prev, startTime: e.target.value }))}
-                                    style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px' }}
-                                    required
-                                />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <label htmlFor="timelog-end-time" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
-                                    End
-                                </label>
-                                <input
-                                    id="timelog-end-time"
-                                    type="time"
-                                    value={timeLogForm.endTime}
-                                    onChange={e => setTimeLogForm(prev => ({ ...prev, endTime: e.target.value }))}
-                                    style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px' }}
-                                    required
-                                />
-                            </div>
-                            <button
-                                type="button"
-                                className="secondary"
-                                onClick={handlePreFillNow}
-                                style={{
-                                    padding: '7px 10px',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    whiteSpace: 'nowrap',
-                                    height: '34px',
-                                    flexShrink: 0
-                                }}
-                                title="Fill with current time"
-                            >
-                                <Clock size={12} /> Now
-                            </button>
-                        </div>
-
-                        {/* Row 2: Tag selector */}
-                        <div>
-                            <label htmlFor="timelog-tag-goal" style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
-                                Tag Goal / Habit (Optional)
-                            </label>
-                            <select
-                                id="timelog-tag-goal"
-                                value={timeLogForm.tagGoalId}
-                                onChange={e => setTimeLogForm(prev => ({ ...prev, tagGoalId: e.target.value }))}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 10px',
-                                    fontSize: '13px',
-                                    borderRadius: '6px',
-                                    background: 'rgba(0, 0, 0, 0.4)',
-                                    border: '1px solid var(--panel-border)',
-                                    color: '#fff',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <option value="">No Tag (General)</option>
-                                {allGoals.map(g => (
-                                    <option key={g.id || g.name} value={g.id}>
-                                        [{g.type}] {g.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Row 3: Description input & Submit button */}
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <input
-                                id="timelog-desc"
-                                type="text"
-                                aria-label="Time log activity description"
-                                placeholder="What did you do? (e.g. read 20 pages)"
-                                value={timeLogForm.desc}
-                                onChange={e => setTimeLogForm(prev => ({ ...prev, desc: e.target.value }))}
-                                style={{ flex: 1, minWidth: 0, padding: '8px 10px', fontSize: '13px', borderRadius: '6px' }}
-                            />
-                            <button
-                                type="submit"
-                                className="primary"
-                                disabled={!timeLogForm.startTime || !timeLogForm.endTime}
-                                style={{
-                                    padding: '8px 14px',
-                                    fontSize: '13px',
-                                    fontWeight: '600',
-                                    whiteSpace: 'nowrap',
-                                    opacity: (!timeLogForm.startTime || !timeLogForm.endTime) ? 0.5 : 1,
-                                    cursor: (!timeLogForm.startTime || !timeLogForm.endTime) ? 'not-allowed' : 'pointer',
-                                    flexShrink: 0
-                                }}
-                            >
-                                {editingTimeLogId ? 'Update' : '+ Log'}
-                            </button>
-                            {editingTimeLogId && (
-                                <button
-                                    type="button"
-                                    className="secondary"
-                                    onClick={handleCancelEdit}
-                                    style={{ padding: '8px 10px', fontSize: '12px', flexShrink: 0 }}
-                                >
-                                    Cancel
-                                </button>
-                            )}
-                        </div>
-                    </form>
-
-                    {/* Scrollable Logs List */}
-                    <div
-                        className="timelog-list-scroll-container"
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '10px',
-                            overflowY: 'auto',
-                            paddingRight: '4px',
-                            minHeight: 0
-                        }}
-                    >
-                        {dayTimeLogs.length === 0 ? (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '36px 16px',
+                    {/* Row 1: Start Time, End Time, Now Button */}
+                    <div style={{display: 'flex', alignItems: 'flex-end', gap: '8px'}}>
+                        <div style={{flex: 1, minWidth: 0}}>
+                            <label htmlFor="timelog-start-time" style={{
+                                fontSize: '10px',
+                                fontWeight: '600',
                                 color: 'var(--text-secondary)',
-                                textAlign: 'center',
-                                border: '1px dashed var(--panel-border)',
-                                borderRadius: '12px',
-                                marginTop: '8px'
+                                textTransform: 'uppercase',
+                                marginBottom: '4px',
+                                display: 'block'
                             }}>
-                                <Clock size={28} style={{ marginBottom: '8px', opacity: 0.5, color: 'var(--accent)' }} />
-                                <div style={{ fontSize: '13px', fontWeight: '500', color: '#fff' }}>No time logs for this date</div>
-                                <div style={{ fontSize: '11px', marginTop: '4px', opacity: 0.7 }}>Fill out the quick form above to log your time.</div>
-                            </div>
-                        ) : (
-                            dayTimeLogs.map(log => {
-                                const durationMins = calcDurationMinutes(log.startTime, log.endTime);
-                                return (
-                                    <div
-                                        key={log.id}
-                                        className="item-card"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            padding: '10px 12px',
-                                            gap: '10px',
-                                            borderRadius: '8px',
-                                            background: 'rgba(255, 255, 255, 0.03)',
-                                            border: '1px solid var(--panel-border)',
-                                            borderLeft: log.tagColor ? `4px solid ${log.tagColor}` : '4px solid var(--accent)'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff', whiteSpace: 'nowrap' }}>
-                                                    {formatTime12h(log.startTime)} – {formatTime12h(log.endTime)}
-                                                </span>
+                                Start
+                            </label>
+                            <input
+                                id="timelog-start-time"
+                                type="time"
+                                value={timeLogForm.startTime}
+                                onChange={e => setTimeLogForm(prev => ({...prev, startTime: e.target.value}))}
+                                style={{width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px'}}
+                                required
+                            />
+                        </div>
+                        <div style={{flex: 1, minWidth: 0}}>
+                            <label htmlFor="timelog-end-time" style={{
+                                fontSize: '10px',
+                                fontWeight: '600',
+                                color: 'var(--text-secondary)',
+                                textTransform: 'uppercase',
+                                marginBottom: '4px',
+                                display: 'block'
+                            }}>
+                                End
+                            </label>
+                            <input
+                                id="timelog-end-time"
+                                type="time"
+                                value={timeLogForm.endTime}
+                                onChange={e => setTimeLogForm(prev => ({...prev, endTime: e.target.value}))}
+                                style={{width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px'}}
+                                required
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            className="secondary"
+                            onClick={handlePreFillNow}
+                            style={{
+                                padding: '7px 10px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                whiteSpace: 'nowrap',
+                                height: '34px',
+                                flexShrink: 0
+                            }}
+                            title="Fill with current time"
+                        >
+                            <Clock size={12}/> Now
+                        </button>
+                    </div>
+
+                    {/* Row 2: Tag selector */}
+                    <div>
+                        <label htmlFor="timelog-tag-goal" style={{
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            color: 'var(--text-secondary)',
+                            textTransform: 'uppercase',
+                            marginBottom: '4px',
+                            display: 'block'
+                        }}>
+                            Tag Goal / Habit (Optional)
+                        </label>
+                        <select
+                            id="timelog-tag-goal"
+                            value={timeLogForm.tagGoalId}
+                            onChange={e => setTimeLogForm(prev => ({...prev, tagGoalId: e.target.value}))}
+                            style={{
+                                width: '100%',
+                                padding: '8px 10px',
+                                fontSize: '13px',
+                                borderRadius: '6px',
+                                background: 'rgba(0, 0, 0, 0.4)',
+                                border: '1px solid var(--panel-border)',
+                                color: '#fff',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="">No Tag (General)</option>
+                            {allGoals.map(g => (<option key={String(g.id || g.name)} value={String(g.id || '')}>
+                                [{g.type}] {g.name}
+                            </option>))}
+                        </select>
+                    </div>
+
+                    {/* Row 3: Description input & Submit button */}
+                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                        <input
+                            id="timelog-desc"
+                            type="text"
+                            aria-label="Time log activity description"
+                            placeholder="What did you do? (e.g. read 20 pages)"
+                            value={timeLogForm.desc}
+                            onChange={e => setTimeLogForm(prev => ({...prev, desc: e.target.value}))}
+                            style={{
+                                flex: 1, minWidth: 0, padding: '8px 10px', fontSize: '13px', borderRadius: '6px'
+                            }}
+                        />
+                        <button
+                            type="submit"
+                            className="primary"
+                            disabled={!timeLogForm.startTime || !timeLogForm.endTime}
+                            style={{
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                whiteSpace: 'nowrap',
+                                opacity: (!timeLogForm.startTime || !timeLogForm.endTime) ? 0.5 : 1,
+                                cursor: (!timeLogForm.startTime || !timeLogForm.endTime) ? 'not-allowed' : 'pointer',
+                                flexShrink: 0
+                            }}
+                        >
+                            {editingTimeLogId ? 'Update' : '+ Log'}
+                        </button>
+                        {editingTimeLogId && (<button
+                            type="button"
+                            className="secondary"
+                            onClick={handleCancelEdit}
+                            style={{padding: '8px 10px', fontSize: '12px', flexShrink: 0}}
+                        >
+                            Cancel
+                        </button>)}
+                    </div>
+                </form>
+
+                {/* Scrollable Logs List */}
+                <div
+                    className="timelog-list-scroll-container"
+                    style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        overflowY: 'auto',
+                        paddingRight: '4px',
+                        minHeight: 0
+                    }}
+                >
+                    {dayTimeLogs.length === 0 ? (<div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '36px 16px',
+                        color: 'var(--text-secondary)',
+                        textAlign: 'center',
+                        border: '1px dashed var(--panel-border)',
+                        borderRadius: '12px',
+                        marginTop: '8px'
+                    }}>
+                        <Clock size={28} style={{marginBottom: '8px', opacity: 0.5, color: 'var(--accent)'}}/>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#fff'}}>No time logs for this
+                            date
+                        </div>
+                        <div style={{fontSize: '11px', marginTop: '4px', opacity: 0.7}}>Fill out the quick form
+                            above to log your time.
+                        </div>
+                    </div>) : (dayTimeLogs.map(log => {
+                        const durationMins = calcDurationMinutes(log.startTime, log.endTime);
+                        return (<div
+                            key={log.id}
+                            className="item-card"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 12px',
+                                gap: '10px',
+                                borderRadius: '8px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid var(--panel-border)',
+                                borderLeft: log.tagColor ? `4px solid ${log.tagColor}` : '4px solid var(--accent)'
+                            }}
+                        >
+                            <div style={{
+                                display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0
+                            }}>
+                                <div style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'
+                                }}>
                                                 <span style={{
-                                                    fontSize: '10px',
+                                                    fontSize: '12px',
                                                     fontWeight: 'bold',
-                                                    padding: '2px 6px',
-                                                    borderRadius: '4px',
-                                                    background: 'rgba(255, 255, 255, 0.08)',
-                                                    color: 'var(--text-secondary)',
+                                                    color: '#fff',
                                                     whiteSpace: 'nowrap'
                                                 }}>
+                                                    {formatTime12h(log.startTime)} – {formatTime12h(log.endTime)}
+                                                </span>
+                                    <span style={{
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        color: 'var(--text-secondary)',
+                                        whiteSpace: 'nowrap'
+                                    }}>
                                                     {formatDuration(durationMins)}
                                                 </span>
-                                                {log.tagName && (
-                                                    <span style={{
-                                                        fontSize: '11px',
-                                                        fontWeight: '600',
-                                                        padding: '2px 8px',
-                                                        borderRadius: '6px',
-                                                        background: `${log.tagColor || 'var(--accent)'}22`,
-                                                        color: log.tagColor || 'var(--accent)',
-                                                        border: `1px solid ${log.tagColor || 'var(--accent)'}44`,
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        maxWidth: '160px'
-                                                    }}>
+                                    {log.tagName && (<span style={{
+                                        fontSize: '11px',
+                                        fontWeight: '600',
+                                        padding: '2px 8px',
+                                        borderRadius: '6px',
+                                        background: `${log.tagColor || 'var(--accent)'}22`,
+                                        color: log.tagColor || 'var(--accent)',
+                                        border: `1px solid ${log.tagColor || 'var(--accent)'}44`,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        maxWidth: '160px'
+                                    }}>
                                                         {log.tagName}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {log.desc && (
-                                                <div style={{ fontSize: '13px', color: '#fff', wordBreak: 'break-word', opacity: 0.9, lineHeight: 1.4 }}>
-                                                    {log.desc}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                            <button
-                                                type="button"
-                                                className="icon-btn"
-                                                onClick={() => handleEditTimeLog(log)}
-                                                style={{ padding: '6px', cursor: 'pointer' }}
-                                                title="Edit Log"
-                                            >
-                                                <Pencil size={13} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="icon-btn"
-                                                onClick={() => handleDeleteTimeLog(log.id)}
-                                                style={{ padding: '6px', cursor: 'pointer', color: 'var(--danger)' }}
-                                                title="Delete Log"
-                                            >
-                                                <Trash2 size={13} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                        <div style={{ height: '16px' }} />
-                    </div>
+                                                    </span>)}
+                                </div>
+                                {log.desc && (<div style={{
+                                    fontSize: '13px',
+                                    color: '#fff',
+                                    wordBreak: 'break-word',
+                                    opacity: 0.9,
+                                    lineHeight: 1.4
+                                }}>
+                                    {log.desc}
+                                </div>)}
+                            </div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0}}>
+                                <button
+                                    type="button"
+                                    className="icon-btn"
+                                    onClick={() => handleEditTimeLog(log)}
+                                    style={{padding: '6px', cursor: 'pointer'}}
+                                    title="Edit Log"
+                                >
+                                    <Pencil size={13}/>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="icon-btn"
+                                    onClick={() => handleDeleteTimeLog(log.id)}
+                                    style={{padding: '6px', cursor: 'pointer', color: 'var(--danger)'}}
+                                    title="Delete Log"
+                                >
+                                    <Trash2 size={13}/>
+                                </button>
+                            </div>
+                        </div>);
+                    }))}
+                    <div style={{height: '16px'}}/>
                 </div>
-            )}
+            </div>)}
         </div>
 
         {/* BOTTOM METRICS: Habit Insights */}
@@ -1651,9 +1672,9 @@ export default function HabitsPane({
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Habit Name</label>
                     <input name="auto_field_29"
-                        type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
-                        onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
-                        style={{width: '100%'}}
+                           type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
+                           onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
+                           style={{width: '100%'}}
                     />
                 </div>
                 <div>
@@ -1661,9 +1682,9 @@ export default function HabitsPane({
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>Details / Notes <span style={{opacity: 0.5}}>(optional)</span></label>
                     <textarea name="auto_field_30"
-                        placeholder="Add any specific criteria for success..." value={habitForm.desc}
-                        onChange={(e) => setHabitForm({...habitForm, desc: e.target.value})}
-                        style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
+                              placeholder="Add any specific criteria for success..." value={habitForm.desc}
+                              onChange={(e) => setHabitForm({...habitForm, desc: e.target.value})}
+                              style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
                     />
                 </div>
 
@@ -1673,9 +1694,9 @@ export default function HabitsPane({
                             fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                         }}>Duration</label>
                         <input name="auto_field_31"
-                            type="text" placeholder="1:20" value={String(habitForm.timeValue)}
-                            onChange={(e) => setHabitForm({...habitForm, timeValue: e.target.value})}
-                            style={{width: '100%'}}
+                               type="text" placeholder="1:20" value={String(habitForm.timeValue)}
+                               onChange={(e) => setHabitForm({...habitForm, timeValue: e.target.value})}
+                               style={{width: '100%'}}
                         />
                     </div>
 
@@ -1745,21 +1766,21 @@ export default function HabitsPane({
                                 {!(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) &&
                                     <Palette size={12}/>}
                                 <input name="auto_field_32"
-                                    type="color"
-                                    value={habitForm.color ? habitForm.color.toLowerCase() : '#ffffff'}
-                                    onChange={(e) => setHabitForm({
-                                        ...habitForm, color: e.target.value
-                                    })}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '-10px',
-                                        left: '-10px',
-                                        width: '44px',
-                                        height: '44px',
-                                        cursor: 'pointer',
-                                        opacity: 0
-                                    }}
-                                    title="Custom Color"
+                                       type="color"
+                                       value={habitForm.color ? habitForm.color.toLowerCase() : '#ffffff'}
+                                       onChange={(e) => setHabitForm({
+                                           ...habitForm, color: e.target.value
+                                       })}
+                                       style={{
+                                           position: 'absolute',
+                                           top: '-10px',
+                                           left: '-10px',
+                                           width: '44px',
+                                           height: '44px',
+                                           cursor: 'pointer',
+                                           opacity: 0
+                                       }}
+                                       title="Custom Color"
                                 />
                             </div>
                         </div>
@@ -1844,33 +1865,47 @@ export default function HabitsPane({
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer' }} onClick={() => setHabitForm({...habitForm, isPublic: !habitForm.isPublic})}>
-                    <span style={{ fontSize: '13px', color: !habitForm.isPublic ? 'var(--danger)' : 'var(--text-secondary)', fontWeight: !habitForm.isPublic ? 600 : 400, opacity: !habitForm.isPublic ? 1 : 0.6 }}>Private</span>
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer'}}
+                     onClick={() => setHabitForm({...habitForm, isPublic: !habitForm.isPublic})}>
+                    <span style={{
+                        fontSize: '13px',
+                        color: !habitForm.isPublic ? 'var(--danger)' : 'var(--text-secondary)',
+                        fontWeight: !habitForm.isPublic ? 600 : 400,
+                        opacity: !habitForm.isPublic ? 1 : 0.6
+                    }}>Private</span>
                     <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
-                        <input 
-                            type="checkbox" 
+                        <input
+                            type="checkbox"
                             id="habit-public"
                             checked={!!habitForm.isPublic}
                             onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
                         />
                         <span className="ios-slider"></span>
                     </label>
-                    <span style={{ fontSize: '13px', color: habitForm.isPublic ? 'var(--success)' : 'var(--text-secondary)', fontWeight: habitForm.isPublic ? 600 : 400, display: 'flex', alignItems: 'center', gap: '4px', opacity: habitForm.isPublic ? 1 : 0.6 }}>
-                        <Globe size={13} /> Public (Visible to others)
+                    <span style={{
+                        fontSize: '13px',
+                        color: habitForm.isPublic ? 'var(--success)' : 'var(--text-secondary)',
+                        fontWeight: habitForm.isPublic ? 600 : 400,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        opacity: habitForm.isPublic ? 1 : 0.6
+                    }}>
+                        <Globe size={13}/> Public (Visible to others)
                     </span>
                 </div>
                 <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
                     {editingHabitId && (<button type="button"
-                                                      onClick={() => confirmDeleteHabit(editingHabitId, habitForm.name)}
-                                                      style={{
-                                                          flex: '0 0 20%',
-                                                          background: '#ef4444',
-                                                          color: 'white',
-                                                          border: 'none',
-                                                          padding: '10px 0',
-                                                          borderRadius: '6px',
-                                                          fontWeight: '500'
-                                                      }}>Delete</button>)}
+                                                onClick={() => confirmDeleteHabit(editingHabitId, habitForm.name)}
+                                                style={{
+                                                    flex: '0 0 20%',
+                                                    background: '#ef4444',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    padding: '10px 0',
+                                                    borderRadius: '6px',
+                                                    fontWeight: '500'
+                                                }}>Delete</button>)}
                     <button type="button" onClick={() => setShowHabitModal(false)} className="secondary"
                             style={{
                                 flex: editingHabitId ? '0 0 25%' : '0 0 30%',
@@ -1927,18 +1962,18 @@ export default function HabitsPane({
                                 letterSpacing: '0.5px'
                             }}>Date</label>
                             <input name="auto_field_33"
-                                type="date" value={milestoneForm.date}
-                                onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
-                                required
-                                onKeyDown={(e) => e.preventDefault()}
-                                onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                                style={{
-                                    width: '100%',
-                                    fontSize: '14px',
-                                    padding: '12px 14px',
-                                    colorScheme: 'dark',
-                                    cursor: 'pointer'
-                                }}
+                                   type="date" value={milestoneForm.date}
+                                   onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
+                                   required
+                                   onKeyDown={(e) => e.preventDefault()}
+                                   onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                                   style={{
+                                       width: '100%',
+                                       fontSize: '14px',
+                                       padding: '12px 14px',
+                                       colorScheme: 'dark',
+                                       cursor: 'pointer'
+                                   }}
                             />
                         </div>
                         <div style={{flex: 1}}>
@@ -1953,7 +1988,7 @@ export default function HabitsPane({
                             }}>Tag (Optional)</label>
                             <Dropdown
                                 value={milestoneForm.tag}
-                                onChange={(val) => setMilestoneForm({...milestoneForm, tag: val})}
+                                onChange={(val) => setMilestoneForm({...milestoneForm, tag: String(val)})}
                                 options={[{
                                     value: '', label: 'No Tag'
                                 }, ...allGoals.map(g => ({
@@ -1965,18 +2000,20 @@ export default function HabitsPane({
                     {editingMilestoneIdx !== null && (
                         <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
                             <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
-                                   onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})} style={{
-                                width: '18px',
-                                height: '18px',
-                                margin: 0,
-                                cursor: 'pointer',
-                                accentColor: 'var(--accent)'
-                            }}/>
+                                   onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})}
+                                   style={{
+                                       width: '18px',
+                                       height: '18px',
+                                       margin: 0,
+                                       cursor: 'pointer',
+                                       accentColor: 'var(--accent)'
+                                   }}/>
                             <label htmlFor="milestone-done"
-                                   style={{fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0}}>Mark
+                                   style={{
+                                       fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0
+                                   }}>Mark
                                 as Done</label>
-                        </div>
-                    )}
+                        </div>)}
                     <div style={{position: 'relative'}}>
                         <label style={{
                             fontSize: '12px',
@@ -1988,11 +2025,13 @@ export default function HabitsPane({
                             letterSpacing: '0.5px'
                         }}>Milestone Name</label>
                         <input name="auto_field_34"
-                            type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.name}
-                            ref={el => modalInputRefs.current['name'] = el}
-                            onChange={(e) => handleModalInput(e, 'name')}
-                            onKeyDown={(e) => handleModalKeyDown(e, 'name')} required
-                            style={{width: '100%', fontSize: '16px', padding: '12px 14px'}}
+                               type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.name}
+                               ref={(el) => {
+                                   modalInputRefs.current['name'] = el;
+                               }}
+                               onChange={(e) => handleModalInput(e, 'name')}
+                               onKeyDown={(e) => handleModalKeyDown(e, 'name')} required
+                               style={{width: '100%', fontSize: '16px', padding: '12px 14px'}}
                         />
 
                         {showMentionMenu && activeModalField === 'name' && filteredGoals.length > 0 && (<div
@@ -2011,7 +2050,7 @@ export default function HabitsPane({
                             }}
                         >
                             {filteredGoals.map((g, i) => (<div
-                                key={g.id}
+                                key={String(g.id || i)}
                                 onMouseDown={(e) => {
                                     e.preventDefault();
                                     insertModalMention(g, 'name');
@@ -2046,18 +2085,20 @@ export default function HabitsPane({
                             letterSpacing: '0.5px'
                         }}>Description (Optional)</label>
                         <textarea name="auto_field_35"
-                            placeholder="Any extra details..." value={milestoneForm.desc}
-                            ref={el => modalInputRefs.current['desc'] = el}
-                            onChange={(e) => handleModalInput(e, 'desc')}
-                            onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
-                            style={{
-                                width: '100%',
-                                fontSize: '16px',
-                                padding: '12px 14px',
-                                minHeight: '60px',
-                                resize: 'vertical',
-                                fontFamily: 'inherit'
-                            }}
+                                  placeholder="Any extra details..." value={milestoneForm.desc}
+                                  ref={(el) => {
+                                      modalInputRefs.current['desc'] = el;
+                                  }}
+                                  onChange={(e) => handleModalInput(e, 'desc')}
+                                  onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
+                                  style={{
+                                      width: '100%',
+                                      fontSize: '16px',
+                                      padding: '12px 14px',
+                                      minHeight: '60px',
+                                      resize: 'vertical',
+                                      fontFamily: 'inherit'
+                                  }}
                         />
 
                         {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (<div
@@ -2076,7 +2117,7 @@ export default function HabitsPane({
                             }}
                         >
                             {filteredGoals.map((g, i) => (<div
-                                key={g.id}
+                                key={String(g.id || i)}
                                 onMouseDown={(e) => {
                                     e.preventDefault();
                                     insertModalMention(g, 'desc');

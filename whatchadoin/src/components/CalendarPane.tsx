@@ -1,37 +1,21 @@
-// @ts-nocheck
-import * as React from 'react';
-import {useEffect, useMemo} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {getScheduledGoalsForDate} from '../utils';
-
-interface Routine {
-    start?: string;
-    end?: string;
-    dailyLogs?: Record<string, Record<string, boolean>>;
-    milestones?: Record<string, string>;
-
-    [key: string]: any;
-}
-
-interface Goal {
-    id?: string;
-    name?: string;
-    color?: string;
-
-    [key: string]: any;
-}
+import type {DayMapping, Habit, Routine, RoutineGoal} from '../types/routine';
+import type {LifeGoal} from '../types/goals';
+import type {CalendarSubTab} from '../types/ui';
 
 interface CalendarPaneProps {
     isPublicView?: boolean;
     activeRoutine: Routine;
-    routineGoals: Goal[];
-    lifeGoals: Goal[];
+    routineGoals: RoutineGoal[];
+    lifeGoals: LifeGoal[];
     selectedTargetDate: string | null;
     setSelectedTargetDate: (date: string | null) => void;
-    habits: Goal[];
-    templates: any;
-    dayMapping: Record<string, string>;
-    setCalendarSubTab?: (tab: string) => void;
-    calendarSubTab?: string;
+    habits: Habit[];
+    templates: Routine['templates'];
+    dayMapping: DayMapping;
+    setCalendarSubTab?: (tab: CalendarSubTab) => void;
+    calendarSubTab?: CalendarSubTab;
 }
 
 const CalendarPane: React.FC<CalendarPaneProps> = ({
@@ -45,19 +29,17 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        templates,
                                                        dayMapping,
                                                        setCalendarSubTab,
-                                                       calendarSubTab
                                                    }) => {
-
     const visibleHabits = useMemo(() => {
-        return (habits || []).filter((h: Goal) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+        return (habits || []).filter((h) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
     }, [habits, isPublicView]);
 
     const visibleRoutineGoals = useMemo(() => {
-        return (routineGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+        return (routineGoals || []).filter((g) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
     }, [routineGoals, isPublicView]);
 
     const visibleLifeGoals = useMemo(() => {
-        return (lifeGoals || []).filter((g: Goal) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+        return (lifeGoals || []).filter((g) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
     }, [lifeGoals, isPublicView]);
 
     useEffect(() => {
@@ -89,11 +71,11 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
 
     const parseDate = (dateStr: string) => {
         const [y, m, d] = dateStr.split('-');
-        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+        return new Date(parseInt(y || '0', 10), parseInt(m || '1', 10) - 1, parseInt(d || '1', 10));
     };
 
-    const startDate = parseDate(activeRoutine.start!);
-    const endDate = parseDate(activeRoutine.end!);
+    const startDate = parseDate(activeRoutine.start);
+    const endDate = parseDate(activeRoutine.end);
 
     if (startDate > endDate) {
         return (<div style={{
@@ -109,7 +91,6 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         </div>);
     }
 
-
     const formatDate = (date: Date) => {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -117,18 +98,18 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         return `${y}-${m}-${day}`;
     };
 
-    const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, visibleHabits, dayMapping, templates);
+    const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, visibleHabits, dayMapping as Record<string, string>, templates);
 
     const isDateComplete = (dateStr: string) => {
         const goalsForDay = getGoalsForDateStr(dateStr);
         if (goalsForDay.length === 0) return false;
 
         const dayLog = activeRoutine.dailyLogs?.[dateStr] || {};
-        return goalsForDay.every((g: Goal) => dayLog[g.id!] === true);
+        return goalsForDay.every((g) => dayLog[g.id] === true);
     };
 
-    const months = [];
-    let currentMonthDate = new Date(startDate.getFullYear() || 0, startDate.getMonth() || 0, 1);
+    const months: Array<{ year: number; month: number; monthName: string; days: Array<Date | null> }> = [];
+    const currentMonthDate = new Date(startDate.getFullYear() || 0, startDate.getMonth() || 0, 1);
     const endMonthDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
 
     while (currentMonthDate <= endMonthDate) {
@@ -138,7 +119,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const firstDayOfWeek = new Date(year, month, 1).getDay();
 
-        const days = [];
+        const days: Array<Date | null> = [];
         for (let i = 0; i < firstDayOfWeek; i++) {
             days.push(null);
         }
@@ -154,12 +135,14 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
     }
 
     const isDateInRange = (dateStr: string) => {
-        return dateStr >= activeRoutine.start! && dateStr <= activeRoutine.end!;
+        return !!activeRoutine.start && !!activeRoutine.end && dateStr >= activeRoutine.start && dateStr <= activeRoutine.end;
     };
 
-    const milestones = activeRoutine.milestones || {};
+    const milestones = (activeRoutine.milestones as Record<string, string> | undefined) || {};
 
-    return (<div style={{display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minHeight: 0}}>
+    return (<div style={{
+        display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minHeight: 0
+    }}>
         <div className="calendar-scroll-container">
             {months.map((m) => {
                 let doneDays = 0;
@@ -167,7 +150,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
 
                 m.days.forEach(d => {
                     if (d) {
-                        const dateStr = formatDate(d || "");
+                        const dateStr = formatDate(d);
                         if (isDateInRange(dateStr)) {
                             totalDays++;
                             if (isDateComplete(dateStr)) {
@@ -177,63 +160,59 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                     }
                 });
 
-                    return (<div key={`${m.year}-${m.month}`} className="calendar-month-card" style={{
-                            background: 'var(--panel-bg)',
-                            borderRadius: '12px',
-                            border: '1px solid var(--panel-border)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            flex: 1
+                return (<div key={`${m.year}-${m.month}`} className="calendar-month-card" style={{
+                    background: 'var(--panel-bg)',
+                    borderRadius: '12px',
+                    border: '1px solid var(--panel-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flex: 1
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '16px',
+                        flexShrink: 0
+                    }}>
+                        <h2 style={{
+                            margin: 0, color: '#fff', fontSize: '18px', fontWeight: 600
+                        }}>{m.monthName} {m.year}</h2>
+                        {totalDays > 0 && (<div style={{
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            color: 'var(--text-secondary)',
+                            background: 'rgba(255,255,255,0.05)',
+                            padding: '4px 10px',
+                            borderRadius: '12px'
                         }}>
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '16px',
-                                flexShrink: 0
-                            }}>
-                                <h2 style={{margin: 0, color: '#fff', fontSize: '18px', fontWeight: 600}}>{m.monthName} {m.year}</h2>
-                                {totalDays > 0 && (<div style={{
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        color: 'var(--text-secondary)',
-                                        background: 'rgba(255,255,255,0.05)',
-                                        padding: '4px 10px',
-                                        borderRadius: '12px'
-                                    }}>
                                         <span
                                             style={{color: doneDays > 0 ? 'var(--accent)' : '#fff'}}>{doneDays}</span> / {totalDays}
-                                    </div>)}
-                            </div>
+                        </div>)}
+                    </div>
 
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(7, 1fr)',
-                                gap: '8px',
-                                textAlign: 'center',
-                                marginBottom: '8px',
-                                flexShrink: 0
-                            }}>
-                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (<div key={day} style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        {day}
-                                    </div>))}
-                            </div>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(7, 1fr)',
+                        gap: '8px',
+                        textAlign: 'center',
+                        marginBottom: '8px',
+                        flexShrink: 0
+                    }}>
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (<div key={day} style={{
+                            fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 'bold'
+                        }}>
+                            {day}
+                        </div>))}
+                    </div>
 
-                            <div style={{
-                                display: 'grid', 
-                                gridTemplateColumns: 'repeat(7, 1fr)', 
-                                gap: '8px', 
-                                flex: 1, 
-                                gridAutoRows: '1fr'
-                            }}>
-                                {m.days.map((d, dIdx) => {
-                                    if (!d) return <div key={`empty-${dIdx}`}/>;
+                    <div style={{
+                        display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', flex: 1, gridAutoRows: '1fr'
+                    }}>
+                        {m.days.map((d, dIdx) => {
+                            if (!d) return <div key={`empty-${dIdx}`}/>;
 
-                            const dateStr = formatDate(d || "");
+                            const dateStr = formatDate(d);
                             const inRange = isDateInRange(dateStr);
                             const isToday = dateStr === formatDate(new Date());
                             const isSelected = selectedTargetDate === dateStr;
@@ -241,17 +220,15 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             const dayMilestonesText = milestones[dateStr] || '';
                             const hasMilestone = dayMilestonesText.trim().length > 0;
 
-                            let tags = [];
+                            const tags: string[] = [];
                             const tagRegex = /\*\*@([^*]+)\*\*/g;
-                            let match;
+                            let match: RegExpExecArray | null;
                             while ((match = tagRegex.exec(dayMilestonesText)) !== null) {
-                                tags.push(match[1]);
+                                if (match[1]) tags.push(match[1]);
                             }
-                            tags = [...new Set(tags)];
-                            const tagColors = tags.map(tag => {
-                                const goal = visibleRoutineGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) ||
-                                             visibleHabits?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase()) ||
-                                             visibleLifeGoals?.find((g: Goal) => (g.name || '').toLowerCase() === tag?.toLowerCase());
+                            const uniqueTags = [...new Set(tags)];
+                            const tagColors = uniqueTags.map(tag => {
+                                const goal = visibleRoutineGoals?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase()) || visibleHabits?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase()) || visibleLifeGoals?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase());
                                 return goal ? (goal.color || '#fff') : null;
                             }).filter(Boolean) as string[];
 
@@ -287,7 +264,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             }
 
                             if (isSelected) {
-                                borderColor = '#fff'; // White border to clearly indicate selection
+                                borderColor = '#fff';
                                 if (!completed) {
                                     bg = 'rgba(255, 255, 255, 0.1)';
                                     textColor = '#fff';
@@ -332,7 +309,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                         e.stopPropagation();
                                         if (inRange) {
                                             setSelectedTargetDate(dateStr);
-                                            if (setCalendarSubTab) setCalendarSubTab('milestones');
+                                            if (setCalendarSubTab) setCalendarSubTab('timelogs');
                                         }
                                     }}
                                     style={{
@@ -356,7 +333,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             </div>);
                         })}
                     </div>
-                </div>)
+                </div>);
             })}
         </div>
     </div>);

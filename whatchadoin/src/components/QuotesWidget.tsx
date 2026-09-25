@@ -87,7 +87,7 @@ export default function QuotesWidget() {
                     setQuotes(parsed);
                     setCurrentQuoteIndex(parsed.length - 1);
                 }
-            } catch (e) {}
+            } catch {}
         };
         window.addEventListener('storage', reloadQuotes);
         window.addEventListener('whatchadoin_quotes_updated', reloadQuotes);

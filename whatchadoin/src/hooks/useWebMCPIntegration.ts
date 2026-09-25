@@ -54,187 +54,36 @@ export function normalizeDayName(dayStr: string): string | null {
     return null;
 }
 
-// SCHEMAS
-const createRoutineSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'Name of the new Routine (e.g. "Routine 1", "Summer Sprint")'},
-        desc: {type: 'string', description: 'Optional description of the routine'},
-        start: {type: 'string', description: 'Optional start date (YYYY-MM-DD)'},
-        end: {type: 'string', description: 'Optional end date (YYYY-MM-DD)'}
-    }, required: ['name']
+import { AI_TOOL_DEFINITIONS, STRICT_PROMPT } from '../features/ai/toolDefinitions';
+
+const getToolSchema = (name: string) => {
+    const def = AI_TOOL_DEFINITIONS.find(t => t.function.name === name);
+    return def ? def.function.parameters : { type: 'object', properties: {} };
 };
 
-const switchRoutineSchema = {
-    type: 'object', properties: {
-        routineId: {type: 'string', description: 'ID of the routine to switch to'}
-    }, required: ['routineId']
-};
-
-const addLifeGoalSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the life goal'},
-        desc: {type: 'string', description: 'Optional description of the life goal'},
-        color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
-        cost: {type: 'number', description: 'Optional cost/value associated with the goal'},
-        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
-    }, required: ['name']
-};
-
-const addRoutineGoalSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the routine goal'},
-        desc: {type: 'string', description: 'Optional description of the routine goal'},
-        color: {type: 'string', description: 'Optional color code (e.g. #3498db)'},
-        duration: {type: 'string', description: 'Estimated duration (e.g. "45 min")'},
-        cost: {type: 'number', description: 'Optional cost/value associated with the goal'},
-        linkedLifeGoalId: {type: 'string', description: 'Optional ID of a Life Goal to link to'},
-        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
-    }, required: ['name']
-};
-
-const addMoneyGoalSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the money goal'},
-        cost: {type: 'number', description: 'Target financial amount or cost'},
-        desc: {type: 'string', description: 'Optional description or note'},
-        isPublic: {type: 'boolean', description: 'Whether this goal is visible in Public Mode (default false)'}
-    }, required: ['name', 'cost']
-};
-
-const addHabitSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the habit'},
-        desc: {type: 'string', description: 'Optional description of the habit'},
-        duration: {type: 'string', description: 'Duration of the habit (e.g. "15 min", "30m", or minutes)'},
-        time: {type: 'string', description: 'Optional duration representation (e.g. "15m", "1:15")'},
-        type: {type: 'string', enum: ['daily', 'weekly'], description: 'Whether it is a daily or weekly habit'},
-        linkedRoutineGoalId: {type: 'string', description: 'Optional ID of a Routine Goal to link to'},
-        isPublic: {type: 'boolean', description: 'Whether this habit is visible in Public Mode (default false)'}
-    }, required: ['name']
-};
-
-const createTemplateSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'Name for the new daily template (e.g. "Workday", "Weekend")'}
-    }, required: ['name']
-};
-
-const editTemplateSchema = {
-    type: 'object', properties: {
-        templateId: {type: 'string', description: 'ID of the template to edit'},
-        name: {type: 'string', description: 'New name for the template'}
-    }, required: ['templateId', 'name']
-};
-
-const scheduleBlockSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'Name of the block or habit to schedule'},
-        startTime: {type: 'string', description: 'Start time (e.g. "9am", "14:00", "2:30 PM", or 540 in minutes from midnight)'},
-        duration: {type: 'string', description: 'Duration in minutes or string (e.g. 60, "45m", "1h")'},
-        day: {type: 'string', description: 'Optional day of the week (e.g. "Monday", "Wednesday") to schedule on'},
-        templateId: {type: 'string', description: 'Optional template ID to schedule on (defaults to day\'s template or active template)'}
-    }, required: ['name', 'startTime', 'duration']
-};
-
-const moveBlockSchema = {
-    type: 'object', properties: {
-        habitName: {type: 'string', description: 'Name, task, or ID of the habit or scheduled block to move'},
-        toTime: {type: 'string', description: 'Target start time on the schedule (e.g. "3pm", "15:00", "3:30 PM", or 900 minutes)'},
-        toDay: {type: 'string', description: 'Target day of the week (e.g. "Wednesday", "Wed", "Monday"). If omitted, moves within the same day/template.'},
-        fromDay: {type: 'string', description: 'Optional source day of the week (e.g. "Monday", "Mon") to identify where the block is currently scheduled'},
-        fromTime: {type: 'string', description: 'Optional source time (e.g. "2pm", "14:00") to disambiguate if multiple blocks share the same habit name'},
-        fromTemplateId: {type: 'string', description: 'Optional source template ID if moving directly from a specific template'},
-        toTemplateId: {type: 'string', description: 'Optional target template ID if moving directly to a specific template'},
-        duration: {type: 'string', description: 'Optional new duration (e.g. "45m", "1h", 45). Defaults to existing duration or habit duration.'}
-    }, required: ['habitName', 'toTime']
-};
-
-const deleteBlockSchema = {
-    type: 'object', properties: {
-        blockName: {type: 'string', description: 'Name, task, or ID of the block to delete'},
-        day: {type: 'string', description: 'Optional day of the week (e.g. "Monday") where the block is scheduled'},
-        templateId: {type: 'string', description: 'Optional template ID where the block is scheduled'}
-    }, required: ['blockName']
-};
-
-const mapTemplateToDaySchema = {
-    type: 'object', properties: {
-        day: {
-            type: 'string',
-            enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-            description: 'Day of the week in the Weekly Schedule'
-        },
-        templateId: {type: 'string', description: 'ID of the template to assign to this day in the Weekly Schedule'}
-    }, required: ['day', 'templateId']
-};
-
-const readScheduleSchema = {
-    type: 'object', properties: {}
-};
-
-
-const readCoinsSchema = { type: 'object', properties: { includeEntries: { type: 'boolean' } } };
-const addCoinsEntrySchema = {
-    type: 'object',
-    properties: {
-        year: { type: 'number' },
-        month: { type: 'number' },
-        amount: { type: 'number' },
-        source: { type: 'string' },
-        notes: { type: 'string' }
-    },
-    required: ['year', 'month', 'amount', 'source']
-};
-
-const navigateAppSchema = {
-    type: 'object', properties: {
-        centerTab: {type: 'string', enum: ['myday', 'tasks', 'calendar', 'plans', 'coins'], description: 'Main center view: myday (My Day), tasks, calendar, plans, coins'},
-        leftTab: {type: 'string', enum: ['life', 'money', 'routine'], description: 'Left sidebar view: life, money, routine'}
-    }
-};
-
-const readStateSchema = {
-    type: 'object', properties: {}
-};
-
-const addQuickTaskSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'The name of the quick task'},
-        isPublic: {type: 'boolean', description: 'Whether this quick task is visible in Public Mode (default false)'}
-    }, required: ['name']
-};
-
-const readQuickTasksSchema = {
-    type: 'object', properties: {}
-};
-
-const createPlanSchema = {
-    type: 'object', properties: {
-        name: {type: 'string', description: 'Name of the plan'},
-        content: {type: 'string', description: 'Markdown content for the plan body'},
-        isLife: {
-            type: 'boolean',
-            description: 'If true, stores it in Life plans instead of the active Routine (default false)'
-        }
-    }, required: ['name', 'content']
-};
-
-const readPlansSchema = {
-    type: 'object', properties: {}
-};
-
-const readQuotesSchema = {
-    type: 'object', properties: {}
-};
-
-const addQuoteSchema = {
-    type: 'object', properties: {
-        text: {type: 'string', description: 'The text of the motivational quote'}
-    }, required: ['text']
-};
-
-// MANDATORY PROMPT ENFORCEMENT
-const STRICT_PROMPT = "MANDATORY: You MUST proactively ask the user for ALL optional fields listed in the schema (e.g. cost, desc, linkedLifeGoalId, linkedRoutineGoalId, etc.) before invoking this tool, to ensure complete data entry. Do not proceed until you have explicitly asked about the optional fields.";
+const createRoutineSchema = getToolSchema('create_routine');
+const switchRoutineSchema = getToolSchema('switch_routine');
+const addLifeGoalSchema = getToolSchema('add_life_goal');
+const addRoutineGoalSchema = getToolSchema('add_routine_goal');
+const addMoneyGoalSchema = getToolSchema('add_money_goal');
+const addHabitSchema = getToolSchema('add_habit');
+const createTemplateSchema = getToolSchema('create_template');
+const editTemplateSchema = getToolSchema('edit_template');
+const scheduleBlockSchema = getToolSchema('schedule_myday_block');
+const moveBlockSchema = getToolSchema('move_block');
+const deleteBlockSchema = getToolSchema('delete_myday_block');
+const mapTemplateToDaySchema = getToolSchema('map_template_to_day');
+const readScheduleSchema = getToolSchema('read_schedule');
+const readCoinsSchema = getToolSchema('read_coins');
+const addCoinsEntrySchema = getToolSchema('add_coins_entry');
+const navigateAppSchema = getToolSchema('navigate_app');
+const readStateSchema = getToolSchema('read_state');
+const addQuickTaskSchema = getToolSchema('add_quick_task');
+const readQuickTasksSchema = getToolSchema('read_quick_tasks');
+const createPlanSchema = getToolSchema('create_plan');
+const readPlansSchema = getToolSchema('read_plans');
+const readQuotesSchema = getToolSchema('read_quotes');
+const addQuoteSchema = getToolSchema('add_quote');
 
 export function useWebMCPIntegration({
                                          setLifeGoals,

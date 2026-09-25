@@ -1,4 +1,5 @@
 import {BookOpen, Calendar, Clock, ListTodo, LucideRepeat, Plus, Star, TrendingUp} from 'lucide-react';
+import type {CalendarSubTab} from '../types/ui';
 
 interface MobileTabBarProps {
     activeTab: string;
@@ -7,7 +8,7 @@ interface MobileTabBarProps {
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
     activeLeftTab?: string;
-    setCalendarSubTab?: (tab: string) => void;
+    setCalendarSubTab?: (tab: CalendarSubTab) => void;
 }
 
 export default function MobileTabBar({
@@ -20,13 +21,9 @@ export default function MobileTabBar({
                                          setCalendarSubTab
                                      }: MobileTabBarProps) {
     const tabs = [{id: 'goals', icon: Star, label: 'Goals'}, {
-        id: 'tasks',
-        icon: ListTodo,
-        label: 'Tasks'
+        id: 'tasks', icon: ListTodo, label: 'Tasks'
     }, {id: 'myday', icon: Clock, label: 'MyDay', default: true}, {
-        id: 'calendar',
-        icon: Calendar,
-        label: 'Calendar'
+        id: 'calendar', icon: Calendar, label: 'Calendar'
     }, {id: 'coins', icon: TrendingUp, label: 'Coins'}, {id: 'plans', icon: BookOpen, label: 'Plans'}];
 
     const handleFabClick = () => {
@@ -109,13 +106,13 @@ export default function MobileTabBar({
                 <LucideRepeat size={20} color="#000"/>
             </button>)}
             {activeTab !== 'calendar' && (<button
-                    className="tab-btn-fab"
-                    aria-label="Add New Item"
-                    onClick={handleFabClick}
-                >
-                    <Plus className="fab-icon"/>
-                    <span className="fab-label">Add</span>
-                </button>)}
+                className="tab-btn-fab"
+                aria-label="Add New Item"
+                onClick={handleFabClick}
+            >
+                <Plus className="fab-icon"/>
+                <span className="fab-label">Add</span>
+            </button>)}
         </>)}
     </>);
 }

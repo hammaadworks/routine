@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as React from 'react';
 import {useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -13,7 +12,9 @@ interface BaseModalProps {
     drawerMode?: 'mobile' | 'tablet' | 'none';
 }
 
-export default function BaseModal({isOpen = true, onClose, title, children, maxWidth = '400px', drawerMode = 'mobile'}: BaseModalProps) {
+export default function BaseModal({
+                                      isOpen = true, onClose, title, children, maxWidth = '400px', drawerMode = 'mobile'
+                                  }: BaseModalProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const [dragY, setDragY] = useState(0);
     const touchStartRef = useRef<number | null>(null);
@@ -43,7 +44,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
             document.body.style.width = '';
             document.body.style.top = '';
             if (scrollY) {
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
+                window.scrollTo(0, parseInt(scrollY || '0', 10) * -1);
             }
         };
     }, [isOpen, onClose]);
@@ -55,7 +56,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
     };
 
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (isDrawerActive()) {
+        if (isDrawerActive() && e.touches[0]) {
             touchStartRef.current = e.touches[0].clientY;
             if (contentRef.current) {
                 contentRef.current.style.transition = 'none';
@@ -64,7 +65,7 @@ export default function BaseModal({isOpen = true, onClose, title, children, maxW
     };
 
     const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (touchStartRef.current === null) return;
+        if (touchStartRef.current === null || !e.touches[0]) return;
         const currentY = e.touches[0].clientY;
         const deltaY = currentY - touchStartRef.current;
 

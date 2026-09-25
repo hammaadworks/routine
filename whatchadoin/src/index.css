@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
     --bg: #111418;
     --panel-bg: rgba(26, 31, 37, 0.8);
@@ -105,6 +106,21 @@ body {
     }
 }
 
+@keyframes appEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.pane {
+    animation: appEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .spin {
     animation: spin 1s linear infinite;
 }
@@ -116,7 +132,10 @@ body {
 .sort-active-glow::after {
     content: '';
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     border-radius: inherit;
     box-shadow: 0 0 15px var(--accent), 0 0 20px var(--accent) inset;
     opacity: 0;
@@ -172,14 +191,17 @@ body {
         grid-column: 1 !important;
         grid-row: 1 !important;
     }
+
     .main-content > .myday-area {
         grid-column: 2 !important;
         grid-row: 1 !important;
     }
+
     .main-content > .right-pane {
         grid-column: 3 !important;
         grid-row: 1 !important;
     }
+
     .mobile-drawer-overlay {
         display: none !important;
     }
@@ -189,6 +211,7 @@ body {
     .hide-on-mobile {
         display: none !important;
     }
+
     .layout {
         height: auto !important;
         min-height: 100vh;

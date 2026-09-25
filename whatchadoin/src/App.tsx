@@ -1,9 +1,19 @@
 import * as React from 'react';
 import {useCallback, useEffect, useRef, useState} from 'react';
+import MyDay from './components/MyDay';
+import ConfirmModal from './components/ConfirmModal';
+import {saveSyncConfig} from './sync';
+import {BookOpen, Calendar, ChevronDown, Clock, ListTodo, Star, TrendingUp} from 'lucide-react';
+import './index.css';
+import MobileTabBar from './components/MobileTabBar';
+import QuotesWidget from './components/QuotesWidget';
+import Header from './components/Header';
+import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
+import {sanitizeAllStorage} from './utils';
+import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
+import type {CalendarSubTab} from './types/ui';
 
-function safeLazy<T extends React.ComponentType<any>>(
-    factory: () => Promise<{ default: T }>
-) {
+function safeLazy<T extends React.ComponentType<any>>(factory: () => Promise<{ default: T }>) {
     return React.lazy(async () => {
         try {
             return await factory();
@@ -15,69 +25,64 @@ function safeLazy<T extends React.ComponentType<any>>(
     });
 }
 
-class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, {
+    hasError: boolean; error: Error | null
+}> {
     constructor(props: any) {
         super(props);
-        this.state = { hasError: false, error: null };
+        this.state = {hasError: false, error: null};
     }
+
     static getDerivedStateFromError(error: Error) {
-        return { hasError: true, error };
+        return {hasError: true, error};
     }
+
     componentDidCatch(error: Error, info: any) {
         console.error(`Error loading tab ${this.props.tabName}:`, error, info);
     }
+
     render() {
         if (this.state.hasError) {
-            return (
-                <div style={{
-                    padding: '32px 24px',
-                    textAlign: 'center',
-                    background: 'var(--panel-bg)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--panel-border)',
-                    margin: '20px'
-                }}>
-                    <h3 style={{ color: '#EF4444', marginBottom: '8px' }}>Failed to load {this.props.tabName}</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>
-                        {this.state.error?.message || 'A network or cache error occurred while loading this view.'}
-                    </p>
-                    <button
-                        className="primary"
-                        onClick={() => window.location.reload()}
-                        style={{ padding: '8px 18px', borderRadius: '6px', fontWeight: 'bold' }}
-                    >
-                        Reload Page
-                    </button>
-                </div>
-            );
+            return (<div style={{
+                padding: '32px 24px',
+                textAlign: 'center',
+                background: 'var(--panel-bg)',
+                borderRadius: '12px',
+                border: '1px solid var(--panel-border)',
+                margin: '20px'
+            }}>
+                <h3 style={{color: '#EF4444', marginBottom: '8px'}}>Failed to load {this.props.tabName}</h3>
+                <p style={{color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px'}}>
+                    {this.state.error?.message || 'A network or cache error occurred while loading this view.'}
+                </p>
+                <button
+                    className="primary"
+                    onClick={() => window.location.reload()}
+                    style={{padding: '8px 18px', borderRadius: '6px', fontWeight: 'bold'}}
+                >
+                    Reload Page
+                </button>
+            </div>);
         }
         return this.props.children;
     }
 }
 
 const RoutineGoalPane = safeLazy(() => import('./components/RoutineGoalPane'));
-import MyDay from './components/MyDay';
+
 const PlansPane = safeLazy(() => import('./components/PlansPane'));
 const CoinsPane = safeLazy(() => import('./components/CoinsPane'));
 const CalendarPane = safeLazy(() => import('./components/CalendarPane'));
 const TasksPane = safeLazy(() => import('./components/TasksPane'));
-import ConfirmModal from './components/ConfirmModal';
-import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, TrendingUp, ChevronDown, Clock, ListTodo, Star} from 'lucide-react';
-import './index.css';
+
 const LifePane = safeLazy(() => import('./components/LifePane'));
 const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
 const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
 const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
-import MobileTabBar from './components/MobileTabBar';
-import QuotesWidget from './components/QuotesWidget';
-import Header from './components/Header';
+
 const WalletModal = safeLazy(() => import('./components/WalletModal'));
 const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
 const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
-import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
-import {sanitizeAllStorage} from './utils';
-import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
@@ -95,15 +100,15 @@ export default function App() {
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
     const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
-    const [calendarSubTab, setCalendarSubTab] = useState<string>('mark_goals');
+    const [calendarSubTab, setCalendarSubTab] = useState<CalendarSubTab>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
 
     useEffect(() => {
         if (activeCenterTab === 'tasks' || activeCenterTab === 'coins') {
             setCalendarSubTab('timelog');
-        } else if (activeCenterTab === 'plans'){
+        } else if (activeCenterTab === 'plans') {
             setCalendarSubTab('milestones');
-        }else if (activeCenterTab === 'myday' || activeCenterTab === 'calendar') {
+        } else if (activeCenterTab === 'myday' || activeCenterTab === 'calendar') {
             setCalendarSubTab('mark_goals');
         }
     }, [activeCenterTab]);
@@ -252,7 +257,7 @@ export default function App() {
         });
     }, [activeRoutineId]);
 
-    const { executeTool } = useWebMCPIntegration({
+    const {executeTool} = useWebMCPIntegration({
         setLifeGoals,
         setMoneyGoals,
         setRoutines,
@@ -281,7 +286,7 @@ export default function App() {
             lifeGoals,
             moneyGoals,
             quickTasks,
-            coins: { entries: coinsEntries, targets: coinsTargets },
+            coins: {entries: coinsEntries, targets: coinsTargets},
             activeCenterTab,
             activeLeftTab
         };
@@ -297,7 +302,9 @@ export default function App() {
                 const {tool, args, callId} = data;
                 try {
                     const result = await executeTool(tool, args || {});
-                    channel.postMessage({type: 'TOOL_RESULT', callId, status: 'success', result, message: (result as any)?.message});
+                    channel.postMessage({
+                        type: 'TOOL_RESULT', callId, status: 'success', result, message: (result as any)?.message
+                    });
                 } catch (err: any) {
                     channel.postMessage({type: 'TOOL_RESULT', callId, status: 'error', error: err.message});
                 }
@@ -515,27 +522,6 @@ export default function App() {
     const activeTemplateId = activeRoutine.activeTemplateId || '';
     const dayMapping = activeRoutine.dayMapping || {};
 
-    // Anime.js Entrance Animation
-    useEffect(() => {
-        import('animejs').then(({createTimeline, utils}) => {
-            (createTimeline as any)({easing: 'easeOutExpo'})
-                .add({
-                    targets: '.pane',
-                    translateY: [30, 0],
-                    opacity: [0, 1],
-                    duration: 1400,
-                    delay: utils.stagger(150, {start: 100}),
-                })
-                .add({
-                    targets: '.item-card, .time-slot .time-label',
-                    translateY: [15, 0],
-                    opacity: [0, 1],
-                    duration: 800,
-                    delay: utils.stagger(30),
-                }, '-=800');
-        });
-    }, []);
-
     const allWalletGoals = [...(lifeGoals || []).map((g: any) => ({
         ...g, category: 'Life', type: 'life'
     })), ...(routineGoals || []).map((g: any) => ({
@@ -550,15 +536,13 @@ export default function App() {
 
     return (<div className={`layout dock-${aiDockState}`}>
 
-        {isWalletModalOpen && (
-            <React.Suspense fallback={null}>
-                <WalletModal
-                    isOpen={isWalletModalOpen}
-                    onClose={() => setIsWalletModalOpen(false)}
-                    allGoals={visibleWalletGoals}
-                />
-            </React.Suspense>
-        )}
+        {isWalletModalOpen && (<React.Suspense fallback={null}>
+            <WalletModal
+                isOpen={isWalletModalOpen}
+                onClose={() => setIsWalletModalOpen(false)}
+                allGoals={visibleWalletGoals}
+            />
+        </React.Suspense>)}
 
         {/* Main App Container */}
         <div className="main-app-wrapper"
@@ -626,7 +610,7 @@ export default function App() {
 
             <main className={`main-content mobile-tab-${mobileTab}`}>
                 <aside className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
-                     style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
+                       style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
                     <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)}
                          style={{
                              display: 'flex',
@@ -678,40 +662,47 @@ export default function App() {
                             </div>);
 
                             if (activeLeftTab === 'routine') {
-                                return (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Routine Goals...</div>}>
+                                return (<React.Suspense
+                                    fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Routine
+                                        Goals...</div>}>
                                     <RoutineGoalPane isPublicView={isPublicView}
-                                        routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
-                                        habits={habits} setHabits={setHabits as any}
-                                        templates={templates} setTemplates={setTemplates as any}
-                                        activeTemplateId={activeTemplateId}
-                                        onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
-                                        lifeGoals={lifeGoals}
-                                        headerTabs={headerTabs}
+                                                     routineGoals={routineGoals}
+                                                     setRoutineGoals={setRoutineGoals as any}
+                                                     habits={habits} setHabits={setHabits as any}
+                                                     templates={templates} setTemplates={setTemplates as any}
+                                                     activeTemplateId={activeTemplateId}
+                                                     onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
+                                                     lifeGoals={lifeGoals}
+                                                     headerTabs={headerTabs}
                                     />
                                 </React.Suspense>);
                             }
                             if (activeLeftTab === 'money') {
-                                return (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Money Goals...</div>}>
+                                return (<React.Suspense
+                                    fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Money
+                                        Goals...</div>}>
                                     <MoneyPane isPublicView={isPublicView}
-                                        moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
-                                        headerTabs={headerTabs}
-                                        allWalletGoals={allWalletGoals}
-                                        setLifeGoals={setLifeGoals}
-                                        setRoutineGoals={setRoutineGoals as any}
-                                        onNavigateToCoins={() => {
-                                            setActiveCenterTab('coins');
-                                            setMobileTab('coins');
-                                        }}
+                                               moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
+                                               headerTabs={headerTabs}
+                                               allWalletGoals={allWalletGoals}
+                                               setLifeGoals={setLifeGoals}
+                                               setRoutineGoals={setRoutineGoals as any}
+                                               onNavigateToCoins={() => {
+                                                   setActiveCenterTab('coins');
+                                                   setMobileTab('coins');
+                                               }}
                                     />
                                 </React.Suspense>);
                             }
-                            return (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Life Goals...</div>}>
+                            return (<React.Suspense
+                                fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Life
+                                    Goals...</div>}>
                                 <LifePane isPublicView={isPublicView}
-                                    lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
-                                    routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
-                                    habits={habits} setHabits={setHabits as any}
-                                    onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
-                                    headerTabs={headerTabs}
+                                          lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
+                                          routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
+                                          habits={habits} setHabits={setHabits as any}
+                                          onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
+                                          headerTabs={headerTabs}
                                 />
                             </React.Suspense>);
                         })()}
@@ -721,15 +712,16 @@ export default function App() {
                 <div className={`myday-area timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
                     display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0
                 }}>
-                    <div className="tabs hide-on-mobile" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)} style={{
-                        cursor: 'pointer',
-                        marginBottom: '0',
-                        borderBottom: '1px solid var(--panel-border)',
-                        background: 'var(--panel-bg)',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 90
-                    }}>
+                    <div className="tabs hide-on-mobile" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)}
+                         style={{
+                             cursor: 'pointer',
+                             marginBottom: '0',
+                             borderBottom: '1px solid var(--panel-border)',
+                             background: 'var(--panel-bg)',
+                             position: 'sticky',
+                             top: 0,
+                             zIndex: 90
+                         }}>
                         <button
                             className={`tab ${activeCenterTab === 'tasks' ? 'active' : ''}`}
                             onClick={() => {
@@ -788,7 +780,8 @@ export default function App() {
                         </button>
                     </div>
 
-                    <div className="mid-pane-content" style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
+                    <div className="mid-pane-content"
+                         style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
                         <TabErrorBoundary tabName={activeCenterTab}>
                             {activeCenterTab === 'myday' ? (<MyDay
                                 isPublicView={isPublicView}
@@ -802,79 +795,93 @@ export default function App() {
                                 habits={habits}
                                 routineGoals={routineGoals}
                                 lifeGoals={lifeGoals}
-                            />) : activeCenterTab === 'plans' ? (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Plans...</div>}><PlansPane isPublicView={isPublicView}
-                                key={activeRoutineId}
-                                routineGoals={routineGoals}
-                                habits={habits}
-                                lifeGoals={lifeGoals}
-                                moneyGoals={moneyGoals}
-                                activeRoutineId={activeRoutineId}
-                            /></React.Suspense>) : activeCenterTab === 'tasks' ? (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Tasks...</div>}><TasksPane isPublicView={isPublicView}/></React.Suspense>) : activeCenterTab === 'coins' ? (<React.Suspense fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane isPublicView={isPublicView} walletTotal={isPublicView ? headerWalletTotal : walletTotal} onNavigateToMoneyGoals={() => { setMobileTab('goals'); setActiveLeftTab('money'); setIsLeftPaneExpanded(true); }} /></React.Suspense>) : (<React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Calendar...</div>}><CalendarPane isPublicView={isPublicView}
-                                activeRoutine={activeRoutine}
-                                calendarSubTab={calendarSubTab}
-                                setCalendarSubTab={setCalendarSubTab}
-                                routineGoals={routineGoals}
-                                lifeGoals={lifeGoals}
-                                selectedTargetDate={selectedTargetDate}
-                                setSelectedTargetDate={setSelectedTargetDate}
-                                habits={habits}
-                                templates={templates}
-                                dayMapping={dayMapping}
+                            />) : activeCenterTab === 'plans' ? (<React.Suspense
+                                fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading
+                                    Plans...</div>}><PlansPane isPublicView={isPublicView}
+                                                               key={activeRoutineId}
+                                                               routineGoals={routineGoals}
+                                                               habits={habits}
+                                                               lifeGoals={lifeGoals}
+                                                               moneyGoals={moneyGoals}
+                                                               activeRoutineId={activeRoutineId}
+                            /></React.Suspense>) : activeCenterTab === 'tasks' ? (<React.Suspense
+                                fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading
+                                    Tasks...</div>}><TasksPane
+                                isPublicView={isPublicView}/></React.Suspense>) : activeCenterTab === 'coins' ? (
+                                <React.Suspense
+                                    fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane
+                                    isPublicView={isPublicView}
+                                    walletTotal={isPublicView ? headerWalletTotal : walletTotal}
+                                    onNavigateToMoneyGoals={() => {
+                                        setMobileTab('goals');
+                                        setActiveLeftTab('money');
+                                        setIsLeftPaneExpanded(true);
+                                    }}/></React.Suspense>) : (<React.Suspense
+                                fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading
+                                    Calendar...</div>}><CalendarPane isPublicView={isPublicView}
+                                                                     activeRoutine={activeRoutine}
+                                                                     calendarSubTab={calendarSubTab}
+                                                                     setCalendarSubTab={setCalendarSubTab}
+                                                                     routineGoals={routineGoals}
+                                                                     lifeGoals={lifeGoals}
+                                                                     selectedTargetDate={selectedTargetDate}
+                                                                     setSelectedTargetDate={setSelectedTargetDate}
+                                                                     habits={habits}
+                                                                     templates={templates}
+                                                                     dayMapping={dayMapping}
                             /></React.Suspense>)}
                         </TabErrorBoundary>
                     </div>
                 </div>
                 {isRoutineDrawerOpen && (<div
-                        className="mobile-drawer-overlay"
-                        onClick={() => setIsRoutineDrawerOpen(false)}
-                    />)}
+                    className="mobile-drawer-overlay"
+                    onClick={() => setIsRoutineDrawerOpen(false)}
+                />)}
                 <React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Habits...</div>}>
                     <HabitsPane isPublicView={isPublicView}
-                    habits={habits} setHabits={setHabits as any}
-                    templates={templates} setTemplates={setTemplates as any}
-                    routineGoals={routineGoals} lifeGoals={lifeGoals}
-                    activeTemplateId={activeTemplateId}
-                    habitFilterRoutineGoalId={habitFilterRoutineGoalId}
-                    setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
-                    habitFilterLifeGoalId={habitFilterLifeGoalId}
-                    setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
-                    selectedTargetDate={activeCenterTab === 'calendar' ? selectedTargetDate : null}
-                    setSelectedTargetDate={setSelectedTargetDate}
-                    dailyLogs={activeRoutine.dailyLogs || {}}
-                    toggleDailyGoal={toggleDailyGoal}
-                    dayMapping={dayMapping}
-                    isCalendarTab={activeCenterTab === 'calendar'}
-                    activeRoutine={activeRoutine}
-                    calendarSubTab={calendarSubTab}
-                    setCalendarSubTab={setCalendarSubTab}
-                    updateActiveRoutine={updateActiveRoutine}
-                    isRoutineDrawerOpen={isRoutineDrawerOpen}
-                    setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
-                />
+                                habits={habits} setHabits={setHabits as any}
+                                templates={templates} setTemplates={setTemplates as any}
+                                routineGoals={routineGoals} lifeGoals={lifeGoals}
+                                activeTemplateId={activeTemplateId}
+                                habitFilterRoutineGoalId={habitFilterRoutineGoalId}
+                                setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
+                                habitFilterLifeGoalId={habitFilterLifeGoalId}
+                                setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
+                                selectedTargetDate={activeCenterTab === 'calendar' ? selectedTargetDate : null}
+                                setSelectedTargetDate={setSelectedTargetDate}
+                                dailyLogs={activeRoutine.dailyLogs || {}}
+                                toggleDailyGoal={toggleDailyGoal}
+                                dayMapping={dayMapping}
+                                isCalendarTab={activeCenterTab === 'calendar'}
+                                activeRoutine={activeRoutine}
+                                calendarSubTab={calendarSubTab}
+                                setCalendarSubTab={setCalendarSubTab}
+                                updateActiveRoutine={updateActiveRoutine}
+                                isRoutineDrawerOpen={isRoutineDrawerOpen}
+                                setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
+                    />
                 </React.Suspense>
             </main>
 
 
             {/* Routine Modal */}
-            {showRoutineModal && (
-                <React.Suspense fallback={null}>
-                    <RoutineModal
-                        showRoutineModal={showRoutineModal}
-                        setShowRoutineModal={setShowRoutineModal}
-                        routineModalView={routineModalView}
-                        setRoutineModalView={setRoutineModalView}
-                        routines={routines}
-                        setRoutines={setRoutines}
-                        activeRoutineId={activeRoutineId}
-                        setActiveRoutineId={setActiveRoutineId}
-                        editingRoutineId={editingRoutineId}
-                        setEditingRoutineId={setEditingRoutineId}
-                        activeRoutine={activeRoutine}
-                        lifeGoals={lifeGoals}
-                        setConfirmConfig={setConfirmConfig}
-                    />
-                </React.Suspense>
-            )}
+            {showRoutineModal && (<React.Suspense fallback={null}>
+                <RoutineModal
+                    showRoutineModal={showRoutineModal}
+                    setShowRoutineModal={setShowRoutineModal}
+                    routineModalView={routineModalView}
+                    setRoutineModalView={setRoutineModalView}
+                    routines={routines}
+                    setRoutines={setRoutines}
+                    activeRoutineId={activeRoutineId}
+                    setActiveRoutineId={setActiveRoutineId}
+                    editingRoutineId={editingRoutineId}
+                    setEditingRoutineId={setEditingRoutineId}
+                    activeRoutine={activeRoutine}
+                    lifeGoals={lifeGoals}
+                    setConfirmConfig={setConfirmConfig}
+                />
+            </React.Suspense>)}
 
             {/* Confirm Modal */}
             {confirmConfig && (<ConfirmModal
@@ -887,23 +894,21 @@ export default function App() {
                 confirmText={confirmConfig.onCancel ? "Confirm" : "OK"}
             />)}
 
-            {showSettingsModal && (
-                <React.Suspense fallback={null}>
-                    <SettingsModal
-                        showSettingsModal={showSettingsModal}
-                        setShowSettingsModal={setShowSettingsModal}
-                        settingsTab={settingsTab}
-                        setSettingsTab={setSettingsTab}
-                        syncForm={syncForm}
-                        setSyncForm={setSyncForm}
-                        saveSyncConfig={saveSyncConfig}
-                        aiConfig={aiConfig}
-                        setAiConfig={setAiConfig}
-                        exportAllData={exportAllData}
-                        fileInputRef={fileInputRef as any}
-                    />
-                </React.Suspense>
-            )}
+            {showSettingsModal && (<React.Suspense fallback={null}>
+                <SettingsModal
+                    showSettingsModal={showSettingsModal}
+                    setShowSettingsModal={setShowSettingsModal}
+                    settingsTab={settingsTab}
+                    setSettingsTab={setSettingsTab}
+                    syncForm={syncForm}
+                    setSyncForm={setSyncForm}
+                    saveSyncConfig={saveSyncConfig}
+                    aiConfig={aiConfig}
+                    setAiConfig={setAiConfig}
+                    exportAllData={exportAllData}
+                    fileInputRef={fileInputRef as any}
+                />
+            </React.Suspense>)}
 
             {/* Footer to convey end of scroll */}
             <footer style={{
@@ -929,18 +934,21 @@ export default function App() {
         {aiDockState === 'right' && (<div className="ai-dock-container ai-dock-right" style={{
             width: '400px', borderLeft: '1px solid var(--panel-border)', flexShrink: 0, height: '100%'
         }}>
-            <React.Suspense fallback={<div style={{padding: '20px', color: 'var(--text-secondary)'}}>Loading Assistant...</div>}>
+            <React.Suspense
+                fallback={<div style={{padding: '20px', color: 'var(--text-secondary)'}}>Loading Assistant...</div>}>
                 <AIAgentApp isDocked={true}/>
             </React.Suspense>
         </div>)}
         {aiDockState === 'bottom' && (<div className="ai-dock-container ai-dock-bottom" style={{
             height: '400px', borderTop: '1px solid var(--panel-border)', flexShrink: 0, width: '100%'
         }}>
-            <React.Suspense fallback={<div style={{padding: '20px', color: 'var(--text-secondary)'}}>Loading Assistant...</div>}>
+            <React.Suspense
+                fallback={<div style={{padding: '20px', color: 'var(--text-secondary)'}}>Loading Assistant...</div>}>
                 <AIAgentApp isDocked={true}/>
             </React.Suspense>
         </div>)}
 
-        <input name="auto_field_1" type="file" ref={fileInputRef} accept=".json" style={{display: 'none'}} onChange={importRoutine}/>
+        <input name="auto_field_1" type="file" ref={fileInputRef} accept=".json" style={{display: 'none'}}
+               onChange={importRoutine}/>
     </div>);
 }

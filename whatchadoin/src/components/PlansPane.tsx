@@ -911,7 +911,7 @@ export default function PlansPane({
                                             }}
                                         >
                                             {filteredGoals.map((g, i) => (<div
-                                                    key={g.id}
+                                                    key={String(g.id || i)}
                                                     onMouseDown={(e) => {
                                                         e.preventDefault();
                                                         if (activeBlockIdx !== null) {
