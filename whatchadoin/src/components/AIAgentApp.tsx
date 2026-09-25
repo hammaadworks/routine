@@ -267,7 +267,7 @@ export default function AIAgentApp({isDocked = false}: { isDocked?: boolean }) {
                         background: 'rgba(96, 165, 250, 0.1)',
                         borderRadius: '4px'
                     }}>
-                        Working: {msg.tool_calls.map((tc: any) => tc.function.name).join(', ')}...
+                        Working: {(Array.isArray(msg.tool_calls) ? msg.tool_calls : []).map((tc: any) => tc.function?.name || 'tool').join(', ')}...
                     </div>) : (<div style={{
                         padding: '12px 16px',
                         background: msg.role === 'user' ? 'var(--accent)' : 'var(--panel-bg)',

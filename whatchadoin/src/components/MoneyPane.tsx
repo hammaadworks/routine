@@ -1,12 +1,13 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {ArrowRight, DollarSign, Plus, TrendingUp, Wallet} from 'lucide-react';
+import {ArrowRight, DollarSign, Plus, TrendingUp, Wallet, Clock, Pencil} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
 import { useDragReorder } from '../hooks/useDragReorder';
+import { formatCompactDuration } from '../utils';
 
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
@@ -17,6 +18,8 @@ export interface MoneyGoal {
     cost: number;
     color?: string;
     completed?: boolean;
+    createdAt?: string;
+    completedAt?: string;
     desc?: string;
     type?: string;
     isPublic?: boolean;
@@ -26,6 +29,7 @@ interface MoneyPaneProps {
     isPublicView?: boolean;
     moneyGoals: MoneyGoal[];
     setMoneyGoals: React.Dispatch<React.SetStateAction<MoneyGoal[]>>;
+    habits?: any[];
     headerTabs?: React.ReactNode;
     allWalletGoals?: any[];
     setLifeGoals?: React.Dispatch<React.SetStateAction<any[]>>;
@@ -45,6 +49,7 @@ export default function MoneyPane({
     isPublicView,
                                       moneyGoals,
                                       setMoneyGoals,
+                                      habits,
                                       headerTabs,
                                       allWalletGoals,
                                       setLifeGoals,
@@ -58,6 +63,7 @@ export default function MoneyPane({
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerMoneyGoalId, setDrawerMoneyGoalId] = useState<string | null>(null);
+    const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
     const [isWalletView, setIsWalletView] = useState(false);
 
 
@@ -122,25 +128,37 @@ export default function MoneyPane({
                 setMoneyGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
             }
         } else {
+            const now = new Date().toISOString();
             setMoneyGoals([...moneyGoals, {
                 id: 'mg-' + Date.now(),
                 name: goalName,
                 isPublic: !!moneyGoalForm.isPublic, color: moneyGoalForm.color,
                 cost: costValue,
                 completed: false,
-                desc: moneyGoalForm.desc || ''
+                desc: moneyGoalForm.desc || '',
+                createdAt: now
             }]);
         }
         setShowMoneyGoalModal(false);
     };
 
     const toggleGoal = (id: string, type?: string) => {
+        const now = new Date().toISOString();
+        const toggleItem = (g: any) => {
+            const isCompleting = !g.completed;
+            return {
+                ...g,
+                completed: isCompleting,
+                completedAt: isCompleting ? (g.completedAt || now) : undefined
+            };
+        };
+
         if (type === 'life' && setLifeGoals) {
-            setLifeGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+            setLifeGoals(prev => prev.map(g => g.id === id ? toggleItem(g) : g));
         } else if (type === 'routine' && setRoutineGoals) {
-            setRoutineGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+            setRoutineGoals(prev => prev.map(g => g.id === id ? toggleItem(g) : g));
         } else {
-            setMoneyGoals(prev => prev.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+            setMoneyGoals(prev => prev.map(g => g.id === id ? toggleItem(g) : g));
         }
     };
 
@@ -249,6 +267,14 @@ export default function MoneyPane({
                         const activeGoals = displayedGoals.filter((g: MoneyGoal) => !g.completed);
                         const completedGoals = displayedGoals.filter((g: MoneyGoal) => g.completed);
 
+                        const getLinkedCount = (goal: MoneyGoal) => {
+                            let count = 0;
+                            if (habits) {
+                                count += habits.filter((h: any) => (h.moneyGoalIds || []).includes(goal.id) || h.moneyGoalId === goal.id).length;
+                            }
+                            return count;
+                        };
+
                         const renderGoal = (goal: MoneyGoal) => {
                             const absoluteIndex = moneyGoals.findIndex((g: MoneyGoal) => g.id === goal.id);
                             const isDragging = dragItemIndex === absoluteIndex;
@@ -261,13 +287,14 @@ export default function MoneyPane({
                                 key={goal.id}
                                 goal={goal}
                                 index={absoluteIndex}
-                                linkedCount={0}
+                                linkedCount={getLinkedCount(goal)}
                                 draggable={!searchQuery && !sortByName && !isWalletView}
                                 onDragStart={handleDragStart}
                                 onDragEnter={handleDragEnter}
                                 onDragEnd={handleDragEnd}
                                 onToggle={() => toggleGoal(goal.id, goal.type)}
                                 onEdit={() => openEditMoneyGoal(goal)}
+                                onCardClick={(g) => setInfoGoalId(g.id)}
                                 onBadgeClick={(id) => setDrawerMoneyGoalId(drawerMoneyGoalId === id ? null : id)}
                                 isDragging={isDragging}
                                 isDragOver={isDragOver}
@@ -436,52 +463,126 @@ export default function MoneyPane({
             {drawerMoneyGoalId && (() => {
                 const goal = baseGoals.find(g => g.id === drawerMoneyGoalId);
                 if (!goal) return null;
-                return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title={goal.name}>
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                            {goal.desc && (<div>
-                                    <div style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        marginBottom: '4px',
-                                        fontWeight: 'bold'
-                                    }}>Description
+                const linkedHabits = (habits || []).filter(h => (h.moneyGoalIds || []).includes(drawerMoneyGoalId) || h.moneyGoalId === drawerMoneyGoalId);
+                return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title="Linked Items">
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                            {linkedHabits.length === 0 ? (
+                                <div style={{color: 'var(--text-secondary)'}}>No items linked to this goal.</div>
+                            ) : (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
+                                        Habits
                                     </div>
-                                    <div style={{
-                                        background: 'var(--surface-light)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {goal.desc}
-                                    </div>
-                                </div>)}
-                            <div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    color: 'var(--text-secondary)',
-                                    marginBottom: '4px',
-                                    fontWeight: 'bold'
-                                }}>Cost
+                                    {linkedHabits.map((h: any) => (
+                                        <div key={h.id} style={{ padding: '8px', background: 'var(--surface-light)', borderRadius: '6px', marginBottom: '4px' }}>
+                                            {h.name}
+                                        </div>
+                                    ))}
                                 </div>
+                            )}
+                        </div>
+                    </BaseModal>);
+            })()}
+
+            {infoGoalId && (() => {
+                const goal = baseGoals.find(g => g.id === infoGoalId);
+                if (!goal) return null;
+                const hex = goal.color || '#8AC926';
+                const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
+                const linkedHabits = (habits || []).filter(h => (h.moneyGoalIds || []).includes(infoGoalId) || h.moneyGoalId === infoGoalId);
+
+                return (
+                    <BaseModal
+                        isOpen={true}
+                        onClose={() => setInfoGoalId(null)}
+                        title={
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hex }}>
+                                <Wallet size={18} color={hex} />
+                                {goal.name}
+                            </span>
+                        }
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {timeInfo && (
                                 <div style={{
-                                    background: 'var(--surface-light)',
+                                    background: `${hex}15`,
+                                    border: `1px solid ${hex}40`,
                                     padding: '12px',
                                     borderRadius: '8px',
-                                    fontSize: '14px',
+                                    fontSize: '13px',
+                                    color: 'var(--text-primary)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                    <Wallet size={16} color={goal.color || "var(--accent)"}/>
-                                    <span>${goal.cost || 0}</span>
+                                    <Clock size={16} color={hex} />
+                                    <span>{timeInfo.fullText}</span>
                                 </div>
+                            )}
+
+                            {goal.desc && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Description
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                                        {goal.desc}
+                                    </div>
+                                </div>
+                            )}
+
+                            {typeof goal.cost === 'number' && goal.cost > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Target Cost
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', color: hex }}>
+                                        ${goal.cost}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold' }}>
+                                    Linked Habits ({linkedHabits.length})
+                                </div>
+                                {linkedHabits.length === 0 ? (
+                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No linked habits yet.</div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {linkedHabits.map((h: any) => (
+                                            <span key={h.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                                {h.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                                Type: <span style={{textTransform: 'capitalize'}}>{goal.type || 'money'}</span>
+
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                <button
+                                    type="button"
+                                    className="secondary"
+                                    onClick={() => setInfoGoalId(null)}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    className="primary"
+                                    onClick={() => {
+                                        setInfoGoalId(null);
+                                        openEditMoneyGoal(goal);
+                                    }}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                >
+                                    <Pencil size={14} /> Edit Goal
+                                </button>
                             </div>
                         </div>
-                    </BaseModal>);
+                    </BaseModal>
+                );
             })()}
         </div>);
 }

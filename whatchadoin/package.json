@@ -17,7 +17,8 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.10.1",
     "textarea-caret": "^3.1.0",
-    "use-webmcp-tool": "^0.3.0"
+    "use-webmcp-tool": "^0.3.0",
+    "webmcp-polyfill": "^0.0.2"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

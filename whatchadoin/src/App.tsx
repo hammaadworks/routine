@@ -88,11 +88,17 @@ export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
 
     const [lifeGoals, setLifeGoals] = useState<any[]>(() => {
-        return JSON.parse(localStorage.getItem('whatchadoin_life_goals') || '[]');
+        try {
+            const parsed = JSON.parse(localStorage.getItem('whatchadoin_life_goals') || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
     });
 
     const [moneyGoals, setMoneyGoals] = useState<any[]>(() => {
-        return JSON.parse(localStorage.getItem('whatchadoin_money_goals') || '[]');
+        try {
+            const parsed = JSON.parse(localStorage.getItem('whatchadoin_money_goals') || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
     });
 
     const [activeRoutineId, setActiveRoutineId] = useState<string>(loadActiveRoutineId);
@@ -522,11 +528,11 @@ export default function App() {
     const activeTemplateId = activeRoutine.activeTemplateId || '';
     const dayMapping = activeRoutine.dayMapping || {};
 
-    const allWalletGoals = [...(lifeGoals || []).map((g: any) => ({
+    const allWalletGoals = [...(Array.isArray(lifeGoals) ? lifeGoals : []).map((g: any) => ({
         ...g, category: 'Life', type: 'life'
-    })), ...(routineGoals || []).map((g: any) => ({
+    })), ...(Array.isArray(routineGoals) ? routineGoals : []).map((g: any) => ({
         ...g, category: 'Routine', type: 'routine'
-    })), ...(moneyGoals || []).map((g: any) => ({
+    })), ...(Array.isArray(moneyGoals) ? moneyGoals : []).map((g: any) => ({
         ...g, category: 'Money', type: 'money'
     }))].filter((g: any) => typeof g.cost === 'number' && g.cost > 0).sort((a: any, b: any) => b.cost - a.cost);
 
@@ -683,6 +689,7 @@ export default function App() {
                                         Goals...</div>}>
                                     <MoneyPane isPublicView={isPublicView}
                                                moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
+                                               habits={habits}
                                                headerTabs={headerTabs}
                                                allWalletGoals={allWalletGoals}
                                                setLifeGoals={setLifeGoals}
@@ -841,7 +848,7 @@ export default function App() {
                     <HabitsPane isPublicView={isPublicView}
                                 habits={habits} setHabits={setHabits as any}
                                 templates={templates} setTemplates={setTemplates as any}
-                                routineGoals={routineGoals} lifeGoals={lifeGoals}
+                                routineGoals={routineGoals} lifeGoals={lifeGoals} moneyGoals={moneyGoals}
                                 activeTemplateId={activeTemplateId}
                                 habitFilterRoutineGoalId={habitFilterRoutineGoalId}
                                 setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}

@@ -107,11 +107,11 @@ export function getAllGoalsForMention(
   tasks?: QuickTask[] | null | undefined
 ): { allGoals: Array<Record<string, unknown> & { name: string; type: string }>; filteredGoals: Array<Record<string, unknown> & { name: string; type: string }> } {
   const allGoals: Array<Record<string, unknown> & { name: string; type: string }> = [
-    ...(routineGoals || []).map((g) => ({ ...g, name: g.name || '', type: 'Routine Goal' })),
-    ...(habits || []).map((g) => ({ ...g, name: g.name || '', type: 'Habit' })),
-    ...(lifeGoals || []).map((g) => ({ ...g, name: g.name || '', type: 'Life Goal' })),
-    ...(moneyGoals || []).map((g) => ({ ...g, name: g.name || '', type: 'Money Goal' })),
-    ...(tasks || []).map((g) => ({ ...g, name: (g.text || (g as { name?: string }).name || '') as string, type: 'Task' }))
+    ...(Array.isArray(routineGoals) ? routineGoals : []).map((g) => ({ ...g, name: g.name || '', type: 'Routine Goal' })),
+    ...(Array.isArray(habits) ? habits : []).map((g) => ({ ...g, name: g.name || '', type: 'Habit' })),
+    ...(Array.isArray(lifeGoals) ? lifeGoals : []).map((g) => ({ ...g, name: g.name || '', type: 'Life Goal' })),
+    ...(Array.isArray(moneyGoals) ? moneyGoals : []).map((g) => ({ ...g, name: g.name || '', type: 'Money Goal' })),
+    ...(Array.isArray(tasks) ? tasks : []).map((g) => ({ ...g, name: (g.text || (g as { name?: string }).name || '') as string, type: 'Task' }))
   ];
   const query = (mentionQuery || '').toLowerCase();
   const filteredGoals = allGoals.filter((g) =>
@@ -280,9 +280,9 @@ export function getAllWalletGoals(
   moneyGoals: MoneyGoal[] | null | undefined
 ): WalletGoal[] {
   return [
-    ...(lifeGoals || []).map((g) => ({ ...g, category: 'Life' as const, type: 'life' as const })),
-    ...(routineGoals || []).map((g) => ({ ...g, category: 'Routine' as const, type: 'routine' as const })),
-    ...(moneyGoals || []).map((g) => ({ ...g, category: 'Money' as const, type: 'money' as const }))
+    ...(Array.isArray(lifeGoals) ? lifeGoals : []).map((g) => ({ ...g, category: 'Life' as const, type: 'life' as const })),
+    ...(Array.isArray(routineGoals) ? routineGoals : []).map((g) => ({ ...g, category: 'Routine' as const, type: 'routine' as const })),
+    ...(Array.isArray(moneyGoals) ? moneyGoals : []).map((g) => ({ ...g, category: 'Money' as const, type: 'money' as const }))
   ]
     .filter((g) => typeof g.cost === 'number' && g.cost > 0)
     .sort((a, b) => (b.cost || 0) - (a.cost || 0));
@@ -421,3 +421,77 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
   return successful;
 }
+
+export function extractTimestamp(idOrDate?: string | number): number | null {
+  if (!idOrDate) return null;
+  if (typeof idOrDate === 'number') return idOrDate;
+  
+  const parsedDate = new Date(idOrDate).getTime();
+  if (!isNaN(parsedDate) && parsedDate > 946684800000) {
+    return parsedDate;
+  }
+  
+  const match = String(idOrDate).match(/(?:lg|mg|rg|task)-(\d{10,13})/);
+  if (match && match[1]) {
+    const ts = parseInt(match[1], 10);
+    if (!isNaN(ts) && ts > 946684800000) {
+      return ts;
+    }
+  }
+  return null;
+}
+
+export function formatCompactDuration(
+  createdAt?: string | number,
+  completedAt?: string | number,
+  isCompleted?: boolean,
+  id?: string
+): { formatted: string; fullText: string; isCompleted: boolean } | null {
+  let startMs = extractTimestamp(createdAt);
+  if (!startMs && id) {
+    startMs = extractTimestamp(id);
+  }
+  if (!startMs) return null;
+
+  const completedMs = extractTimestamp(completedAt);
+  const endMs = (isCompleted || completedMs) ? (completedMs || Date.now()) : Date.now();
+
+  const diffMs = Math.max(0, endMs - startMs);
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  const diffHr = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30.4375);
+
+  const startDateStr = new Date(startMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const endDateStr = completedMs ? new Date(completedMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+
+  let formatted = '';
+
+  if (diffSec < 60) {
+    formatted = `${diffSec}s`;
+  } else if (diffMin < 60) {
+    const roundedMin = Math.ceil(diffMs / (1000 * 60));
+    formatted = `${roundedMin}m`;
+  } else if (diffHr < 24) {
+    formatted = `${diffHr}h`;
+  } else if (diffDays < 14) {
+    formatted = `${diffDays}d`;
+  } else if (diffDays < 60) {
+    formatted = `${diffWeeks}w`;
+  } else {
+    formatted = `${diffMonths}M`;
+  }
+
+  const completedState = !!(isCompleted || completedMs);
+  let fullText = '';
+  if (completedState) {
+    fullText = endDateStr ? `Achieved on ${endDateStr} (Took ${formatted}, dreamt on ${startDateStr})` : `Achieved (Took ${formatted}, dreamt on ${startDateStr})`;
+  } else {
+    fullText = `Dreamt on ${startDateStr} (${formatted} ago)`;
+  }
+
+  return { formatted, fullText, isCompleted: completedState };
+}
+

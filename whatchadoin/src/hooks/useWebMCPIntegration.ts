@@ -164,7 +164,7 @@ export function useWebMCPIntegration({
 
         return {
             coins: { entries: coinsEntries, targets: coinsTargets },
-            routines: (routines || []).map((r: any) => ({
+            routines: (Array.isArray(routines) ? routines : []).map((r: any) => ({
                 id: r.id,
                 name: r.name,
                 start: r.start,
@@ -178,11 +178,11 @@ export function useWebMCPIntegration({
                 end: activeRoutine?.end,
                 activeTemplateId: activeRoutine?.activeTemplateId
             },
-            templates: (activeRoutine?.templates || []).map((t: any) => ({
+            templates: (Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : []).map((t: any) => ({
                 id: t.id,
                 name: t.name,
-                blocksCount: (t.blocks || []).length,
-                blocks: (t.blocks || []).map((b: any) => {
+                blocksCount: (Array.isArray(t.blocks) ? t.blocks : []).length,
+                blocks: (Array.isArray(t.blocks) ? t.blocks : []).map((b: any) => {
                     const startMin = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
                     const durMin = typeof b.duration === 'number' ? b.duration : parseDuration(b.duration);
                     return {
@@ -199,7 +199,7 @@ export function useWebMCPIntegration({
                 })
             })),
             dayMapping: activeRoutine?.dayMapping || {},
-            habits: rawHabits.map((h: any) => {
+            habits: (Array.isArray(rawHabits) ? rawHabits : []).map((h: any) => {
                 const durMin = typeof h.duration === 'number' ? h.duration : parseDuration(h.duration || h.time || '15m');
                 return {
                     id: h.id,
@@ -211,7 +211,7 @@ export function useWebMCPIntegration({
                     isPublic: Boolean(h.isPublic)
                 };
             }),
-            lifeGoals: (lifeGoals || []).map((g: any) => ({
+            lifeGoals: (Array.isArray(lifeGoals) ? lifeGoals : []).map((g: any) => ({
                 id: g.id,
                 name: g.name,
                 desc: g.desc || '',
@@ -219,7 +219,7 @@ export function useWebMCPIntegration({
                 completed: g.completed,
                 isPublic: Boolean(g.isPublic)
             })),
-            routineGoals: (activeRoutine?.routineGoals || []).map((g: any) => ({
+            routineGoals: (Array.isArray(activeRoutine?.routineGoals) ? activeRoutine.routineGoals : []).map((g: any) => ({
                 id: g.id,
                 name: g.name,
                 desc: g.desc || '',
@@ -227,7 +227,7 @@ export function useWebMCPIntegration({
                 completed: g.completed,
                 isPublic: Boolean(g.isPublic)
             })),
-            moneyGoals: (moneyGoals || []).map((g: any) => ({
+            moneyGoals: (Array.isArray(moneyGoals) ? moneyGoals : []).map((g: any) => ({
                 id: g.id,
                 name: g.name,
                 desc: g.desc || '',
@@ -235,14 +235,14 @@ export function useWebMCPIntegration({
                 completed: g.completed,
                 isPublic: Boolean(g.isPublic)
             })),
-            quickTasks: (quickTasks || []).map((t: any) => ({
+            quickTasks: (Array.isArray(quickTasks) ? quickTasks : []).map((t: any) => ({
                 id: t.id,
                 name: t.name,
                 completed: Boolean(t.completed),
                 isPublic: Boolean(t.isPublic)
             })),
             walletTotalRemaining,
-            walletGoals: allWalletGoals.map((g: any) => ({
+            walletGoals: (Array.isArray(allWalletGoals) ? allWalletGoals : []).map((g: any) => ({
                 name: g.name,
                 desc: g.desc || '',
                 cost: g.cost,
@@ -263,13 +263,13 @@ export function useWebMCPIntegration({
 
     // Read Full Weekly Schedule Picture
     const handleReadSchedule = useCallback(async () => {
-        const templates = activeRoutine?.templates || [];
+        const templates = Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [];
         const dayMapping = activeRoutine?.dayMapping || {};
 
         const weeklySchedule = DAYS_OF_WEEK.map(day => {
             const templateId = dayMapping[day];
             const template = templates.find((t: any) => t.id === templateId);
-            const blocks = (template?.blocks || []).map((b: any) => {
+            const blocks = (Array.isArray(template?.blocks) ? template.blocks : []).map((b: any) => {
                 const startMin = typeof b.startTime === 'number' ? b.startTime : parseTimeStringToMinutes(b.startTime);
                 const durMin = typeof b.duration === 'number' ? b.duration : parseDuration(b.duration);
                 return {
@@ -297,7 +297,7 @@ export function useWebMCPIntegration({
             ? activeRoutine.habits
             : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
 
-        const habitsBank = rawHabits.map((h: any) => {
+        const habitsBank = (Array.isArray(rawHabits) ? rawHabits : []).map((h: any) => {
             const durMin = typeof h.duration === 'number' ? h.duration : parseDuration(h.duration || h.time || '15m');
             return {
                 id: h.id,
@@ -315,7 +315,7 @@ export function useWebMCPIntegration({
             allTemplates: templates.map((t: any) => ({
                 id: t.id,
                 name: t.name,
-                blocksCount: (t.blocks || []).length,
+                blocksCount: (Array.isArray(t.blocks) ? t.blocks : []).length,
                 assignedDays: DAYS_OF_WEEK.filter(d => dayMapping[d] === t.id)
             })),
             habitsBank
@@ -347,7 +347,7 @@ export function useWebMCPIntegration({
             dayMapping: { Monday: '', Tuesday: '', Wednesday: '', Thursday: '', Friday: '', Saturday: '', Sunday: '' }
         };
         if (setRoutines) {
-            setRoutines((prev: any[]) => [...(prev || []), newRoutine]);
+            setRoutines((prev: any[]) => [...(Array.isArray(prev) ? prev : []), newRoutine]);
         }
         if (setActiveRoutineId) {
             setActiveRoutineId(newRoutine.id);
@@ -412,7 +412,7 @@ export function useWebMCPIntegration({
         const goalName = inputs.name;
         if (!goalName) throw new Error("Invalid parameters: name is required");
         updateActiveRoutine({
-            routineGoals: [...(activeRoutine.routineGoals || []), {
+            routineGoals: [...(Array.isArray(activeRoutine?.routineGoals) ? activeRoutine.routineGoals : []), {
                 id: crypto.randomUUID(),
                 name: goalName,
                 desc: inputs.desc || '',
@@ -480,6 +480,8 @@ export function useWebMCPIntegration({
             type: inputs.type || 'daily',
             routineGoalId: inputs.linkedRoutineGoalId || null,
             routineGoalIds: inputs.linkedRoutineGoalId ? [inputs.linkedRoutineGoalId] : [],
+            lifeGoalIds: inputs.linkedLifeGoalId ? [inputs.linkedLifeGoalId] : [],
+            moneyGoalIds: inputs.linkedMoneyGoalId ? [inputs.linkedMoneyGoalId] : [],
             isPublic: Boolean(inputs.isPublic)
         };
 
@@ -513,7 +515,7 @@ export function useWebMCPIntegration({
         if (!inputs.name) throw new Error("Invalid parameters: name is required");
         const newTemplate = {id: crypto.randomUUID(), name: inputs.name, blocks: []};
         updateActiveRoutine({
-            templates: [...(activeRoutine.templates || []), newTemplate], activeTemplateId: newTemplate.id
+            templates: [...(Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : []), newTemplate], activeTemplateId: newTemplate.id
         });
         return {success: true, message: `Template '${inputs.name}' created inside active routine.`};
     }, [activeRoutine, updateActiveRoutine]);
@@ -529,7 +531,7 @@ export function useWebMCPIntegration({
     // 8. Edit Template
     const handleEditTemplate = useCallback(async (inputs: any) => {
         if (!inputs.templateId || !inputs.name) throw new Error("Invalid parameters");
-        const currentTemplates = activeRoutine.templates || [];
+        const currentTemplates = Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [];
         const index = currentTemplates.findIndex((t: any) => t.id === inputs.templateId);
         if (index === -1) throw new Error("Wrong state: templateId not found");
 
@@ -553,7 +555,7 @@ export function useWebMCPIntegration({
             throw new Error("Invalid parameters: name, startTime, and duration are required");
         }
 
-        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let templates: any[] = [...(Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [])];
         let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
         const normalizedDay = inputs.day ? normalizeDayName(inputs.day) : null;
 
@@ -571,7 +573,7 @@ export function useWebMCPIntegration({
                             ...targetTemplate,
                             id: crypto.randomUUID(),
                             name: `${targetTemplate.name} (${normalizedDay})`,
-                            blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                            blocks: [...(Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).map((b: any) => ({ ...b }))]
                         };
                         templates.push(cloned);
                         dayMapping[normalizedDay] = cloned.id;
@@ -601,7 +603,7 @@ export function useWebMCPIntegration({
 
         // Overlap detection
         const endMinutes = startMinutes + durationMinutes;
-        const overlappingBlocks = (targetTemplate.blocks || []).filter((eb: any) => {
+        const overlappingBlocks = (Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).filter((eb: any) => {
             const ebStart = typeof eb.startTime === 'number' ? eb.startTime : parseTimeStringToMinutes(eb.startTime);
             const ebDur = typeof eb.duration === 'number' ? eb.duration : parseDuration(eb.duration);
             return Math.max(startMinutes, ebStart) < Math.min(endMinutes, ebStart + ebDur);
@@ -626,7 +628,7 @@ export function useWebMCPIntegration({
 
         const updatedTarget = {
             ...targetTemplate,
-            blocks: [...(targetTemplate.blocks || []), newBlock]
+            blocks: [...(Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []), newBlock]
         };
 
         templates = templates.map(t => t.id === updatedTarget.id ? updatedTarget : t);
@@ -663,7 +665,7 @@ export function useWebMCPIntegration({
         const normalizedFromDay = inputs.fromDay ? normalizeDayName(inputs.fromDay) : null;
         const normalizedToDay = inputs.toDay ? normalizeDayName(inputs.toDay) : (normalizedFromDay || null);
 
-        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let templates: any[] = [...(Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [])];
         let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
 
         // 1. Identify Source Template
@@ -681,7 +683,7 @@ export function useWebMCPIntegration({
         if (!sourceTemplate) {
             const query = inputs.habitName.toLowerCase().trim();
             for (const t of templates) {
-                const match = (t.blocks || []).find((b: any) => {
+                const match = (Array.isArray(t.blocks) ? t.blocks : []).find((b: any) => {
                     const matchesName = b.id === inputs.habitName ||
                         (b.name && b.name.toLowerCase().includes(query));
                     if (!matchesName) return false;
@@ -706,7 +708,7 @@ export function useWebMCPIntegration({
                     ...sourceTemplate,
                     id: crypto.randomUUID(),
                     name: `${sourceTemplate.name} (${normalizedFromDay})`,
-                    blocks: [...(sourceTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                    blocks: [...(Array.isArray(sourceTemplate.blocks) ? sourceTemplate.blocks : []).map((b: any) => ({ ...b }))]
                 };
                 templates.push(clonedSource);
                 dayMapping[normalizedFromDay] = clonedSource.id;
@@ -718,7 +720,7 @@ export function useWebMCPIntegration({
         let extractedBlock: any = null;
         if (sourceTemplate) {
             const query = inputs.habitName.toLowerCase().trim();
-            const blockIndex = (sourceTemplate.blocks || []).findIndex((b: any) => {
+            const blockIndex = (Array.isArray(sourceTemplate.blocks) ? sourceTemplate.blocks : []).findIndex((b: any) => {
                 const matchesName = b.id === inputs.habitName ||
                     (b.name && b.name.toLowerCase().includes(query));
                 if (!matchesName) return false;
@@ -742,7 +744,7 @@ export function useWebMCPIntegration({
         const rawHabits = Array.isArray(activeRoutine?.habits)
             ? activeRoutine.habits
             : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
-        const matchedHabit = rawHabits.find((h: any) =>
+        const matchedHabit = (Array.isArray(rawHabits) ? rawHabits : []).find((h: any) =>
             h.id === inputs.habitName ||
             (h.name && h.name.toLowerCase().includes(inputs.habitName.toLowerCase().trim()))
         );
@@ -773,7 +775,7 @@ export function useWebMCPIntegration({
                             ...targetTemplate,
                             id: crypto.randomUUID(),
                             name: `${targetTemplate.name} (${normalizedToDay})`,
-                            blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                            blocks: [...(Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).map((b: any) => ({ ...b }))]
                         };
                         templates.push(clonedTarget);
                         dayMapping[normalizedToDay] = clonedTarget.id;
@@ -807,7 +809,7 @@ export function useWebMCPIntegration({
 
         // 5. Collision / Overlap Detection
         const targetEndMinutes = targetStartMinutes + finalDuration;
-        const overlappingBlocks = (targetTemplate.blocks || []).filter((eb: any) => {
+        const overlappingBlocks = (Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).filter((eb: any) => {
             const ebStart = typeof eb.startTime === 'number' ? eb.startTime : parseTimeStringToMinutes(eb.startTime);
             const ebDur = typeof eb.duration === 'number' ? eb.duration : parseDuration(eb.duration);
             const ebEnd = ebStart + ebDur;
@@ -835,7 +837,7 @@ export function useWebMCPIntegration({
 
         const updatedTarget = {
             ...targetTemplate,
-            blocks: [...(targetTemplate.blocks || []), newBlock]
+            blocks: [...(Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []), newBlock]
         };
 
         templates = templates.map(t => t.id === updatedTarget.id ? updatedTarget : t);
@@ -872,7 +874,7 @@ export function useWebMCPIntegration({
     const handleDeleteBlock = useCallback(async (inputs: any) => {
         if (!inputs.blockName) throw new Error("Invalid parameters: blockName is required");
 
-        let templates: any[] = [...(activeRoutine?.templates || [])];
+        let templates: any[] = [...(Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [])];
         let dayMapping: Record<string, string> = { ...(activeRoutine?.dayMapping || {}) };
         const normalizedDay = inputs.day ? normalizeDayName(inputs.day) : null;
 
@@ -887,7 +889,7 @@ export function useWebMCPIntegration({
         if (!targetTemplate) {
             const query = inputs.blockName.toLowerCase().trim();
             for (const t of templates) {
-                const hasBlock = (t.blocks || []).some((b: any) =>
+                const hasBlock = (Array.isArray(t.blocks) ? t.blocks : []).some((b: any) =>
                     b.id === inputs.blockName ||
                     (b.name && b.name.toLowerCase().includes(query))
                 );
@@ -909,7 +911,7 @@ export function useWebMCPIntegration({
                     ...targetTemplate,
                     id: crypto.randomUUID(),
                     name: `${targetTemplate.name} (${normalizedDay})`,
-                    blocks: [...(targetTemplate.blocks || []).map((b: any) => ({ ...b }))]
+                    blocks: [...(Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).map((b: any) => ({ ...b }))]
                 };
                 templates.push(cloned);
                 dayMapping[normalizedDay] = cloned.id;
@@ -918,7 +920,7 @@ export function useWebMCPIntegration({
         }
 
         const query = inputs.blockName.toLowerCase().trim();
-        const blockIndex = (targetTemplate.blocks || []).findIndex((b: any) =>
+        const blockIndex = (Array.isArray(targetTemplate.blocks) ? targetTemplate.blocks : []).findIndex((b: any) =>
             b.id === inputs.blockName ||
             (b.name && b.name.toLowerCase().includes(query))
         );
@@ -952,13 +954,13 @@ export function useWebMCPIntegration({
     // 10. Map Template to Day
     const handleMapTemplateToDay = useCallback(async (inputs: any) => {
         if (!inputs.day || !inputs.templateId) throw new Error("Invalid parameters: day and templateId are required");
-        const templates = activeRoutine.templates || [];
+        const templates = Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [];
         const templateExists = templates.some((t: any) => t.id === inputs.templateId);
         if (!templateExists) throw new Error(`Template with ID '${inputs.templateId}' not found.`);
 
         updateActiveRoutine({
             dayMapping: {
-                ...(activeRoutine.dayMapping || {}),
+                ...(activeRoutine?.dayMapping || {}),
                 [inputs.day]: inputs.templateId
             }
         });

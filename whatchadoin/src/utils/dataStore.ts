@@ -7,8 +7,10 @@ export const loadRoutines = (): Routine[] => {
     if (saved) {
         try {
             const rawParsed = JSON.parse(saved);
-            const parsed: Routine[] = Array.isArray(rawParsed) ? rawParsed.map(sanitizeRoutine) : rawParsed;
-            const validRoutineIds = new Set(parsed.map((r) => r.id));
+            const parsed: Routine[] = Array.isArray(rawParsed)
+                ? rawParsed.map(sanitizeRoutine)
+                : (rawParsed && typeof rawParsed === 'object' ? [sanitizeRoutine(rawParsed)] : []);
+            const validRoutineIds = new Set((Array.isArray(parsed) ? parsed : []).map((r) => r?.id));
             const keysToRemove: string[] = [];
             let keysRemoved = false;
 

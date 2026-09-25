@@ -126,6 +126,8 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
                     time: { type: "string", description: "Optional duration string (e.g. '15m', '1:15')" },
                     type: { type: "string", enum: ["daily", "weekly"], description: "Whether it is a daily or weekly habit" },
                     linkedRoutineGoalId: { type: "string", description: "Optional ID of a Routine Goal to link to" },
+                    linkedLifeGoalId: { type: "string", description: "Optional ID of a Life Goal to link to" },
+                    linkedMoneyGoalId: { type: "string", description: "Optional ID of a Money Goal to link to" },
                     isPublic: { type: "boolean", description: "Whether this habit is visible in Public Mode (default false)" }
                 },
                 required: ["name"]

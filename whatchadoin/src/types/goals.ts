@@ -5,6 +5,8 @@ export interface Goal {
     cost?: number;
     notes?: string;
     targetDate?: string;
+    createdAt?: string;
+    completedAt?: string;
     isPublic?: boolean;
     addressed?: boolean;
     linkedHabits?: string[];

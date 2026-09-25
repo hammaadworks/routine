@@ -97,6 +97,7 @@ export default function HabitsPane({
         timeValue: string;
         routineGoalIds: string[];
         lifeGoalIds: string[];
+        moneyGoalIds: string[];
         color: string;
         isPublic?: boolean;
     }>({
@@ -105,6 +106,7 @@ export default function HabitsPane({
         timeValue: '1:15',
         routineGoalIds: [] as string[],
         lifeGoalIds: [] as string[],
+        moneyGoalIds: [] as string[],
         color: '',
         isPublic: false
     });
@@ -348,7 +350,7 @@ export default function HabitsPane({
     const openAddHabit = () => {
         setEditingHabitId(null);
         setHabitForm({
-            name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], color: ''
+            name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], moneyGoalIds: [], color: ''
         });
         setShowHabitModal(true);
     };
@@ -373,6 +375,7 @@ export default function HabitsPane({
 
         const rIds = Array.isArray(goal.routineGoalIds) ? goal.routineGoalIds : (goal.routineGoalId ? [goal.routineGoalId] : []);
         const lIds = Array.isArray(goal.lifeGoalIds) ? goal.lifeGoalIds : (goal.lifeGoalId ? [goal.lifeGoalId] : []);
+        const mIds = Array.isArray(goal.moneyGoalIds) ? goal.moneyGoalIds : (goal.moneyGoalId ? [goal.moneyGoalId] : []);
 
         setHabitForm({
             name: goal.name || '',
@@ -380,6 +383,7 @@ export default function HabitsPane({
             timeValue: goal.time || (typeof goal.duration === 'number' && goal.duration > 0 ? `${goal.duration}m` : (goal.duration || '')),
             routineGoalIds: rIds,
             lifeGoalIds: lIds,
+            moneyGoalIds: mIds,
             color: goal.color || '',
             isPublic: !!goal.isPublic
         });
@@ -412,6 +416,7 @@ export default function HabitsPane({
             duration: durationMins,
             routineGoalIds: habitForm.routineGoalIds,
             lifeGoalIds: habitForm.lifeGoalIds,
+            moneyGoalIds: habitForm.moneyGoalIds,
             isPublic: !!habitForm.isPublic,
             color: habitForm.color
         };
@@ -1789,79 +1794,104 @@ export default function HabitsPane({
 
                 <div>
                     <label style={{
-                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
+                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
                     }}>
-                        Link to Daily Routines <span
-                        style={{opacity: 0.5}}>- Select routines this habit belongs to</span>
+                        Link to Goals <span style={{opacity: 0.5}}>- Select goals this habit supports</span>
                     </label>
+
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
-                        {(routineGoals || []).length === 0 && <span style={{
-                            fontSize: '12px', color: 'var(--text-secondary)'
-                        }}>No routine goals available</span>}
+                        {/* Routine Goals */}
                         {(routineGoals || []).map(sg => {
                             const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
                             const hex = sg.color || '#3b82f6';
-                            return (<div
-                                key={sg.id}
-                                onClick={() => {
-                                    const current = habitForm.routineGoalIds || [];
-                                    const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
-                                    setHabitForm({...habitForm, routineGoalIds: next});
-                                }}
-                                style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    fontWeight: isSelected ? '500' : 'normal',
-                                    background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                    border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                    color: isSelected ? hex : 'var(--text-secondary)',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                {sg.name}
-                            </div>);
+                            return (
+                                <div
+                                    key={sg.id}
+                                    onClick={() => {
+                                        const current = habitForm.routineGoalIds || [];
+                                        const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
+                                        setHabitForm({...habitForm, routineGoalIds: next});
+                                    }}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? '500' : 'normal',
+                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                        color: isSelected ? hex : 'var(--text-secondary)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {sg.name}
+                                </div>
+                            );
                         })}
-                    </div>
-                </div>
 
-                <div>
-                    <label style={{
-                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                    }}>
-                        Link to Life Goals <span
-                        style={{opacity: 0.5}}>- Select life goals this habit supports</span>
-                    </label>
-                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
-                        {(lifeGoals || []).length === 0 && <span style={{
-                            fontSize: '12px', color: 'var(--text-secondary)'
-                        }}>No life goals available</span>}
+                        {/* Money Goals */}
+                        {(moneyGoals || []).map(mg => {
+                            const isSelected = (habitForm.moneyGoalIds || []).includes(mg.id);
+                            const hex = mg.color || '#8AC926';
+                            return (
+                                <div
+                                    key={mg.id}
+                                    onClick={() => {
+                                        const current = habitForm.moneyGoalIds || [];
+                                        const next = isSelected ? current.filter((id: string) => id !== mg.id) : [...current, mg.id];
+                                        setHabitForm({...habitForm, moneyGoalIds: next});
+                                    }}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? '500' : 'normal',
+                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                        color: isSelected ? hex : 'var(--text-secondary)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {mg.name}
+                                </div>
+                            );
+                        })}
+
+                        {/* Life Goals */}
                         {(lifeGoals || []).map(lg => {
                             const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
                             const hex = lg.color || '#eab308';
-                            return (<div
-                                key={lg.id}
-                                onClick={() => {
-                                    const current = habitForm.lifeGoalIds || [];
-                                    const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
-                                    setHabitForm({...habitForm, lifeGoalIds: next});
-                                }}
-                                style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '13px',
-                                    cursor: 'pointer',
-                                    fontWeight: isSelected ? '500' : 'normal',
-                                    background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                    border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                    color: isSelected ? hex : 'var(--text-secondary)',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                {lg.name}
-                            </div>);
+                            return (
+                                <div
+                                    key={lg.id}
+                                    onClick={() => {
+                                        const current = habitForm.lifeGoalIds || [];
+                                        const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
+                                        setHabitForm({...habitForm, lifeGoalIds: next});
+                                    }}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '6px',
+                                        fontSize: '13px',
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? '500' : 'normal',
+                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                        color: isSelected ? hex : 'var(--text-secondary)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {lg.name}
+                                </div>
+                            );
                         })}
+
+                        {(routineGoals || []).length === 0 && (moneyGoals || []).length === 0 && (lifeGoals || []).length === 0 && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                No goals available
+                            </span>
+                        )}
                     </div>
                 </div>
 

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Plus, Rocket, Target } from 'lucide-react';
+import { Activity, Plus, Rocket, Target, Clock, Pencil } from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
 import { useDragReorder } from '../hooks/useDragReorder';
+import { formatCompactDuration } from '../utils';
 import type { RoutineGoal, Habit, Template, TemplateBlock } from '../types/routine';
 import type { LifeGoal } from '../types/goals';
 import type { ConfirmConfig } from '../types/ui';
@@ -43,6 +44,7 @@ export default function RoutineGoalPane({
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
+    const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
 
     const {
         handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex
@@ -106,6 +108,7 @@ export default function RoutineGoalPane({
                 setTemplates(updatedTemplates);
             }
         } else {
+            const now = new Date().toISOString();
             setRoutineGoals([...routineGoals, {
                 id: 'sg-' + Date.now(),
                 name: cleanName,
@@ -113,14 +116,24 @@ export default function RoutineGoalPane({
                 color: routineGoalForm.color,
                 completed: false,
                 desc: routineGoalForm.desc || "",
-                cost: costValue
-            }]);
+                cost: costValue,
+                createdAt: now
+            } as any]);
         }
         setShowRoutineGoalModal(false);
     };
 
     const toggleRoutineGoal = (id: string) => {
-        setRoutineGoals(routineGoals.map((g: RoutineGoal) => g.id === id ? { ...g, completed: !g.completed } : g));
+        const now = new Date().toISOString();
+        setRoutineGoals(routineGoals.map((g: RoutineGoal) => {
+            if (g.id !== id) return g;
+            const isCompleting = !g.completed;
+            return {
+                ...g,
+                completed: isCompleting,
+                completedAt: isCompleting ? ((g as any).completedAt || now) : undefined
+            };
+        }));
     };
 
     const deleteRoutineGoal = (id: string, name: string) => {
@@ -245,6 +258,7 @@ export default function RoutineGoalPane({
                                     onDragEnd={handleDragEnd}
                                     onToggle={toggleRoutineGoal}
                                     onEdit={openEditRoutineGoal}
+                                    onCardClick={(g) => setInfoGoalId(g.id)}
                                     onBadgeClick={(id) => {
                                         if (window.innerWidth >= 1400) {
                                             if (onRoutineGoalBadgeClick) onRoutineGoalBadgeClick(id);
@@ -398,7 +412,7 @@ export default function RoutineGoalPane({
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {(() => {
-                            const linkedHabits = (habits || []).filter(g => g.routineGoalId === drawerRoutineGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+                            const linkedHabits = (habits || []).filter(g => ((g.routineGoalIds as string[] | undefined)?.includes(drawerRoutineGoalId) || g.routineGoalId === drawerRoutineGoalId) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
                             if (linkedHabits.length === 0) {
                                 return <div style={{ color: 'var(--text-secondary)' }}>No habits linked to this goal.</div>;
                             }
@@ -420,6 +434,107 @@ export default function RoutineGoalPane({
                     </div>
                 </BaseModal>
             )}
+
+            {infoGoalId && (() => {
+                const goal = routineGoals.find(g => g.id === infoGoalId);
+                if (!goal) return null;
+                const hex = goal.color || '#1982C4';
+                const timeInfo = formatCompactDuration(goal.createdAt as string, goal.completedAt as string, !!goal.completed, goal.id);
+                const linkedHabits = (habits || []).filter(h => (h.routineGoalIds as string[] | undefined)?.includes(infoGoalId) || h.routineGoalId === infoGoalId);
+
+                return (
+                    <BaseModal
+                        isOpen={true}
+                        onClose={() => setInfoGoalId(null)}
+                        title={
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hex }}>
+                                <Target size={18} color={hex} />
+                                {goal.name}
+                            </span>
+                        }
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {timeInfo && (
+                                <div style={{
+                                    background: `${hex}15`,
+                                    border: `1px solid ${hex}40`,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    color: 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <Clock size={16} color={hex} />
+                                    <span>{timeInfo.fullText}</span>
+                                </div>
+                            )}
+
+                            {!!goal.desc && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Description
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                                        {String(goal.desc)}
+                                    </div>
+                                </div>
+                            )}
+
+                            {typeof goal.cost === 'number' && goal.cost > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Estimated Cost
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px' }}>
+                                        ${goal.cost}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold' }}>
+                                    Linked Habits ({linkedHabits.length})
+                                </div>
+                                {linkedHabits.length === 0 ? (
+                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No linked habits yet.</div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {linkedHabits.map(h => (
+                                            <span key={h.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                                {h.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                <button
+                                    type="button"
+                                    className="secondary"
+                                    onClick={() => setInfoGoalId(null)}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    className="primary"
+                                    onClick={() => {
+                                        setInfoGoalId(null);
+                                        openEditRoutineGoal(goal);
+                                    }}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                >
+                                    <Pencil size={14} /> Edit Goal
+                                </button>
+                            </div>
+                        </div>
+                    </BaseModal>
+                );
+            })()}
         </div>
     );
 }

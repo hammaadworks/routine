@@ -32,6 +32,9 @@ importers:
       use-webmcp-tool:
         specifier: ^0.3.0
         version: 0.3.0(react@19.2.8)
+      webmcp-polyfill:
+        specifier: ^0.0.2
+        version: 0.0.2
     devDependencies:
       '@types/node':
         specifier: ^26.4.1
@@ -1054,6 +1057,9 @@ packages:
       yaml:
         optional: true
 
+  webmcp-polyfill@0.0.2:
+    resolution: {integrity: sha512-hWwvIfZREAQC0rpxwLRTMcGCzdMea31uf+n5wwMKK12X9CQAbPFhIhfb0rIggp+BukYsXzJ6DbjJ4xWBxPiJag==}
+
   webmcp-types@0.1.7:
     resolution: {integrity: sha512-70YszESbCx+ozBejmBPTSc0hMyXim+/Kpj8UOZsHd36ANcYqIfkDbMBTTn5y+tQzQYUYN1x2R+5PseKJtVaLqA==}
 
@@ -2047,6 +2053,8 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.4.1
       fsevents: 2.3.3
+
+  webmcp-polyfill@0.0.2: {}
 
   webmcp-types@0.1.7: {}
 

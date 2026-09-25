@@ -1,12 +1,13 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {Activity, Plus, Star} from 'lucide-react';
+import {Activity, Plus, Star, Clock, Pencil} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
 import { useDragReorder } from '../hooks/useDragReorder';
+import { formatCompactDuration } from '../utils';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -19,6 +20,8 @@ interface Goal {
     lifeGoalId?: string;
     cost?: number;
     isPublic?: boolean;
+    createdAt?: string;
+    completedAt?: string;
 }
 
 interface LifePaneProps {
@@ -58,6 +61,7 @@ export default function LifePane({
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerLifeGoalId, setDrawerLifeGoalId] = useState<string | null>(null);
+    const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
 
     const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(lifeGoals, setLifeGoals as any);
 
@@ -104,20 +108,31 @@ export default function LifePane({
                 };
             }));
         } else {
+            const now = new Date().toISOString();
             setLifeGoals([...lifeGoals, {
                 id: 'lg-' + Date.now(),
                 name: cleanName,
                 isPublic: !!lifeGoalForm.isPublic, color: lifeGoalForm.color,
                 completed: false,
                 desc: lifeGoalForm.desc,
-                cost: costValue
+                cost: costValue,
+                createdAt: now
             }]);
         }
         setShowLifeGoalModal(false);
     };
 
     const toggleLife = (id: string) => {
-        setLifeGoals(lifeGoals.map(g => g.id === id ? {...g, completed: !g.completed} : g));
+        const now = new Date().toISOString();
+        setLifeGoals(lifeGoals.map(g => {
+            if (g.id !== id) return g;
+            const isCompleting = !g.completed;
+            return {
+                ...g,
+                completed: isCompleting,
+                completedAt: isCompleting ? ((g as any).completedAt || now) : undefined
+            };
+        }));
     };
 
     const deleteLifeGoal = (id: string, name: string) => {
@@ -236,6 +251,7 @@ export default function LifePane({
                                 onDragEnd={handleDragEnd}
                                 onToggle={toggleLife}
                                 onEdit={openEditLifeGoal}
+                                onCardClick={(g) => setInfoGoalId(g.id)}
                                 onBadgeClick={(id) => {
                                     if (window.innerWidth >= 1400) {
                                         if (onLifeGoalBadgeClick) onLifeGoalBadgeClick(id);
@@ -409,6 +425,113 @@ export default function LifePane({
                     })()}
                 </div>
             </BaseModal>)}
+
+            {infoGoalId && (() => {
+                const goal = lifeGoals.find(g => g.id === infoGoalId);
+                if (!goal) return null;
+                const hex = goal.color || '#eab308';
+                const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
+                const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === infoGoalId);
+                const linkedHabits = (habits || []).filter(h => (h.lifeGoalIds || []).includes(infoGoalId) || h.lifeGoalId === infoGoalId);
+
+                return (
+                    <BaseModal
+                        isOpen={true}
+                        onClose={() => setInfoGoalId(null)}
+                        title={
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hex }}>
+                                <Star size={18} color={hex} />
+                                {goal.name}
+                            </span>
+                        }
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {timeInfo && (
+                                <div style={{
+                                    background: `${hex}15`,
+                                    border: `1px solid ${hex}40`,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    color: 'var(--text-primary)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <Clock size={16} color={hex} />
+                                    <span>{timeInfo.fullText}</span>
+                                </div>
+                            )}
+
+                            {goal.desc && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Description
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                                        {goal.desc}
+                                    </div>
+                                </div>
+                            )}
+
+                            {typeof goal.cost === 'number' && goal.cost > 0 && (
+                                <div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                                        Estimated Cost
+                                    </div>
+                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px' }}>
+                                        ${goal.cost}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold' }}>
+                                    Linked Habits & Routines ({linkedHabits.length + linkedRoutines.length})
+                                </div>
+                                {linkedHabits.length === 0 && linkedRoutines.length === 0 ? (
+                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No linked habits yet.</div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                        {linkedRoutines.map(r => (
+                                            <span key={r.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                                {r.name}
+                                            </span>
+                                        ))}
+                                        {linkedHabits.map(h => (
+                                            <span key={h.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                                {h.name}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                <button
+                                    type="button"
+                                    className="secondary"
+                                    onClick={() => setInfoGoalId(null)}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    className="primary"
+                                    onClick={() => {
+                                        setInfoGoalId(null);
+                                        openEditLifeGoal(goal);
+                                    }}
+                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                >
+                                    <Pencil size={14} /> Edit Goal
+                                </button>
+                            </div>
+                        </div>
+                    </BaseModal>
+                );
+            })()}
 
         </div>);
 }

@@ -1,12 +1,14 @@
 import * as React from 'react';
 import {GripVertical, Pencil} from 'lucide-react';
-import {getCardBgStyle} from '../utils';
+import {getCardBgStyle, formatCompactDuration} from '../utils';
 
 interface Goal {
     id: string;
     name: string;
     color?: string;
     completed?: boolean;
+    completedAt?: string;
+    createdAt?: string;
     isPublic?: boolean;
     desc?: string;
 
@@ -24,6 +26,7 @@ interface GoalCardProps {
     onToggle: (id: string) => void;
     onEdit: (goal: Goal) => void;
     onBadgeClick: (id: string) => void;
+    onCardClick?: (goal: Goal) => void;
     isDragOver?: boolean;
     isDragging?: boolean;
     dropDirection?: 'up' | 'down';
@@ -40,12 +43,14 @@ export default function GoalCard({
                                      onToggle,
                                      onEdit,
                                      onBadgeClick,
+                                     onCardClick,
                                      isDragOver,
                                      isDragging,
                                      dropDirection
                                  }: GoalCardProps) {
     const hex = goal.color || '#eab308';
     const bgStyle = getCardBgStyle(hex);
+    const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
 
     return (<div
             className={`item-card ${goal.completed ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`}
@@ -88,13 +93,20 @@ export default function GoalCard({
                         onChange={() => onToggle(goal.id)}
                         style={{'--accent': hex, flexShrink: 0} as React.CSSProperties}
                     />
-                    <div style={{
-                        flex: 1,
-                        minWidth: 0,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center'
-                    }}>
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (onCardClick) onCardClick(goal);
+                        }}
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                        }}
+                    >
             <span className="item-title" style={{
                 color: hex,
                 whiteSpace: 'nowrap',
@@ -117,7 +129,29 @@ export default function GoalCard({
               </span>)}
                     </div>
                 </div>
-                <div style={{display: 'flex', gap: '12px', flexShrink: 0, marginLeft: '8px'}}>
+                <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0, marginLeft: '8px'}}>
+                    {timeInfo && (
+                        <span
+                            title={timeInfo.fullText}
+                            style={{
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                padding: '2px 6px',
+                                borderRadius: '8px',
+                                background: `${hex}1F`,
+                                border: `1px solid ${hex}40`,
+                                color: hex,
+                                whiteSpace: 'nowrap',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                cursor: 'help'
+                            }}
+                        >
+                            {timeInfo.isCompleted && <span style={{fontSize: '9px'}}>✓</span>}
+                            {timeInfo.formatted}
+                        </span>
+                    )}
                     <button className="icon-btn" onClick={() => onEdit(goal)}
                             style={{padding: '8px', cursor: 'pointer'}}>
                         <Pencil size={14}/>
@@ -126,26 +160,29 @@ export default function GoalCard({
             </div>
 
             <div
-                onClick={() => onBadgeClick(goal.id)}
-                title="Total Linked Routine & Habits"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onBadgeClick(goal.id);
+                }}
+                title="Total Linked Routine & Habits (Click to view)"
                 style={{
                     position: 'absolute',
-                    top: '-8px',
-                    right: '-8px',
+                    top: '-4px',
+                    right: '6px',
                     cursor: 'pointer',
-                    background: linkedCount > 0 ? hex : '#fff',
-                    color: '#000',
-                    fontSize: '11px',
+                    background: linkedCount > 0 ? hex : 'rgba(255, 255, 255, 0.1)',
+                    color: linkedCount > 0 ? '#000' : 'var(--text-secondary)',
+                    fontSize: '10px',
                     fontWeight: '900',
-                    minWidth: '22px',
-                    height: '22px',
-                    padding: '0 6px',
-                    borderRadius: '11px',
+                    minWidth: '20px',
+                    height: '20px',
+                    padding: '0 5px',
+                    borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: linkedCount > 0 ? `0 4px 8px ${hex}4D` : '0 2px 8px rgba(255,255,255,0.4)',
-                    border: '2px solid var(--panel-bg)',
+                    boxShadow: linkedCount > 0 ? `0 2px 6px ${hex}66` : 'none',
+                    border: `1.5px solid ${linkedCount > 0 ? '#fff' : 'rgba(255, 255, 255, 0.2)'}`,
                     zIndex: 10
                 }}>
                 {linkedCount}

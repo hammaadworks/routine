@@ -3,14 +3,15 @@ import { useState, useEffect } from 'react';
 import { Trash2, GripVertical, X, Globe } from 'lucide-react';
 import { useDragReorder } from '../hooks/useDragReorder';
 import ConfirmModal from './ConfirmModal';
-import { sanitizeEntities } from '../utils';
+import { sanitizeEntities, formatCompactDuration } from '../utils';
 
 export interface QuickTask {
-    isPublic?: boolean;
+  isPublic?: boolean;
   id: string;
   name: string;
   completed: boolean;
   createdAt?: string;
+  completedAt?: string;
 }
 
 export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) {
@@ -55,7 +56,16 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
   const completedTasks = quickTasks.filter(t => t.completed && (!isPublicView || t.isPublic || (t.name || '').includes('[public]')));
 
   const toggleTask = (id: string) => {
-    setQuickTasks(quickTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    const now = new Date().toISOString();
+    setQuickTasks(quickTasks.map(t => {
+      if (t.id !== id) return t;
+      const isCompleting = !t.completed;
+      return {
+        ...t,
+        completed: isCompleting,
+        completedAt: isCompleting ? (t.completedAt || now) : undefined
+      };
+    }));
   };
 
   const deleteTaskAndEdit = (task: QuickTask) => {
@@ -84,6 +94,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
     if (isDragOver && dragItemIndex !== null) {
       dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
     }
+    const timeInfo = formatCompactDuration(task.createdAt, task.completedAt, task.completed, task.id);
     
     return (
       <div 
@@ -130,6 +141,30 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
         }}>
           {task.name}
         </span>
+        {timeInfo && (
+          <span 
+            title={timeInfo.fullText}
+            style={{ 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              padding: '2px 7px', 
+              borderRadius: '10px', 
+              background: task.completed ? 'rgba(255, 255, 255, 0.06)' : 'rgba(25, 130, 196, 0.15)', 
+              border: task.completed ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(25, 130, 196, 0.3)', 
+              color: task.completed ? 'var(--text-secondary)' : '#1982C4', 
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              marginTop: '2px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              cursor: 'help'
+            }}
+          >
+            {timeInfo.isCompleted && <span style={{fontSize: '9px'}}>✓</span>}
+            {timeInfo.formatted}
+          </span>
+        )}
         {task.completed && (
           <button 
             className="icon-btn"
