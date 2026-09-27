@@ -148,7 +148,11 @@ export default function LifePane({
                 }
 
                 if (habits && setHabits) {
-                    setHabits(habits.map(g => g.lifeGoalId === id ? {...g, lifeGoalId: ''} : g));
+                    setHabits(habits.map(g => {
+                        const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
+                        const newLIds = lIds.filter((lid: string) => lid !== id);
+                        return { ...g, lifeGoalIds: newLIds, lifeGoalId: g.lifeGoalId === id ? '' : g.lifeGoalId };
+                    }));
                 }
 
                 setConfirmConfig(null);
@@ -166,7 +170,10 @@ export default function LifePane({
             count += routineGoals.filter(g => g.lifeGoalId === goal.id && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'))).length;
         }
         if (habits) {
-            count += habits.filter(g => g.lifeGoalId === goal.id && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'))).length;
+            count += habits.filter(g => {
+                const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
+                return lIds.includes(goal.id) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+            }).length;
         }
         return count;
     };
@@ -385,7 +392,10 @@ export default function LifePane({
                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                     {(() => {
                         const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === drawerLifeGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
-                        const linkedHabits = (habits || []).filter(g => g.lifeGoalId === drawerLifeGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+                        const linkedHabits = (habits || []).filter(g => {
+                            const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
+                            return lIds.includes(drawerLifeGoalId) && (!isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+                        });
                         if (linkedRoutines.length === 0 && linkedHabits.length === 0) {
                             return <div style={{color: 'var(--text-secondary)'}}>No items linked to this
                                 goal.</div>;
@@ -431,8 +441,11 @@ export default function LifePane({
                 if (!goal) return null;
                 const hex = goal.color || '#eab308';
                 const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
-                const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === infoGoalId);
-                const linkedHabits = (habits || []).filter(h => (h.lifeGoalIds || []).includes(infoGoalId) || h.lifeGoalId === infoGoalId);
+                const linkedRoutines = (routineGoals || []).filter(g => g.lifeGoalId === infoGoalId && (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+                const linkedHabits = (habits || []).filter(h => {
+                    const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
+                    return lIds.includes(infoGoalId) && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                });
 
                 return (
                     <BaseModal

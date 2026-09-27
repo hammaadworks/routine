@@ -673,7 +673,9 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '380px'
+            minHeight: '380px',
+            flex: 1,
+            overflowY: 'auto'
         }}>
             <div style={{
                 width: '56px',
@@ -755,7 +757,7 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         </div>);
     }
 
-    return (<div className="coins-pane" style={{padding: "0"}}>
+    return (<div className="coins-pane" style={{padding: "0", flex: 1, overflowY: "auto", minHeight: 0, height: "100%"}}>
         {isPublicView && isRevealed && (<div style={{
             background: 'rgba(234, 179, 8, 0.1)',
             borderBottom: '1px solid rgba(234, 179, 8, 0.3)',
@@ -793,6 +795,7 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
             </div>
         </div>)}
         <style>{`
+        .coins-pane { flex: 1; overflow-y: auto; min-height: 0; height: 100%; }
         .coins-pane .row-btn { background: transparent; border: none; color: #8A8F98; padding: 6px; border-radius: 3px; display: flex; align-items: center; }
         .coins-pane .row-btn:hover { color: #EDE7D9; background: #262C33; }
         .coins-pane table { border-collapse: collapse; width: 100%; min-width: 460px; }

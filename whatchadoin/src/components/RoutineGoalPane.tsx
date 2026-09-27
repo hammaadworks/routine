@@ -177,9 +177,13 @@ export default function RoutineGoalPane({
 
     const getLinkedCount = (goal: RoutineGoal) => {
         const txt = (goal.name || '').toLowerCase().trim();
-        if (!txt) return 0;
         const visibleHabits = (habits || []).filter(g => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
-        const linkedGoals = visibleHabits.filter(g => g.routineGoalId === goal.id || (g.name || '').toLowerCase().trim() === txt || ((g.desc as string | undefined) && (g.desc as string).toLowerCase().trim() === txt));
+        const linkedGoals = visibleHabits.filter(g => {
+            const rIds = Array.isArray(g.routineGoalIds) ? g.routineGoalIds : (g.routineGoalId ? [g.routineGoalId] : []);
+            return rIds.includes(goal.id) ||
+                (txt && (g.name || '').toLowerCase().trim() === txt) ||
+                (txt && (g.desc as string | undefined) && (g.desc as string).toLowerCase().trim() === txt);
+        });
         return linkedGoals.length;
     };
 
@@ -440,7 +444,7 @@ export default function RoutineGoalPane({
                 if (!goal) return null;
                 const hex = goal.color || '#1982C4';
                 const timeInfo = formatCompactDuration(goal.createdAt as string, goal.completedAt as string, !!goal.completed, goal.id);
-                const linkedHabits = (habits || []).filter(h => (h.routineGoalIds as string[] | undefined)?.includes(infoGoalId) || h.routineGoalId === infoGoalId);
+                const linkedHabits = (habits || []).filter(h => ((h.routineGoalIds as string[] | undefined)?.includes(infoGoalId) || h.routineGoalId === infoGoalId) && (!isPublicView || h.isPublic || (h.name || '').includes('[public]')));
 
                 return (
                     <BaseModal

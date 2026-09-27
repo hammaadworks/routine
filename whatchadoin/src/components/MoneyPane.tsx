@@ -270,7 +270,13 @@ export default function MoneyPane({
                         const getLinkedCount = (goal: MoneyGoal) => {
                             let count = 0;
                             if (habits) {
-                                count += habits.filter((h: any) => (h.moneyGoalIds || []).includes(goal.id) || h.moneyGoalId === goal.id).length;
+                                count += habits.filter((h: any) => {
+                                    const mIds = Array.isArray(h.moneyGoalIds) ? h.moneyGoalIds : (h.moneyGoalId ? [h.moneyGoalId] : []);
+                                    const rIds = Array.isArray(h.routineGoalIds) ? h.routineGoalIds : (h.routineGoalId ? [h.routineGoalId] : []);
+                                    const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
+                                    const isLinked = mIds.includes(goal.id) || (goal.type === 'routine' && rIds.includes(goal.id)) || (goal.type === 'life' && lIds.includes(goal.id));
+                                    return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                                }).length;
                             }
                             return count;
                         };
@@ -463,7 +469,13 @@ export default function MoneyPane({
             {drawerMoneyGoalId && (() => {
                 const goal = baseGoals.find(g => g.id === drawerMoneyGoalId);
                 if (!goal) return null;
-                const linkedHabits = (habits || []).filter(h => (h.moneyGoalIds || []).includes(drawerMoneyGoalId) || h.moneyGoalId === drawerMoneyGoalId);
+                const linkedHabits = (habits || []).filter((h: any) => {
+                    const mIds = Array.isArray(h.moneyGoalIds) ? h.moneyGoalIds : (h.moneyGoalId ? [h.moneyGoalId] : []);
+                    const rIds = Array.isArray(h.routineGoalIds) ? h.routineGoalIds : (h.routineGoalId ? [h.routineGoalId] : []);
+                    const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
+                    const isLinked = mIds.includes(drawerMoneyGoalId) || (goal.type === 'routine' && rIds.includes(drawerMoneyGoalId)) || (goal.type === 'life' && lIds.includes(drawerMoneyGoalId));
+                    return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                });
                 return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title="Linked Items">
                         <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                             {linkedHabits.length === 0 ? (
@@ -489,7 +501,13 @@ export default function MoneyPane({
                 if (!goal) return null;
                 const hex = goal.color || '#8AC926';
                 const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
-                const linkedHabits = (habits || []).filter(h => (h.moneyGoalIds || []).includes(infoGoalId) || h.moneyGoalId === infoGoalId);
+                const linkedHabits = (habits || []).filter((h: any) => {
+                    const mIds = Array.isArray(h.moneyGoalIds) ? h.moneyGoalIds : (h.moneyGoalId ? [h.moneyGoalId] : []);
+                    const rIds = Array.isArray(h.routineGoalIds) ? h.routineGoalIds : (h.routineGoalId ? [h.routineGoalId] : []);
+                    const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
+                    const isLinked = mIds.includes(infoGoalId) || (goal.type === 'routine' && rIds.includes(infoGoalId)) || (goal.type === 'life' && lIds.includes(infoGoalId));
+                    return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                });
 
                 return (
                     <BaseModal

@@ -397,6 +397,13 @@ body {
     background: transparent;
 }
 
+.coins-pane {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    height: 100%;
+}
+
 .tasks-grid {
     display: grid;
     gap: 8px;
