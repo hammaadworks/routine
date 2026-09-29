@@ -10,14 +10,44 @@ interface BaseModalProps {
     children?: React.ReactNode;
     maxWidth?: string;
     drawerMode?: 'mobile' | 'tablet' | 'none';
+    bodyClassName?: string;
 }
 
 export default function BaseModal({
-                                      isOpen = true, onClose, title, children, maxWidth = '400px', drawerMode = 'mobile'
+                                      isOpen = true, onClose, title, children, maxWidth = '400px', drawerMode = 'mobile', bodyClassName
                                   }: BaseModalProps) {
     const contentRef = useRef<HTMLDivElement>(null);
     const [dragY, setDragY] = useState(0);
     const touchStartRef = useRef<number | null>(null);
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+    const isDrawerActive = () => {
+        if (drawerMode === 'none') return false;
+        if (drawerMode === 'tablet') return window.innerWidth < 1400;
+        return window.innerWidth <= 768;
+    };
+
+    useEffect(() => {
+        // Only run viewport listener on mobile/tablet drawer mode; never on PC desktop
+        if (!isOpen || !isDrawerActive()) return;
+
+        const vv = window.visualViewport;
+        if (!vv) return;
+
+        const handleViewportChange = () => {
+            const heightDiff = window.innerHeight - vv.height;
+            setIsKeyboardOpen(heightDiff > 120);
+        };
+
+        vv.addEventListener('resize', handleViewportChange);
+        vv.addEventListener('scroll', handleViewportChange);
+
+        return () => {
+            vv.removeEventListener('resize', handleViewportChange);
+            vv.removeEventListener('scroll', handleViewportChange);
+            setIsKeyboardOpen(false);
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -48,12 +78,6 @@ export default function BaseModal({
             }
         };
     }, [isOpen, onClose]);
-
-    const isDrawerActive = () => {
-        if (drawerMode === 'none') return false;
-        if (drawerMode === 'tablet') return window.innerWidth < 1400;
-        return window.innerWidth <= 768;
-    };
 
     const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
         if (isDrawerActive() && e.touches[0]) {
@@ -103,7 +127,7 @@ export default function BaseModal({
     >
         <div
             ref={contentRef}
-            className={`modal-content drawer-mode-${drawerMode}`}
+            className={`modal-content drawer-mode-${drawerMode} ${isKeyboardOpen && isDrawerActive() ? 'keyboard-active-mobile' : ''}`}
             onClick={e => e.stopPropagation()}
             style={{
                 maxWidth, touchAction: 'auto', transform: dragY > 0 ? `translateY(${dragY}px)` : undefined
@@ -133,7 +157,7 @@ export default function BaseModal({
                             <X size={24}/>
                         </button>)}
                 </div>)}
-            <div className="modal-body">
+            <div className={`modal-body ${bodyClassName || ''}`}>
                 {children}
             </div>
         </div>

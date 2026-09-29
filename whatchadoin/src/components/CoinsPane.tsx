@@ -11,35 +11,43 @@ import {
     LineChart,
     Pie,
     PieChart,
-    ReferenceLine,
     ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis
 } from "recharts";
 import {
+    Activity,
+    AlertCircle,
     ArrowRight,
     Award,
-    Calculator,
+    BarChart3,
     Calendar,
+    CheckCircle2,
     ChevronDown,
+    ChevronRight,
     Download,
     Eye,
     EyeOff,
     Filter,
+    Flame,
+    Layers,
     Lightbulb,
     Lock,
     Pencil,
+    PieChart as PieIcon,
     Plus,
+    ShieldAlert,
+    ShieldCheck,
     Target,
     Trash2,
+    TrendingDown,
     TrendingUp,
     Upload,
     Wallet,
     X
 } from "lucide-react";
 import {useCurrency} from "../hooks/useCurrency";
-
 
 export interface CoinsEntry {
     id: string;
@@ -54,14 +62,38 @@ export interface CoinsStats {
     total: number;
     avgPerCareerMonth: number;
     avgPerLoggedMonth: number;
-    bestYear: { total: number, year: number };
-    highest: { total: number, year: number, month: number };
+    bestYear: { total: number; year: number };
+    highest: { total: number; year: number; month: number; sources?: string[] };
+    lowestNonZero: { total: number; year: number; month: number };
     careerMonths: number;
     monthsLogged: number;
-    yearTrend: any[];
+    positiveMonthsLogged: number;
+    zeroMonthsLogged: number;
+    unloggedMonthsCount: number;
+    coveragePct: number;
+    yearTrend: Array<{ year: number; total: number }>;
+    yoyGrowth: Array<{ year: number; pct: number }>;
     stackedByYear: any[];
     allSources: string[];
     missingRanges: any[];
+    loggedSet: Set<string>;
+    positiveMonthSet: Set<string>;
+    zeroMonthSet: Set<string>;
+    byMonthMap: Record<string, { total: number; sources: string[]; notes: string[] }>;
+    sourceBreakdown: Array<{ name: string; value: number; pct: number }>;
+    trendLine: Array<{ label: string; total: number; year: number; month: number }>;
+    cumulative: Array<{ label: string; cumulative: number; year: number; month: number }>;
+    longestGap: number;
+    currentPositiveStreak: number;
+    longestPositiveStreak: number;
+    topSource?: { name: string; value: number; pct: number };
+    sortedMonthTotals: Array<{ year: number; month: number; total: number; sources: string[] }>;
+    trailing12Mean: number;
+    trailing12StdDev: number;
+    volatilityCV: number;
+    momentum3MoAvg: number;
+    momentum12MoAvg: number;
+    momentumRatio: number;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -70,16 +102,19 @@ const CAREER_START_MONTH = 1;
 const NOW = new Date();
 const CURRENT_YEAR = NOW.getFullYear();
 const CURRENT_MONTH = NOW.getMonth() + 1;
-const YEARS = Array.from({length: CURRENT_YEAR - CAREER_START_YEAR + 2}, (_, i) => CAREER_START_YEAR + i);
-const SOURCE_PRESETS = ["Job", "Freelance", "Product", "Consulting", "Investment", "Other"];
-const PALETTE = ["#C9A227", "#7FA87A", "#8AA9C9", "#C1665A", "#A78BC9", "#C99A5B", "#6FA3A0"];
+const TODAY_STR = NOW.toISOString().slice(0, 10);
+const YEARS = Array.from({length: CURRENT_YEAR - CAREER_START_YEAR + 3}, (_, i) => CAREER_START_YEAR + i);
+const SOURCE_PRESETS = ["Startup", "Dividend", "Job", "Freelance", "Consulting", "Investment", "Product", "Broke / Nil", "Other"];
+const PALETTE = ["#C9A227", "#7FA87A", "#8AA9C9", "#C1665A", "#A78BC9", "#E5A84B", "#6FA3A0", "#D97706"];
 
 function monthKey(y: number, m: number) {
     return `${y}-${m}`;
 }
 
-function emptyDraft() {
-    return {id: null, year: CURRENT_YEAR, month: CURRENT_MONTH, amount: "", source: "Job", notes: ""};
+function addMonthsToToday(months: number) {
+    const d = new Date();
+    d.setMonth(d.getMonth() + months);
+    return d.toISOString().slice(0, 10);
 }
 
 function emptyRangeDraft() {
@@ -94,11 +129,12 @@ function emptyRangeDraft() {
     };
 }
 
-// Inclusive list of {year, month} between two points, in order.
 function monthsBetween(sy: number, sm: number, ey: number, em: number) {
-    const out: any[] = [];
-    let y = sy, m = sm;
-    const startIdx = sy * 12 + sm, endIdx = ey * 12 + em;
+    const out: Array<{ year: number; month: number }> = [];
+    let y = sy;
+    let m = sm;
+    const startIdx = sy * 12 + sm;
+    const endIdx = ey * 12 + em;
     if (startIdx > endIdx) return out;
     while (y * 12 + m <= endIdx) {
         out.push({year: y, month: m});
@@ -111,104 +147,169 @@ function monthsBetween(sy: number, sm: number, ey: number, em: number) {
     return out;
 }
 
-// Every calendar month from career start to the current month, inclusive.
-function buildFullTimeline() {
-    const out = [];
-    let y = CAREER_START_YEAR, m = CAREER_START_MONTH;
-    while (y < CURRENT_YEAR || (y === CURRENT_YEAR && m <= CURRENT_MONTH)) {
-        out.push({year: y, month: m});
-        m++;
-        if (m > 12) {
-            m = 1;
-            y++;
-        }
-    }
-    return out;
-}
-
-const FULL_TIMELINE = buildFullTimeline();
-
-export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyGoals}: {
-    isPublicView?: boolean, walletTotal?: number, onNavigateToMoneyGoals?: () => void,
+export default function CoinsPane({
+                                      isPublicView, walletTotal, onNavigateToMoneyGoals, walletGoals = []
+                                  }: {
+    isPublicView?: boolean; walletTotal?: number; onNavigateToMoneyGoals?: () => void; walletGoals?: any[];
 }) {
+    const {formatCurrency, currencySymbol} = useCurrency();
 
-    const {formatCurrency, currency} = useCurrency();
-    const currencySymbol = (() => {
-        try {
-            return (0).toLocaleString(undefined, {
-                style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0
-            }).replace(/\d/g, '').trim();
-        } catch {
-            return currency;
-        }
-    })();
-    useEffect(() => {
-        const handleStorage = (e: StorageEvent) => {
-            if (e.key === "whatchadoin_coins_entries") {
-                if (e.newValue) setEntries(JSON.parse(e.newValue));
-            }
-            if (e.key === "whatchadoin_coins_targets") {
-                if (e.newValue) setTargets(JSON.parse(e.newValue));
-            }
-        };
-        const handleCoinsUpdated = () => {
-            try {
-                const rawEntries = localStorage.getItem("whatchadoin_coins_entries");
-                if (rawEntries) setEntries(JSON.parse(rawEntries));
-                const rawTargets = localStorage.getItem("whatchadoin_coins_targets");
-                if (rawTargets) setTargets(JSON.parse(rawTargets));
-            } catch (err) {
-                console.error("Error refreshing coins:", err);
-            }
-        };
-        const handleFab = () => {
-            setMode("single");
-            setDraft(emptyDraft() as any);
-            setEditingId(null);
-            const inputEl = document.getElementById("entry-amount-input");
-            if (inputEl) {
-                inputEl.scrollIntoView({behavior: "smooth", block: "center"});
-                setTimeout(() => inputEl.focus(), 100);
-            } else {
-                window.scrollTo({top: 0, behavior: "smooth"});
-            }
-        };
-        window.addEventListener("storage", handleStorage);
-        window.addEventListener("whatchadoin_coins_updated", handleCoinsUpdated);
-        window.addEventListener("fab:add-coins", handleFab);
-        return () => {
-            window.removeEventListener("storage", handleStorage);
-            window.removeEventListener("whatchadoin_coins_updated", handleCoinsUpdated);
-            window.removeEventListener("fab:add-coins", handleFab);
-        };
-    }, []);
     const [coinsEntries, setEntries] = useState<CoinsEntry[]>([]);
     const [isRevealed, setIsRevealed] = useState(false);
     const [loaded, setLoaded] = useState(false);
+    const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
+    // Unified Form: No redundant single-stream tab!
+    // Mode is either "monthly" (supports 1 or more streams seamlessly) or "range"
+    const [mode, setMode] = useState<"monthly" | "range">("monthly");
+    const [entryYear, setEntryYear] = useState(CURRENT_YEAR);
+    const [entryMonth, setEntryMonth] = useState(CURRENT_MONTH);
+    const [streamRows, setStreamRows] = useState<Array<{
+        id: string;
+        source: string;
+        amount: string;
+        notes: string
+    }>>([{id: "1", source: "Job", amount: "", notes: ""}]);
+
+    // Single entry editing state (when editing an existing entry from table)
+    const [editingEntry, setEditingEntry] = useState<CoinsEntry | null>(null);
+
+    const [rangeDraft, setRangeDraft] = useState(emptyRangeDraft());
+    const [expandedYear, setExpandedYear] = useState<number | null>(CURRENT_YEAR);
+    const [error, setError] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
+    const [importMsg, setImportMsg] = useState("");
+    const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+    const [coinsTargets, setTargets] = useState<Record<string, number>>({});
+
+    // Accordion states: independent open/close
+    const [openSections, setOpenSections] = useState({
+        form: true, overview: true, targets: true, ledger: true
+    });
+
+    const toggleSection = (key: keyof typeof openSections) => {
+        setOpenSections(prev => ({...prev, [key]: !prev[key]}));
+    };
+
+    const setAllSections = (open: boolean) => {
+        setOpenSections({
+            form: open, overview: open, targets: open, ledger: open
+        });
+    };
+
+    // Targets section view controls
+    const [targetActiveTab, setTargetActiveTab] = useState<"yearly" | "wallet" | "career">("yearly");
+    const [showAllTargetYears, setShowAllTargetYears] = useState(false);
+    const [yearlyChartMode, setYearlyChartMode] = useState<"annual" | "monthly">("annual");
+
+    // Wallet goals funding calculator state (MULTİ-SELECT, EDITABLE TARGET AMOUNT, EDITABLE DEADLINE)
+    const pendingWalletGoals = useMemo(() => {
+        return walletGoals.filter((g: any) => {
+            const cost = Number(g.cost || 0);
+            return cost > 0 && !g.isCompleted && !g.completed;
+        });
+    }, [walletGoals]);
+
+    const [selectedGoalIds, setSelectedGoalIds] = useState<Set<string>>(() => {
+        return new Set(pendingWalletGoals.map(g => g.id));
+    });
+
+    // Sync selectedGoalIds if goals are loaded late
+    useEffect(() => {
+        if (pendingWalletGoals.length > 0) {
+            setSelectedGoalIds(prev => {
+                if (prev.size === 0) {
+                    return new Set(pendingWalletGoals.map(g => g.id));
+                }
+                return prev;
+            });
+        }
+    }, [pendingWalletGoals]);
+
+    const selectedGoalsSum = useMemo(() => {
+        return pendingWalletGoals
+            .filter(g => selectedGoalIds.has(g.id))
+            .reduce((sum, g) => sum + (Number(g.cost) || 0), 0);
+    }, [pendingWalletGoals, selectedGoalIds]);
+
+    const [customTargetAmount, setCustomTargetAmount] = useState<string>("");
+    const [targetDeadline, setTargetDeadline] = useState<string>(() => addMonthsToToday(6));
+
+    const effectiveTargetAmount = useMemo(() => {
+        if (customTargetAmount.trim() !== "") {
+            const parsed = parseFloat(customTargetAmount);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        return selectedGoalsSum;
+    }, [customTargetAmount, selectedGoalsSum]);
+
+    // Forward-Looking Wallet Funding Calculator (Strictly forward from TODAY, ZERO past run-rate account)
+    const walletFundingCalc = useMemo(() => {
+        if (effectiveTargetAmount <= 0) {
+            return {
+                targetAmount: 0,
+                daysRemaining: 0,
+                monthsRemaining: 0,
+                neededPerMonth: 0,
+                neededPerDay: 0,
+                targetDateFormatted: "—",
+                error: "Select at least one goal or enter a target amount."
+            };
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const targetDateObj = new Date(targetDeadline);
+        targetDateObj.setHours(23, 59, 59, 999);
+
+        const msDiff = targetDateObj.getTime() - today.getTime();
+        if (isNaN(msDiff) || msDiff <= 0) {
+            return {
+                targetAmount: effectiveTargetAmount,
+                daysRemaining: 0,
+                monthsRemaining: 0,
+                neededPerMonth: 0,
+                neededPerDay: 0,
+                targetDateFormatted: "—",
+                error: "Target deadline must be in the future."
+            };
+        }
+
+        const daysRemaining = Math.max(1, Math.ceil(msDiff / (1000 * 60 * 60 * 24)));
+        const monthsRemaining = Math.max(0.1, daysRemaining / 30.4375);
+
+        const neededPerDay = Math.round(effectiveTargetAmount / daysRemaining);
+        const neededPerMonth = Math.round(effectiveTargetAmount / monthsRemaining);
+
+        const targetDateFormatted = targetDateObj.toLocaleDateString("en-US", {
+            day: "numeric", month: "short", year: "numeric"
+        });
+
+        return {
+            targetAmount: effectiveTargetAmount,
+            daysRemaining,
+            monthsRemaining,
+            neededPerMonth,
+            neededPerDay,
+            targetDateFormatted,
+            error: null
+        };
+    }, [effectiveTargetAmount, targetDeadline]);
+
+    // Career Average Target Calculator state
+    const [calcTarget, setCalcTarget] = useState("");
+
+    // Ledger filters
+    const [filters, setFilters] = useState({
+        source: "all", fromYear: CAREER_START_YEAR, toYear: CURRENT_YEAR + 1, minAmount: "", maxAmount: "", search: ""
+    });
+    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         setIsRevealed(false);
     }, [isPublicView]);
-    const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
-    const [draft, setDraft] = useState(emptyDraft());
-    const [rangeDraft, setRangeDraft] = useState(emptyRangeDraft());
-    const [mode, setMode] = useState("single"); // "single" | "range"
-    const [editingId, setEditingId] = useState(null);
-    const [expandedYear, setExpandedYear] = useState(CURRENT_YEAR);
-    const [error, setError] = useState("");
-    const [importMsg, setImportMsg] = useState("");
-    const fileInputRef = React.useRef(null);
-    const [coinsTargets, setTargets] = useState({}); // { [year]: amount }
-    const [showTargets, setShowTargets] = useState(false);
-    const [showCalculator, setShowCalculator] = useState(false);
-    const [calcMode, setCalcMode] = useState("career"); // "forward" | "career"
-    const [calcTarget, setCalcTarget] = useState("150000");
-    const [calcEndYear, setCalcEndYear] = useState(CURRENT_YEAR + 1);
-    const [calcEndMonth, setCalcEndMonth] = useState(CURRENT_MONTH);
-    const [filters, setFilters] = useState({
-        source: "all", fromYear: CAREER_START_YEAR, toYear: CURRENT_YEAR, minAmount: "", maxAmount: "", search: ""
-    });
-    const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
         const reload = () => {
@@ -216,7 +317,7 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
                 const res = localStorage.getItem("whatchadoin_coins_entries");
                 if (res) setEntries(JSON.parse(res));
             } catch {
-                // no data yet — fresh ledger
+                // fresh ledger
             }
             try {
                 const res2 = localStorage.getItem("whatchadoin_coins_targets");
@@ -229,11 +330,33 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         };
 
         reload();
-        window.addEventListener("whatchadoin_coins_updated", reload);
-        window.addEventListener("storage", reload);
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === "whatchadoin_coins_entries" && e.newValue) setEntries(JSON.parse(e.newValue));
+            if (e.key === "whatchadoin_coins_targets" && e.newValue) setTargets(JSON.parse(e.newValue));
+        };
+        const handleCoinsUpdated = () => reload();
+        const handleFab = () => {
+            setMode("monthly");
+            setEntryYear(CURRENT_YEAR);
+            setEntryMonth(CURRENT_MONTH);
+            setEditingEntry(null);
+            setOpenSections(prev => ({...prev, form: true}));
+            setTimeout(() => {
+                const inputEl = document.getElementById("stream-amt-0");
+                if (inputEl) {
+                    inputEl.scrollIntoView({behavior: "smooth", block: "center"});
+                    inputEl.focus();
+                }
+            }, 100);
+        };
+
+        window.addEventListener("storage", handleStorage);
+        window.addEventListener("whatchadoin_coins_updated", handleCoinsUpdated);
+        window.addEventListener("fab:add-coins", handleFab);
         return () => {
-            window.removeEventListener("whatchadoin_coins_updated", reload);
-            window.removeEventListener("storage", reload);
+            window.removeEventListener("storage", handleStorage);
+            window.removeEventListener("whatchadoin_coins_updated", handleCoinsUpdated);
+            window.removeEventListener("fab:add-coins", handleFab);
         };
     }, []);
 
@@ -241,29 +364,28 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         setTargets(next);
         try {
             localStorage.setItem("whatchadoin_coins_targets", JSON.stringify(next));
+            window.dispatchEvent(new Event("whatchadoin_coins_updated"));
         } catch {
-            // coinsTargets are a nice-to-have; a failed save here doesn't affect coinsEntries
+            // failed
         }
     }
 
-    async function persist(next: any) {
+    async function persist(next: CoinsEntry[]) {
         setEntries(next);
         setSaveState("saving");
         try {
             localStorage.setItem("whatchadoin_coins_entries", JSON.stringify(next));
+            window.dispatchEvent(new Event("whatchadoin_coins_updated"));
             setSaveState("saved");
+            setTimeout(() => setSaveState("idle"), 1200);
         } catch {
             setSaveState("error");
+            setTimeout(() => setSaveState("idle"), 2000);
         }
     }
 
-    function resetDraft() {
-        setDraft(emptyDraft());
-        setEditingId(null);
-    }
-
     function exportJSON() {
-        const payload = {exportedAt: new Date().toISOString(), coinsEntries};
+        const payload = {exportedAt: new Date().toISOString(), coinsEntries, coinsTargets};
         const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -295,7 +417,7 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
 
     function triggerImport() {
         setImportMsg("");
-        (fileInputRef.current as any)?.click();
+        fileInputRef.current?.click();
     }
 
     function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -305,87 +427,144 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         reader.onload = () => {
             try {
                 const parsed = JSON.parse(reader.result as string);
-                const incoming = Array.isArray(parsed) ? parsed : parsed.coinsEntries;
+                const incoming = Array.isArray(parsed) ? parsed : (parsed.coinsEntries || []);
                 if (!Array.isArray(incoming)) throw new Error("bad shape");
-                const existingKeys = new Set(coinsEntries.map(en => `${en.year}-${en.month}-${en.source}`));
-                let added = 0, skipped = 0;
+                const existingIds = new Set(coinsEntries.map(en => en.id));
+                let added = 0;
                 const toAdd: CoinsEntry[] = [];
                 incoming.forEach(en => {
                     if (!en || !en.year || !en.month || typeof en.amount !== "number") return;
-                    const key = `${en.year}-${en.month}-${en.source}`;
-                    if (existingKeys.has(key)) {
-                        skipped++;
-                        return;
-                    }
-                    existingKeys.add(key);
+                    const id = en.id || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+                    if (existingIds.has(id)) return;
+                    existingIds.add(id);
                     toAdd.push({
-                        id: `${Date.now().toString(36)}-${added}`,
-                        year: en.year,
-                        month: en.month,
-                        amount: en.amount,
-                        source: en.source || "Other",
-                        notes: en.notes || ""
+                        id,
+                        year: Number(en.year),
+                        month: Number(en.month),
+                        amount: Number(en.amount),
+                        source: String(en.source || "Other"),
+                        notes: String(en.notes || "")
                     });
                     added++;
                 });
                 if (toAdd.length > 0) persist([...coinsEntries, ...toAdd]);
-                setImportMsg(`Imported ${added} ${added === 1 ? "entry" : "entries"}${skipped ? `, skipped ${skipped} already on file` : ""}.`);
+                if (parsed.coinsTargets && typeof parsed.coinsTargets === "object") {
+                    persistTargets({...coinsTargets, ...parsed.coinsTargets});
+                }
+                setImportMsg(`Imported ${added} entries successfully.`);
+                setTimeout(() => setImportMsg(""), 3500);
             } catch {
-                setImportMsg("Couldn't read that file — expecting a JSON backup exported from this ledger.");
+                setImportMsg("Failed to parse JSON backup file.");
             }
         };
         reader.readAsText(file);
         e.target.value = "";
     }
 
-    function submitDraft(e: React.FormEvent) {
+    // Unified Monthly Income submission (supports 1 or more stream rows seamlessly, including honest ₹0/broke entries!)
+    function submitMonthlyStreams(e: React.FormEvent) {
         e.preventDefault();
         setError("");
-        const amt = parseFloat(draft.amount);
-        if (!draft.year || !draft.month || isNaN(amt) || amt < 0) {
-            setError("Enter a valid year, month, and amount.");
+        setSuccessMsg("");
+
+        const validStreams = streamRows.filter(s => {
+            const trimmed = s.amount.trim();
+            const a = parseFloat(trimmed);
+            return !isNaN(a) && a >= 0 && s.source.trim().length > 0;
+        });
+
+        if (validStreams.length === 0) {
+            setError("Please enter at least one stream with a valid amount (₹0 or greater) and source.");
             return;
         }
-        const key = monthKey(draft.year, draft.month);
-        const dupe = coinsEntries.find(en => monthKey(en.year, en.month) === key && en.id !== editingId && en.source === draft.source);
-        if (dupe) {
-            setError(`You already have a "${draft.source}" entry for ${MONTHS[draft.month - 1]} ${draft.year}. Edit it instead, or use a different source.`);
-            return;
-        }
-        let next;
-        if (editingId) {
-            next = coinsEntries.map(en => en.id === editingId ? {...draft, amount: amt, id: editingId} : en);
+
+        const newEntries: CoinsEntry[] = validStreams.map((s, idx) => ({
+            id: `${Date.now().toString(36)}-${idx}-${Math.random().toString(36).slice(2, 5)}`,
+            year: entryYear,
+            month: entryMonth,
+            amount: parseFloat(s.amount),
+            source: s.source.trim(),
+            notes: s.notes.trim()
+        }));
+
+        const totalAdded = newEntries.reduce((s, en) => s + en.amount, 0);
+        persist([...coinsEntries, ...newEntries]);
+        setExpandedYear(entryYear);
+        if (totalAdded === 0) {
+            setSuccessMsg(`Documented zero income (${formatCurrency(0)}) for ${MONTHS[entryMonth - 1]} ${entryYear}. Recorded as an honest, completed month!`);
         } else {
-            next = [...coinsEntries, {...draft, amount: amt, id: Date.now().toString(36)}];
+            setSuccessMsg(`Successfully logged ${newEntries.length} stream${newEntries.length === 1 ? "" : "s"} totaling ${formatCurrency(totalAdded)} for ${MONTHS[entryMonth - 1]} ${entryYear}!`);
         }
-        persist(next);
-        setExpandedYear(draft.year);
-        resetDraft();
+
+        // Reset stream rows to 1 clean row while keeping entryYear & entryMonth
+        setStreamRows([{id: Date.now().toString(36), source: "Job", amount: "", notes: ""}]);
+        setTimeout(() => setSuccessMsg(""), 4500);
+    }
+
+    // Single entry edit submission
+    function submitEdit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingEntry) return;
+        setError("");
+        const amt = Number(editingEntry.amount);
+        if (isNaN(amt) || amt < 0) {
+            setError("Please enter a valid amount.");
+            return;
+        }
+        const updated = coinsEntries.map(en => en.id === editingEntry.id ? editingEntry : en);
+        persist(updated);
+        setExpandedYear(editingEntry.year);
+        setSuccessMsg(`Updated ${MONTHS[editingEntry.month - 1]} ${editingEntry.year} (${editingEntry.source}).`);
+        setEditingEntry(null);
+        setTimeout(() => setSuccessMsg(""), 3500);
+    }
+
+    function addStreamRow(presetSource?: string, presetAmount?: string) {
+        setStreamRows(prev => {
+            const first = prev[0];
+            if (prev.length === 1 && first && first.amount === "" && (first.source === "Job" || !first.source) && presetSource) {
+                return [{
+                    id: first.id,
+                    source: presetSource,
+                    amount: presetAmount !== undefined ? presetAmount : (presetSource === "Broke / Nil" ? "0" : ""),
+                    notes: presetSource === "Broke / Nil" ? "Documented zero income (broke / gap)" : ""
+                }];
+            }
+            return [...prev, {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                source: presetSource || "Other",
+                amount: presetAmount !== undefined ? presetAmount : (presetSource === "Broke / Nil" ? "0" : ""),
+                notes: presetSource === "Broke / Nil" ? "Documented zero income (broke / gap)" : ""
+            }];
+        });
+    }
+
+    function updateStreamRow(id: string, field: "source" | "amount" | "notes", val: string) {
+        setStreamRows(prev => prev.map(row => row.id === id ? {...row, [field]: val} : row));
+    }
+
+    function removeStreamRow(id: string) {
+        if (streamRows.length <= 1) return;
+        setStreamRows(prev => prev.filter(row => row.id !== id));
     }
 
     function submitRange(e: React.FormEvent) {
         e.preventDefault();
         setError("");
+        setSuccessMsg("");
         const amt = parseFloat(rangeDraft.amount);
         if (isNaN(amt) || amt < 0) {
-            setError("Enter a valid amount.");
+            setError("Enter a valid amount (₹0 or greater).");
             return;
         }
         const months = monthsBetween(rangeDraft.startYear, rangeDraft.startMonth, rangeDraft.endYear, rangeDraft.endMonth);
         if (months.length === 0) {
-            setError("End month must be on or after the start month.");
+            setError("End month must be on or after start month.");
             return;
         }
-        const conflicts = months.filter(({
-                                             year, month
-                                         }) => coinsEntries.some(en => en.year === year && en.month === month && en.source === rangeDraft.source));
-        if (conflicts.length > 0) {
-            const first = conflicts[0];
-            setError(`"${rangeDraft.source}" already has an entry for ${MONTHS[first.month - 1]} ${first.year} (and ${conflicts.length - 1} other month${conflicts.length - 1 === 1 ? "" : "s"} in this range, if any). Pick a different source or a non-overlapping range.`);
-            return;
-        }
-        const newEntries = months.map(({year, month}, i) => ({
-            id: `${Date.now().toString(36)}-${i}`,
+
+        const newEntries: CoinsEntry[] = months.map(({year, month}, i) => ({
+            id: `${Date.now().toString(36)}-${i}-${Math.random().toString(36).slice(2, 5)}`,
             year,
             month,
             amount: amt,
@@ -394,116 +573,215 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         }));
         persist([...coinsEntries, ...newEntries]);
         setExpandedYear(rangeDraft.endYear);
+        if (amt === 0) {
+            setSuccessMsg(`Logged ${months.length} monthly entries of ₹0.00 each (${months.length} months documented as zero income).`);
+        } else {
+            setSuccessMsg(`Logged ${months.length} monthly entries of ${formatCurrency(amt)} each (${formatCurrency(amt * months.length)} total).`);
+        }
         setRangeDraft(emptyRangeDraft());
+        setTimeout(() => setSuccessMsg(""), 3500);
     }
 
     function startEdit(en: CoinsEntry) {
-        setDraft({...en, amount: String(en.amount)} as any);
-        setEditingId(en.id as any);
-        setExpandedYear(en.year);
-        window.scrollTo({top: 0, behavior: "smooth"});
+        setEditingEntry({...en});
+        setOpenSections(prev => ({...prev, form: true}));
+        setTimeout(() => {
+            const inputEl = document.getElementById("edit-amount-input");
+            if (inputEl) {
+                inputEl.scrollIntoView({behavior: "smooth", block: "center"});
+                inputEl.focus();
+            }
+        }, 100);
     }
 
     function removeEntry(id: string) {
         persist(coinsEntries.filter(en => en.id !== id));
-        if (editingId === id) resetDraft();
+        if (editingEntry?.id === id) setEditingEntry(null);
     }
 
-    // ---- Public / Private Visibility ----
-    const isCoinPublic = (e: CoinsEntry) => (e.notes || '').includes('[public]') || (e.source || '').includes('[public]');
+    const handleFillMissingRange = (r: {
+        startYear: number;
+        startMonth: number;
+        endYear: number;
+        endMonth: number
+    }) => {
+        setMode("range");
+        setRangeDraft({
+            startYear: r.startYear,
+            startMonth: r.startMonth,
+            endYear: r.endYear,
+            endMonth: r.endMonth,
+            amount: "",
+            source: "Job",
+            notes: ""
+        });
+        setEditingEntry(null);
+        setOpenSections(prev => ({...prev, form: true}));
+        setTimeout(() => {
+            const inputEl = document.getElementById("coins-entry-form");
+            if (inputEl) {
+                inputEl.scrollIntoView({behavior: "smooth", block: "center"});
+            }
+        }, 100);
+    };
+
+    // Public / Private Visibility
+    const isCoinPublic = (e: CoinsEntry) => (e.notes || "").includes("[public]") || (e.source || "").includes("[public]");
     const visibleEntries = useMemo(() => {
         if (!isPublicView || isRevealed) return coinsEntries;
         return coinsEntries.filter(isCoinPublic);
     }, [coinsEntries, isPublicView, isRevealed]);
 
-    // ---- Analytics ----
-    const stats = useMemo(() => {
+    // Dynamic Timeline: smoothly extends up to max entry year/month (so Oct 2026 or future months are never cut off!)
+    const dynamicTimeline = useMemo(() => {
+        let maxYear = CURRENT_YEAR;
+        let maxMonth = CURRENT_MONTH;
+        visibleEntries.forEach(e => {
+            if (e.year > maxYear) {
+                maxYear = e.year;
+                maxMonth = e.month;
+            } else if (e.year === maxYear && e.month > maxMonth) {
+                maxMonth = e.month;
+            }
+        });
+        return monthsBetween(CAREER_START_YEAR, CAREER_START_MONTH, maxYear, maxMonth);
+    }, [visibleEntries]);
+
+    // Deep, Intelligent Financial Analytics Engine
+    const stats: CoinsStats | null = useMemo(() => {
         if (visibleEntries.length === 0) return null;
         const total = visibleEntries.reduce((s: number, e: CoinsEntry) => s + e.amount, 0);
 
-        const byMonthKeyTotals: Record<string, number> = {};
+        // Group by month
+        const byMonthTotals: Record<string, { total: number; sources: Set<string>; notes: string[] }> = {};
         visibleEntries.forEach(e => {
             const k = monthKey(e.year, e.month);
-            byMonthKeyTotals[k] = (byMonthKeyTotals[k] || 0) + e.amount;
+            if (!byMonthTotals[k]) byMonthTotals[k] = {total: 0, sources: new Set(), notes: []};
+            byMonthTotals[k]!.total += e.amount;
+            if (e.source) byMonthTotals[k]!.sources.add(e.source);
+            if (e.notes) byMonthTotals[k]!.notes.push(e.notes);
         });
-        const monthsLogged = Object.keys(byMonthKeyTotals).length;
-        const avgPerLoggedMonth = total / monthsLogged;
 
-        // Career-wide average — every month since Jan 2015 counts, filled or not.
-        const careerMonths = FULL_TIMELINE.length;
-        const avgPerCareerMonth = total / careerMonths;
-        const coveragePct = (monthsLogged / careerMonths) * 100;
-
-        const monthTotalsArr = Object.entries(byMonthKeyTotals).map(([k, v]) => {
+        const monthTotalsArr = Object.entries(byMonthTotals).map(([k, v]) => {
             const [y, m] = k.split("-").map(Number);
-            return {year: y, month: m, total: v};
+            return {
+                year: y || CURRENT_YEAR,
+                month: m || CURRENT_MONTH,
+                total: v.total,
+                sources: Array.from(v.sources),
+                notes: v.notes
+            };
         });
-        const highest = monthTotalsArr.reduce((a, b) => (b.total > a.total ? b : a));
-        const lowest = monthTotalsArr.reduce((a, b) => (b.total < a.total ? b : a));
 
+        const monthsLogged = monthTotalsArr.length;
+        // Strictly positive earning months (amount > 0)
+        const positiveMonthTotalsArr = monthTotalsArr.filter(m => m.total > 0);
+        const positiveMonthsLogged = positiveMonthTotalsArr.length;
+        // Documented zero-earning months (amount === 0 - honest broke / hiatus records)
+        const zeroMonthTotalsArr = monthTotalsArr.filter(m => m.total === 0);
+        const zeroMonthsLogged = zeroMonthTotalsArr.length;
+
+        // Career average: all career timeline months count, unlogged or 0 count as $0
+        const careerMonths = Math.max(1, dynamicTimeline.length);
+        const avgPerCareerMonth = Math.round(total / careerMonths);
+        const avgPerLoggedMonth = positiveMonthsLogged > 0 ? Math.round(total / positiveMonthsLogged) : 0;
+        // Career logging coverage: all months the user took effort to document in ledger (including honest ₹0 entries)
+        const coveragePct = Math.min(100, Math.round((monthsLogged / careerMonths) * 100));
+        const unloggedMonthsCount = Math.max(0, careerMonths - monthsLogged);
+
+        const byMonthMap: Record<string, { total: number; sources: string[]; notes: string[] }> = {};
+        monthTotalsArr.forEach(m => {
+            byMonthMap[monthKey(m.year, m.month)] = {
+                total: m.total, sources: m.sources, notes: m.notes
+            };
+        });
+
+        const highest = monthTotalsArr.reduce((a, b) => (b.total > a.total ? b : a), monthTotalsArr[0] || {
+            year: CURRENT_YEAR, month: CURRENT_MONTH, total: 0, sources: [] as string[], notes: [] as string[]
+        });
+
+        const lowestNonZero = positiveMonthTotalsArr.reduce((a, b) => (b.total < a.total ? b : a), positiveMonthTotalsArr[0] || {
+            year: CURRENT_YEAR, month: CURRENT_MONTH, total: 0
+        });
+
+        // Year totals & YoY growth
         const byYear: Record<number, number> = {};
         visibleEntries.forEach(e => {
             byYear[e.year] = (byYear[e.year] || 0) + e.amount;
         });
-        const yearTrend = Object.entries(byYear).map(([y, v]: [string, any]) => ({
-            year: Number(y), total: Math.round(v as number)
-        })).sort((a, b) => a.year - b.year);
 
-        // Year-over-year growth (only between consecutive years that both have data)
-        const yoyGrowth: any[] = [];
+        const yearTrend = Object.keys(byYear).map(Number).sort((a, b) => a - b).map(y => ({
+            year: y, total: Math.round(byYear[y] || 0)
+        }));
+
+        const yoyGrowth: Array<{ year: number; pct: number }> = [];
         for (let i = 1; i < yearTrend.length; i++) {
-            const prev = yearTrend[i - 1], cur = yearTrend[i];
-            if ((cur?.year || 0) === (prev?.year || 0) + 1 && (prev?.total || 0) > 0) {
+            const prev = yearTrend[i - 1];
+            const cur = yearTrend[i];
+            if (prev && cur && prev.total > 0) {
                 yoyGrowth.push({
-                    year: (cur?.year || 0), pct: (((cur?.total || 0) - (prev?.total || 0)) / (prev?.total || 0)) * 100
+                    year: cur.year, pct: Math.round(((cur.total - prev.total) / prev.total) * 100)
                 });
             }
         }
 
+        const bestYear = yearTrend.reduce((a, b) => (b.total > a.total ? b : a), yearTrend[0] || {
+            year: CURRENT_YEAR,
+            total: 0
+        });
+
+        // Source breakdown
         const bySource: Record<string, number> = {};
         visibleEntries.forEach(e => {
             bySource[e.source] = (bySource[e.source] || 0) + e.amount;
         });
         const sourceBreakdown = Object.entries(bySource)
-            .map(([name, value]: [string, any]) => ({
-                name, value: Math.round(value as number), pct: ((value as number) / total) * 100
-            })) // ({ name, value: Math.round(value), pct: (value / total) * 100 }))
+            .map(([name, value]) => ({
+                name, value: Math.round(value), pct: (value / total) * 100
+            }))
             .sort((a, b) => b.value - a.value);
 
-        // Source totals per year, for the stacked view
         const sourceByYear: Record<number, Record<string, number>> = {};
         visibleEntries.forEach(e => {
-            (sourceByYear[e.year] as any) = (sourceByYear[e.year] as any) || {};
-            (sourceByYear[e.year] as any)[e.source] = ((sourceByYear[e.year] as any)[e.source] || 0) + e.amount;
+            if (!sourceByYear[e.year]) sourceByYear[e.year] = {};
+            const yObj = sourceByYear[e.year]!;
+            yObj[e.source] = (yObj[e.source] || 0) + e.amount;
         });
         const allSources = [...new Set(visibleEntries.map(e => e.source))];
         const stackedByYear = Object.keys(sourceByYear).map(Number).sort((a, b) => a - b).map(y => {
             const row: Record<string, any> = {year: y};
             allSources.forEach(s => {
-                row[s] = Math.round((sourceByYear[y] as any)[s] || 0);
+                row[s] = Math.round(sourceByYear[y]?.[s] || 0);
             });
             return row;
         });
 
-        const sortedMonthTotals = [...monthTotalsArr].sort((a: any, b: any) => (a.year - b.year) || (a.month - b.month));
+        const sortedMonthTotals = [...monthTotalsArr].sort((a, b) => (a.year - b.year) || (a.month - b.month));
         const trendLine = sortedMonthTotals.map(m => ({
-            label: `${MONTHS[(m as any).month - 1]} '${String((m as any).year).slice(2)}`,
-            total: Math.round((m as any).total)
+            label: `${MONTHS[m.month - 1]} '${String(m.year).slice(2)}`,
+            total: Math.round(m.total),
+            year: m.year,
+            month: m.month
         }));
 
-        // Cumulative coins across the *entire* real timeline (unfilled months count as 0)
         let running = 0;
-        const cumulative = FULL_TIMELINE.map(({year, month}) => {
-            running += byMonthKeyTotals[monthKey(year, month)] || 0;
+        const cumulative = dynamicTimeline.map(({year, month}) => {
+            const k = monthKey(year, month);
+            running += byMonthTotals[k]?.total || 0;
             return {
                 label: `${MONTHS[month - 1]} '${String(year).slice(2)}`, cumulative: Math.round(running), year, month
             };
         });
 
-        // Longest gap of consecutive unlogged months within the real timeline
-        let longestGap = 0, curGap = 0;
-        FULL_TIMELINE.forEach(({year, month}) => {
-            if (byMonthKeyTotals[monthKey(year, month)]) {
+        // Gaps & Streaks (STRICTLY checking amount > 0, 0 earning does NOT count as a positive streak!)
+        const positiveMonthSet = new Set(positiveMonthTotalsArr.map(m => monthKey(m.year, m.month)));
+        const zeroMonthSet = new Set(zeroMonthTotalsArr.map(m => monthKey(m.year, m.month)));
+        const loggedSet = new Set(Object.keys(byMonthTotals));
+
+        let longestGap = 0;
+        let curGap = 0;
+        dynamicTimeline.forEach(({year, month}) => {
+            if (positiveMonthSet.has(monthKey(year, month))) {
                 curGap = 0;
             } else {
                 curGap++;
@@ -511,18 +789,33 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
             }
         });
 
-        // Current streak of consecutive logged months, counting back from the latest entry
-        const loggedSet = new Set(Object.keys(byMonthKeyTotals));
-        let streak = 0;
-        for (let i = FULL_TIMELINE.length - 1; i >= 0; i--) {
-            const k = monthKey(FULL_TIMELINE[i]!.year, FULL_TIMELINE[i]!.month);
-            if (loggedSet.has(k)) streak++; else break;
+        // Calculate active positive earning streak
+        let currentPositiveStreak = 0;
+        for (let i = dynamicTimeline.length - 1; i >= 0; i--) {
+            const item = dynamicTimeline[i];
+            if (item && positiveMonthSet.has(monthKey(item.year, item.month))) {
+                currentPositiveStreak++;
+            } else {
+                break;
+            }
         }
 
-        // Missing months, grouped into consecutive ranges for easy backfilling
+        // Longest positive earning streak in history
+        let longestPositiveStreak = 0;
+        let tempStreak = 0;
+        dynamicTimeline.forEach(({year, month}) => {
+            if (positiveMonthSet.has(monthKey(year, month))) {
+                tempStreak++;
+                longestPositiveStreak = Math.max(longestPositiveStreak, tempStreak);
+            } else {
+                tempStreak = 0;
+            }
+        });
+
         const missingRanges: any[] = [];
         let curRange: any = null;
-        FULL_TIMELINE.forEach(({year, month}) => {
+        dynamicTimeline.forEach(({year, month}) => {
+            // A month is truly missing only if it is NOT logged in the ledger at all (honest ₹0 entries are NOT missing!)
             const isMissing = !loggedSet.has(monthKey(year, month));
             if (isMissing) {
                 if (curRange && curRange.endYear * 12 + curRange.endMonth === year * 12 + month - 1) {
@@ -540,1228 +833,2618 @@ export default function CoinsPane({isPublicView, walletTotal, onNavigateToMoneyG
         });
         if (curRange) missingRanges.push(curRange);
 
-        const careerYears = CURRENT_YEAR - CAREER_START_YEAR + 1;
-        const bestYear = yearTrend.reduce((a: any, b: any) => (b.total > a.total ? b : a), yearTrend[0] as any);
-        const latestYoy = yoyGrowth[yoyGrowth.length - 1];
-        const topSource = sourceBreakdown[0];
+        // Advanced Statistical Indicators: Trailing 12-Month Volatility (CV) & 3-Month Momentum
+        const trailing12Months = sortedMonthTotals.filter(m => m.total > 0).slice(-12);
+        let trailing12Mean = 0;
+        let trailing12StdDev = 0;
+        let volatilityCV = 0;
+        if (trailing12Months.length >= 3) {
+            trailing12Mean = trailing12Months.reduce((s, m) => s + m.total, 0) / trailing12Months.length;
+            const variance = trailing12Months.reduce((s, m) => s + Math.pow(m.total - trailing12Mean, 2), 0) / trailing12Months.length;
+            trailing12StdDev = Math.sqrt(variance);
+            volatilityCV = trailing12Mean > 0 ? (trailing12StdDev / trailing12Mean) * 100 : 0;
+        }
+
+        const recent3 = sortedMonthTotals.filter(m => m.total > 0).slice(-3);
+        const momentum3MoAvg = recent3.length > 0 ? recent3.reduce((s, m) => s + m.total, 0) / recent3.length : 0;
+        const momentum12MoAvg = trailing12Mean > 0 ? trailing12Mean : avgPerCareerMonth;
+        const momentumRatio = momentum12MoAvg > 0 ? (momentum3MoAvg / momentum12MoAvg) : 1;
 
         return {
             total,
             monthsLogged,
+            positiveMonthsLogged,
+            zeroMonthsLogged,
+            unloggedMonthsCount,
             avgPerLoggedMonth,
             avgPerCareerMonth,
             coveragePct,
             highest,
-            lowest,
+            lowestNonZero,
+            bestYear,
             yearTrend,
             yoyGrowth,
-            sourceBreakdown,
             stackedByYear,
             allSources,
+            sourceBreakdown,
             trendLine,
             cumulative,
-            careerYears,
-            careerMonths,
             longestGap,
-            streak,
-            bestYear,
-            latestYoy,
-            topSource,
+            currentPositiveStreak,
+            longestPositiveStreak,
+            topSource: sourceBreakdown[0],
+            missingRanges,
             loggedSet,
-            missingRanges
+            positiveMonthSet,
+            zeroMonthSet,
+            byMonthMap,
+            careerMonths,
+            sortedMonthTotals,
+            trailing12Mean: Math.round(trailing12Mean),
+            trailing12StdDev: Math.round(trailing12StdDev),
+            volatilityCV: Math.round(volatilityCV),
+            momentum3MoAvg: Math.round(momentum3MoAvg),
+            momentum12MoAvg: Math.round(momentum12MoAvg),
+            momentumRatio
         };
-    }, [visibleEntries]);
+    }, [visibleEntries, dynamicTimeline]);
 
-    const yearlyWithTargets = useMemo(() => {
-        if (!stats) return [];
-        return stats.yearTrend.map(y => ({
-            ...y, target: (coinsTargets as any)[y.year] ? Number((coinsTargets as any)[y.year]) * 12 : null
-        }));
-    }, [stats, coinsTargets]);
+    // Truly Intelligent, Executive Financial Signals (Zero Bullshit)
+    const smartInsights = useMemo(() => {
+        if (!stats || visibleEntries.length === 0) return [];
+        const list: Array<{
+            icon: React.ReactNode; tag: string; title: string; desc: string; color: string;
+        }> = [];
 
-    const targetSummary = useMemo(() => {
-        if (!stats) return null;
-        const withTargets = stats.yearTrend.filter(y => (coinsTargets as any)[y.year]);
-        if (withTargets.length === 0) return null;
-        const hit = withTargets.filter(y => y.total >= Number((coinsTargets as any)[y.year]) * 12).length;
-        return {total: withTargets.length, hit};
-    }, [stats, coinsTargets]);
-
-    const goalResult = useMemo(() => {
-        const target = parseFloat(calcTarget);
-        if (isNaN(target) || target < 0) return {error: "Enter a valid target amount."};
-        if (calcMode === "forward") {
-            return {forward: true, target};
+        // 1. Positive Cash-Flow Streak (Zero-Resistant)
+        if (stats.currentPositiveStreak > 0) {
+            list.push({
+                icon: <Flame size={15} color="#7FA87A"/>,
+                tag: "CASH FLOW STREAK",
+                title: `Active ${stats.currentPositiveStreak}-Month Positive Earning Streak`,
+                desc: `Maintained continuous positive income (>₹0) for ${stats.currentPositiveStreak} consecutive month${stats.currentPositiveStreak === 1 ? "" : "s"} with zero dry spells. (All-time peak streak: ${stats.longestPositiveStreak} months).`,
+                color: "#7FA87A"
+            });
+        } else {
+            const latestItem = dynamicTimeline[dynamicTimeline.length - 1];
+            const latestMonthKey = latestItem ? monthKey(latestItem.year, latestItem.month) : "";
+            const isLatestZero = stats.zeroMonthSet.has(latestMonthKey);
+            list.push({
+                icon: <Activity size={15} color="#F59E0B"/>,
+                tag: "STREAK RESET",
+                title: isLatestZero ? "Documented Zero-Income Month" : "No Active Positive Earning Streak",
+                desc: isLatestZero ? `Latest period had documented ₹0 earnings. Your honesty preserves full ledger integrity at ${stats.coveragePct}% career coverage. Best all-time positive streak was ${stats.longestPositiveStreak} consecutive months.` : `The latest period had ₹0 or unlogged earnings. Your best all-time positive earning streak was ${stats.longestPositiveStreak} consecutive months.`,
+                color: "#F59E0B"
+            });
         }
-        if (!stats) return {error: "Log at least one month first — the career-wide calculator needs a starting total."};
-        const monthsToTarget = monthsBetween(CAREER_START_YEAR, CAREER_START_MONTH, calcEndYear, calcEndMonth).length;
-        const remainingMonths = monthsToTarget - stats.careerMonths;
-        if (remainingMonths <= 0) return {error: "Pick a target date after the current month."};
-        const requiredTotal = target * monthsToTarget;
-        const stillNeeded = requiredTotal - stats.total;
-        const neededPerMonth = stillNeeded / remainingMonths;
-        return {forward: false, target, monthsToTarget, remainingMonths, requiredTotal, stillNeeded, neededPerMonth};
-    }, [calcMode, calcTarget, calcEndYear, calcEndMonth, stats]);
 
-    const uniqueSources = useMemo(() => [...new Set(visibleEntries.map(e => e.source))].sort(), [visibleEntries]);
+        // Data Integrity & Honest Tracking Signal
+        if (stats.zeroMonthsLogged > 0) {
+            list.push({
+                icon: <ShieldCheck size={15} color="#8AA9C9"/>,
+                tag: "DATA INTEGRITY",
+                title: `${stats.zeroMonthsLogged} Documented Zero-Income Month${stats.zeroMonthsLogged === 1 ? "" : "s"}`,
+                desc: `You have honestly recorded ${stats.zeroMonthsLogged} month${stats.zeroMonthsLogged === 1 ? "" : "s"} with ₹0 earnings. True missing data is only ${stats.unloggedMonthsCount} months, giving you an authentic ${stats.coveragePct}% career coverage.`,
+                color: "#8AA9C9"
+            });
+        }
 
+        // 2. 3-Month Momentum vs 12-Month Trailing Velocity
+        if (stats.momentum3MoAvg > 0 && stats.momentum12MoAvg > 0) {
+            const diffPct = Math.round((stats.momentumRatio - 1) * 100);
+            if (diffPct >= 10) {
+                list.push({
+                    icon: <TrendingUp size={15} color="#C9A227"/>,
+                    tag: "ACCELERATING",
+                    title: `Recent Velocity: +${diffPct}% Above 12-Mo Baseline`,
+                    desc: `Recent 3 months averaged ${formatCurrency(stats.momentum3MoAvg)}/mo, outpacing your 12-month trailing baseline of ${formatCurrency(stats.momentum12MoAvg)}/mo. Earning power is expanding.`,
+                    color: "#C9A227"
+                });
+            } else if (diffPct <= -10) {
+                list.push({
+                    icon: <TrendingDown size={15} color="#F59E0B"/>,
+                    tag: "DECELERATING",
+                    title: `Recent Velocity: ${diffPct}% Below 12-Mo Baseline`,
+                    desc: `Recent 3 months averaged ${formatCurrency(stats.momentum3MoAvg)}/mo vs your 12-month trailing baseline of ${formatCurrency(stats.momentum12MoAvg)}/mo. Cash generation has softened.`,
+                    color: "#F59E0B"
+                });
+            } else {
+                list.push({
+                    icon: <Activity size={15} color="#8AA9C9"/>,
+                    tag: "STABLE VELOCITY",
+                    title: `Steady Cash Generation (${formatCurrency(stats.momentum3MoAvg)}/mo)`,
+                    desc: `Your 3-month velocity matches your 12-month baseline within ±10%, indicating predictable and consistent revenue generation.`,
+                    color: "#8AA9C9"
+                });
+            }
+        }
+
+        // 3. Predictability & Volatility Index (Coefficient of Variation)
+        if (stats.volatilityCV > 0) {
+            if (stats.volatilityCV <= 15) {
+                list.push({
+                    icon: <ShieldCheck size={15} color="#7FA87A"/>,
+                    tag: "HIGH PREDICTABILITY",
+                    title: `Low Volatility (CV: ${stats.volatilityCV}%)`,
+                    desc: `Monthly earnings exhibit tight consistency (±${formatCurrency(stats.trailing12StdDev)}), making cash flow highly dependable for long-term planning.`,
+                    color: "#7FA87A"
+                });
+            } else if (stats.volatilityCV <= 35) {
+                list.push({
+                    icon: <Activity size={15} color="#8AA9C9"/>,
+                    tag: "MODERATE VARIANCE",
+                    title: `Balanced Income Variance (CV: ${stats.volatilityCV}%)`,
+                    desc: `Monthly revenue fluctuates ±${formatCurrency(stats.trailing12StdDev)} around your ${formatCurrency(stats.trailing12Mean)}/mo mean, standard for dynamic earnings.`,
+                    color: "#8AA9C9"
+                });
+            } else {
+                list.push({
+                    icon: <ShieldAlert size={15} color="#F59E0B"/>,
+                    tag: "HIGH CYCLICALITY",
+                    title: `Lumpy / Cyclical Cash Flow (CV: ${stats.volatilityCV}%)`,
+                    desc: `Earnings swing widely (±${formatCurrency(stats.trailing12StdDev)}) between peak (${formatCurrency(stats.highest.total)}) and baseline months. Keep a robust buffer.`,
+                    color: "#F59E0B"
+                });
+            }
+        }
+
+        // 4. Target Reality & Run-Rate
+        const currentYearEntries = visibleEntries.filter(e => e.year === CURRENT_YEAR);
+        const currentYearTotal = currentYearEntries.reduce((s, e) => s + e.amount, 0);
+        const currentTargetMo = Number(coinsTargets[String(CURRENT_YEAR)] || 0);
+        if (currentTargetMo > 0) {
+            const annualTarget = currentTargetMo * 12;
+            const remainingMonths = Math.max(1, 12 - CURRENT_MONTH);
+            const neededTotal = Math.max(0, annualTarget - currentYearTotal);
+            const neededPerMo = Math.round(neededTotal / remainingMonths);
+            const pctMet = (currentYearTotal / annualTarget) * 100;
+
+            if (currentYearTotal >= annualTarget) {
+                list.push({
+                    icon: <CheckCircle2 size={15} color="#7FA87A"/>,
+                    tag: "TARGET HIT",
+                    title: `${CURRENT_YEAR} Annual Target Achieved!`,
+                    desc: `Reached ${formatCurrency(annualTarget)} (${pctMet.toFixed(0)}% funded) with ${remainingMonths} month${remainingMonths === 1 ? "" : "s"} remaining!`,
+                    color: "#7FA87A"
+                });
+            } else if (neededPerMo <= stats.momentum3MoAvg) {
+                list.push({
+                    icon: <Target size={15} color="#7FA87A"/>,
+                    tag: "ON TRACK",
+                    title: `Target Pacing: ${formatCurrency(neededPerMo)}/mo Needed`,
+                    desc: `Your current velocity (${formatCurrency(stats.momentum3MoAvg)}/mo) comfortably covers the ${formatCurrency(neededPerMo)}/mo required to reach ${formatCurrency(annualTarget)}.`,
+                    color: "#7FA87A"
+                });
+            } else {
+                const boost = Math.round(((neededPerMo - stats.momentum3MoAvg) / Math.max(1, stats.momentum3MoAvg)) * 100);
+                list.push({
+                    icon: <Target size={15} color="#F59E0B"/>,
+                    tag: "STRETCH TARGET",
+                    title: `Requires +${boost}% Boost to ${formatCurrency(neededPerMo)}/mo`,
+                    desc: `Need ${formatCurrency(neededPerMo)}/mo over the next ${remainingMonths} months to reach your ${formatCurrency(annualTarget)} annual goal (${formatCurrency(currentYearTotal)} earned so far).`,
+                    color: "#F59E0B"
+                });
+            }
+        }
+
+        // 5. Revenue Concentration & Single Point of Failure (SPOF)
+        if (stats.topSource) {
+            const topPct = stats.topSource.pct;
+            const secondary = stats.sourceBreakdown[1];
+            if (topPct >= 70) {
+                list.push({
+                    icon: <AlertCircle size={15} color="#F59E0B"/>,
+                    tag: "CONCENTRATION RISK",
+                    title: `${topPct.toFixed(0)}% Dependent on ${stats.topSource.name}`,
+                    desc: `${formatCurrency(stats.topSource.value)} of ${formatCurrency(stats.total)} comes from a single source. Developing secondary streams like Freelance, Consulting, or Dividends mitigates downside risk.`,
+                    color: "#F59E0B"
+                });
+            } else {
+                list.push({
+                    icon: <Layers size={15} color="#8AA9C9"/>,
+                    tag: "DIVERSIFIED",
+                    title: "Balanced Revenue Architecture",
+                    desc: `Top stream (${stats.topSource.name}) accounts for ${topPct.toFixed(0)}%, supplemented by ${secondary ? `${secondary.name} (${secondary.pct.toFixed(0)}%)` : "multiple streams"}.`,
+                    color: "#8AA9C9"
+                });
+            }
+        }
+
+        // 6. Earning Floor Power
+        if (stats.lowestNonZero.total > 0 && stats.trailing12Mean > 0) {
+            list.push({
+                icon: <Award size={15} color="#C9A227"/>,
+                tag: "EARNING FLOOR",
+                title: `Solid Baseline: ${formatCurrency(stats.lowestNonZero.total)} Minimum`,
+                desc: `Your non-zero monthly earnings have never dipped below ${formatCurrency(stats.lowestNonZero.total)}, establishing a dependable lower bound. Peak was ${formatCurrency(stats.highest.total)}.`,
+                color: "#C9A227"
+            });
+        }
+
+        return list;
+    }, [stats, visibleEntries, coinsTargets, formatCurrency]);
+
+    // Ledger filtered entries
     const filteredEntries = useMemo(() => {
-        return visibleEntries.filter(en => {
-            if (filters.source !== "all" && en.source !== filters.source) return false;
-            if (en.year < filters.fromYear || en.year > filters.toYear) return false;
-            if (filters.minAmount !== "" && en.amount < Number(filters.minAmount)) return false;
-            if (filters.maxAmount !== "" && en.amount > Number(filters.maxAmount)) return false;
-            if (filters.search && !(en.notes || "").toLowerCase().includes(filters.search.toLowerCase())) return false;
+        return visibleEntries.filter(e => {
+            if (filters.source !== "all" && e.source !== filters.source) return false;
+            if (e.year < filters.fromYear || e.year > filters.toYear) return false;
+            if (filters.minAmount !== "" && e.amount < Number(filters.minAmount)) return false;
+            if (filters.maxAmount !== "" && e.amount > Number(filters.maxAmount)) return false;
+            if (filters.search.trim()) {
+                const q = filters.search.toLowerCase();
+                const matchNotes = (e.notes || "").toLowerCase().includes(q);
+                const matchSrc = e.source.toLowerCase().includes(q);
+                const matchMonth = MONTHS[e.month - 1]?.toLowerCase().includes(q);
+                if (!matchNotes && !matchSrc && !matchMonth) return false;
+            }
             return true;
         });
     }, [visibleEntries, filters]);
 
-    const filtersActive = filters.source !== "all" || filters.fromYear !== CAREER_START_YEAR || filters.toYear !== CURRENT_YEAR || filters.minAmount !== "" || filters.maxAmount !== "" || filters.search !== "";
-
     const coinsEntriesByYear = useMemo(() => {
-        const g: Record<number, CoinsEntry[]> = {};
+        const groups: Record<number, CoinsEntry[]> = {};
         filteredEntries.forEach(e => {
-            (g[e.year] = g[e.year] || []).push(e);
+            if (!groups[e.year]) groups[e.year] = [];
+            groups[e.year]!.push(e);
         });
-        Object.values(g).forEach(list => list.sort((a, b) => a.month - b.month));
-        return g;
+        Object.keys(groups).forEach(y => {
+            groups[Number(y)]!.sort((a, b) => a.month - b.month);
+        });
+        return groups;
     }, [filteredEntries]);
 
+    const activeYears = useMemo(() => {
+        return Object.keys(coinsEntriesByYear).map(Number).sort((a, b) => b - a);
+    }, [coinsEntriesByYear]);
 
-    useEffect(() => {
-        const handleUpdate = () => {
-            try {
-                setEntries(JSON.parse(localStorage.getItem("whatchadoin_coins_entries") || "[]"));
-            } catch {
-            }
-        };
-        window.addEventListener("whatchadoin_coins_updated", handleUpdate);
-        return () => window.removeEventListener("whatchadoin_coins_updated", handleUpdate);
-    }, []);
+    const uniqueSources = useMemo(() => {
+        return [...new Set(visibleEntries.map(e => e.source))].sort();
+    }, [visibleEntries]);
 
-    const activeYears = Object.keys(coinsEntriesByYear).map(Number).sort((a, b) => b - a);
+    const filtersActive = filters.source !== "all" || filters.fromYear !== CAREER_START_YEAR || filters.toYear !== CURRENT_YEAR + 1 || filters.minAmount !== "" || filters.maxAmount !== "" || filters.search.trim() !== "";
 
-
-    const insights = useMemo(() => {
+    // Target vs actual chart data
+    const targetComparisonData = useMemo(() => {
         if (!stats) return [];
-        const list = [];
-        list.push(`You've logged ${stats.monthsLogged} of ${stats.careerMonths} months since Jan ${CAREER_START_YEAR} — ${stats.coveragePct.toFixed(0)}% coverage of your career.`);
-        list.push(`Career-wide, that averages to ${formatCurrency(Math.round(stats.avgPerCareerMonth))}/month across every month since you started, including gaps. Among just the months you logged, the average is ${formatCurrency(Math.round(stats.avgPerLoggedMonth))}.`);
-        if (stats.bestYear) list.push(`${stats.bestYear.year} was your strongest year on record, at ${formatCurrency(stats.bestYear.total)}.`);
-        if (stats.latestYoy) {
-            list.push(stats.latestYoy.pct >= 0 ? `${stats.latestYoy.year} grew ${stats.latestYoy.pct.toFixed(0)}% over the year before.` : `${stats.latestYoy.year} was down ${Math.abs(stats.latestYoy.pct).toFixed(0)}% from the year before.`);
-        }
-        if (stats.topSource) list.push(`${stats.topSource.name} is your largest income source — ${stats.topSource.pct.toFixed(0)}% of everything logged.`);
-        if (stats.longestGap > 0) list.push(`Longest unlogged stretch: ${stats.longestGap} consecutive month${stats.longestGap === 1 ? "" : "s"} with no entry.`);
-        if (stats.streak > 0) list.push(`Current streak: ${stats.streak} consecutive month${stats.streak === 1 ? "" : "s"} logged, ending most recently.`);
-        return list;
-    }, [stats, formatCurrency]);
+        return stats.yearTrend.map(y => {
+            const targetMo = Number(coinsTargets[String(y.year)] || 0);
+            const annualTarget = targetMo * 12;
+            const actual = y.total;
+            let displayActual = actual;
+            let displayTarget = annualTarget;
+
+            if (yearlyChartMode === "monthly") {
+                const monthsInYear = y.year === CURRENT_YEAR ? Math.max(1, CURRENT_MONTH) : 12;
+                displayActual = Math.round(actual / monthsInYear);
+                displayTarget = targetMo;
+            }
+
+            return {
+                year: String(y.year),
+                actual: displayActual,
+                target: displayTarget > 0 ? displayTarget : null,
+                isCurrent: y.year === CURRENT_YEAR
+            };
+        });
+    }, [stats, coinsTargets, yearlyChartMode]);
 
     if (!loaded) {
-        return <div style={{fontFamily: "'JetBrains Mono', monospace", color: "#8A8F98", padding: 40}}>Loading
-            ledger…</div>;
+        return (<div style={{padding: 40, textAlign: "center", color: "#8A8F98"}} className="mono">
+                Loading Coins Ledger...
+            </div>);
     }
-
 
     if (isPublicView && !isRevealed) {
-        return (<div style={{
-            padding: '60px 24px',
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            fontFamily: 'var(--font-mono)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '380px',
-            flex: 1,
-            overflowY: 'auto'
-        }}>
-            <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '16px'
-            }}>
-                <Lock size={26} color="#EF4444"/>
-            </div>
-
-            <div style={{fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px'}}>
-                Coins Ledger is hidden in public view
-            </div>
-
-            <div style={{
-                fontSize: '13px',
-                maxWidth: '420px',
-                margin: '0 auto 24px',
-                lineHeight: 1.6,
-                color: 'var(--text-secondary)'
-            }}>
-                Your financial income and ledger entries are protected while in Public Mode.
-            </div>
-
-            {/* Switch / Reveal Control */}
-            <div
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid var(--panel-border)',
-                    padding: '10px 18px',
-                    borderRadius: '24px',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    transition: 'all 0.2s'
-                }}
-                onClick={() => setIsRevealed(true)}
-            >
-          <span style={{
-              fontSize: '13px',
-              color: 'var(--text-secondary)',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px'
-          }}>
-            <EyeOff size={14}/> Hidden
-          </span>
-                <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
-                    <input
-                        type="checkbox"
-                        checked={isRevealed}
-                        onChange={(e) => setIsRevealed(e.target.checked)}
-                    />
-                    <span className="ios-slider"></span>
-                </label>
-                <span style={{
-                    fontSize: '13px',
-                    color: 'var(--text-primary)',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                }}>
-            <Eye size={14} color="var(--accent)"/> Reveal
-          </span>
-            </div>
-
-            <div style={{fontSize: '11px', color: 'var(--text-secondary)', marginTop: '16px', opacity: 0.7}}>
-                Momentary switch: automatically hides again on tab switch or page refresh.
-            </div>
-        </div>);
-    }
-
-    return (<div className="coins-pane" style={{padding: "0", flex: 1, overflowY: "auto", minHeight: 0, height: "100%"}}>
-        {isPublicView && isRevealed && (<div style={{
-            background: 'rgba(234, 179, 8, 0.1)',
-            borderBottom: '1px solid rgba(234, 179, 8, 0.3)',
-            padding: '10px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            fontSize: '12.5px',
-            color: '#EAB308',
-            fontFamily: 'var(--font-mono)'
-        }}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                <Eye size={15}/>
-                <span>Coins Ledger temporarily revealed in Public Mode</span>
-            </div>
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}
-                 onClick={() => setIsRevealed(false)}>
-                        <span style={{
-                            fontSize: '12px',
-                            color: 'var(--text-primary)',
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}><EyeOff size={13}/> Hide</span>
-                <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
-                    <input
-                        type="checkbox"
-                        checked={isRevealed}
-                        onChange={(e) => setIsRevealed(e.target.checked)}
-                    />
-                    <span className="ios-slider"></span>
-                </label>
-            </div>
-        </div>)}
-        <style>{`
-        .coins-pane { flex: 1; overflow-y: auto; min-height: 0; height: 100%; }
-        .coins-pane .row-btn { background: transparent; border: none; color: #8A8F98; padding: 6px; border-radius: 3px; display: flex; align-items: center; }
-        .coins-pane .row-btn:hover { color: #EDE7D9; background: #262C33; }
-        .coins-pane table { border-collapse: collapse; width: 100%; min-width: 460px; }
-        .coins-pane th, .coins-pane td { text-align: left; padding: 9px 10px; font-size: 13.5px; white-space: nowrap; }
-        .coins-pane td:nth-child(4) { white-space: normal; min-width: 140px; }
-        .coins-pane th { color: #8A8F98; font-weight: 500; font-size: 11.5px; letter-spacing: 0.03em; border-bottom: 1px solid #2A3038; }
-        .coins-pane tbody tr { border-bottom: 1px solid #1F252C; }
-        .coins-pane tbody tr:hover { background: #1A1F25; }
-        .coins-pane input, .coins-pane select, .coins-pane textarea { width: 100%; box-sizing: border-box; min-width: 0; }
-
-        /* --- Layout primitives (mobile-first: base rules are the small-screen layout) --- */
-        .page-header { padding: 24px 16px 20px; }
-        .page-body { padding: 20px 16px 40px; }
-        .page-title { font-size: 26px; }
-        .header-row { display: flex; flex-direction: column; gap: 16px; }
-        .header-actions { width: 100%; align-items: flex-start; }
-        .toolbar-btns { flex-wrap: wrap; }
-
-        .form-header-row { flex-wrap: wrap; gap: 10px; }
-        .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .range-endpoints { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .range-endpoint-inner { display: flex; gap: 6px; }
-
-        .summary-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        .charts-grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
-        .missing-grid-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .filters-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-        @media (min-width: 640px) {
-          .page-header { padding: 36px 28px 28px; }
-          .page-body { padding: 28px; }
-          .page-title { font-size: 32px; }
-          .header-row { flex-direction: row; justify-content: space-between; align-items: flex-start; }
-          .header-actions { width: auto; align-items: flex-end; }
-          .form-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
-          .range-endpoints { grid-template-columns: 1fr 1fr 1fr 1fr; }
-          .summary-grid { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important; }
-          .charts-grid-2 { grid-template-columns: 1.3fr 1fr; }
-          .filters-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
-        }
-        @media (min-width: 860px) {
-          .charts-grid-2.even { grid-template-columns: 1fr 1fr; }
-        }
-
-      `}</style>
-
-        {/* Header */}
-
-        {/* Wallet Goal Banner (Mobile) */}
-        {walletTotal !== undefined && onNavigateToMoneyGoals && (<div className="hide-on-desktop" style={{
-            background: '#1A1F25',
-            borderBottom: '1px solid #2A3038',
-            padding: '12px 16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-        }}>
-            <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                <Wallet size={16} color="#C9A227"/>
-                <span style={{fontSize: 13, color: '#D8D2C4'}}>Wallet Goal: <strong
-                    style={{color: '#fff'}}>{formatCurrency(walletTotal)}</strong> remaining</span>
-            </div>
-            <button onClick={onNavigateToMoneyGoals} style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#C9A227',
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4
-            }}>
-                View Money Goals <ArrowRight size={14}/>
-            </button>
-        </div>)}
-
-        <div className="page-header" style={{borderBottom: "1px solid #2A3038"}}>
-            <div className="header-row" style={{maxWidth: 1040, margin: "0 auto"}}>
-                <div>
-                    <div className="mono"
-                         style={{color: "#C9A227", fontSize: 12, letterSpacing: "0.08em", marginBottom: 6}}>
-                        {CAREER_START_YEAR} — {CURRENT_YEAR}
-                    </div>
-                    <h1 className="page-title" style={{fontWeight: 600, margin: 0, letterSpacing: "-0.01em"}}>Coins
-                        Ledger</h1>
-                    <p style={{color: "#8A8F98", marginTop: 8, fontSize: 15, maxWidth: 560}}>
-                        A running record of every month worked, what it paid, and where it came from.
-                    </p>
-                </div>
-                <div className="header-actions" style={{display: "flex", flexDirection: "column", gap: 10}}>
-                    <div className="mono" style={{
-                        fontSize: 11, color: saveState === "error" ? "#C1665A" : "#5E6570", whiteSpace: "nowrap"
-                    }}>
-                        {saveState === "saving" && "saving…"}
-                        {saveState === "saved" && "saved"}
-                        {saveState === "error" && "save failed"}
-                        {saveState === "idle" && " "}
-                    </div>
-                    <div className="toolbar-btns" style={{display: "flex", gap: 6}}>
-                        <button onClick={exportJSON} className="mono" title="Download a full backup (JSON)"
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    background: "#1A1F25",
-                                    border: "1px solid #2A3038",
-                                    color: "#8A8F98",
-                                    padding: "7px 10px",
-                                    borderRadius: 3,
-                                    fontSize: 11
-                                }}>
-                            <Download size={12}/> JSON
-                        </button>
-                        <button onClick={exportCSV} className="mono" title="Download as spreadsheet (CSV)"
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    background: "#1A1F25",
-                                    border: "1px solid #2A3038",
-                                    color: "#8A8F98",
-                                    padding: "7px 10px",
-                                    borderRadius: 3,
-                                    fontSize: 11
-                                }}>
-                            <Download size={12}/> CSV
-                        </button>
-                        <button onClick={triggerImport} className="mono" title="Restore from a JSON backup"
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    background: "#1A1F25",
-                                    border: "1px solid #2A3038",
-                                    color: "#8A8F98",
-                                    padding: "7px 10px",
-                                    borderRadius: 3,
-                                    fontSize: 11
-                                }}>
-                            <Upload size={12}/> Import
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportFile}
-                               style={{display: "none"}}/>
-                    </div>
-                    {importMsg && <div className="mono" style={{
-                        fontSize: 10.5, color: "#8A8F98", maxWidth: 260, textAlign: "left"
-                    }}>{importMsg}</div>}
-                </div>
-            </div>
-        </div>
-
-        <div className="page-body" style={{maxWidth: 1040, margin: "0 auto"}}>
-
-            {/* Entry form */}
-            <div style={{
-                background: "#1A1F25",
-                border: "1px solid #2A3038",
-                borderRadius: 4,
-                padding: "18px 20px",
-                marginBottom: 32
-            }}>
-
-                <div className="form-header-row" style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14
-                }}>
-                    <div className="mono" style={{fontSize: 11.5, letterSpacing: "0.05em", color: "#8A8F98"}}>
-                        {editingId ? "EDIT ENTRY" : "NEW ENTRY"}
-                    </div>
-                    <div style={{display: "flex", alignItems: "center", gap: 10}}>
-                        {!editingId && (<div style={{
-                            display: "flex",
-                            background: "#14181C",
-                            border: "1px solid #2A3038",
-                            borderRadius: 3,
-                            overflow: "hidden"
-                        }}>
-                            {["single", "range"].map(m => (<button key={m} type="button" onClick={() => {
-                                setMode(m);
-                                setError("");
-                            }}
-                                                                   className="mono"
-                                                                   style={{
-                                                                       border: "none",
-                                                                       padding: "6px 12px",
-                                                                       fontSize: 11.5,
-                                                                       background: mode === m ? "#2A3038" : "transparent",
-                                                                       color: mode === m ? "#EDE7D9" : "#8A8F98"
-                                                                   }}>
-                                {m === "single" ? "Single month" : "Date range"}
-                            </button>))}
-                        </div>)}
-
-                        {editingId && (<button type="button" onClick={resetDraft} className="row-btn" style={{gap: 4}}>
-                            <X size={13}/> cancel
-                        </button>)}
-
-                    </div>
-                </div>
-
-                {mode === "single" || editingId ? (<form onSubmit={submitDraft}>
-                    <div className="form-grid" style={{marginBottom: 10}}>
-                        <div>
-                            <Label>Year</Label>
-                            <select value={draft.year}
-                                    onChange={e => setDraft({...draft, year: Number(e.target.value)})}>
-                                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <Label>Month</Label>
-                            <select value={draft.month}
-                                    onChange={e => setDraft({...draft, month: Number(e.target.value)})}>
-                                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <Label>Amount ({currencySymbol})</Label>
-                            <input id="entry-amount-input" type="number" min="0" step="any" placeholder="0"
-                                   value={draft.amount}
-                                   onChange={e => setDraft({...draft, amount: e.target.value})}/>
-                        </div>
-                        <div>
-                            <Label>Source</Label>
-                            <input list="sources-single" value={draft.source}
-                                   onChange={e => setDraft({...draft, source: e.target.value})}/>
-                            <datalist id="sources-single">
-                                {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
-                            </datalist>
-                        </div>
-                    </div>
-                    <div style={{marginBottom: 14}}>
-                        <Label>Notes</Label>
-                        <input placeholder="Optional — e.g. client name, bonus, raise…" value={draft.notes}
-                               onChange={e => setDraft({...draft, notes: e.target.value})}/>
-                    </div>
-                    {error && <div style={{color: "#C1665A", fontSize: 12.5, marginBottom: 10}}
-                                   className="mono">{error}</div>}
-                    <button type="submit" style={{
-                        background: "#C9A227",
-                        color: "#14181C",
-                        border: "none",
-                        borderRadius: 3,
-                        padding: "10px 16px",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        width: "100%",
-                        justifyContent: "center"
-                    }}>
-                        <Plus size={14}/> {editingId ? "Save changes" : "Add entry"}
-                    </button>
-                </form>) : (<form onSubmit={submitRange}>
-                    <div className="range-endpoints" style={{marginBottom: 10}}>
-                        <div>
-                            <Label>From</Label>
-                            <div className="range-endpoint-inner">
-                                <select value={rangeDraft.startMonth} onChange={e => setRangeDraft({
-                                    ...rangeDraft, startMonth: Number(e.target.value)
-                                })}>
-                                    {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                                </select>
-                                <select value={rangeDraft.startYear} onChange={e => setRangeDraft({
-                                    ...rangeDraft, startYear: Number(e.target.value)
-                                })}>
-                                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <Label>To</Label>
-                            <div className="range-endpoint-inner">
-                                <select value={rangeDraft.endMonth} onChange={e => setRangeDraft({
-                                    ...rangeDraft, endMonth: Number(e.target.value)
-                                })}>
-                                    {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                                </select>
-                                <select value={rangeDraft.endYear} onChange={e => setRangeDraft({
-                                    ...rangeDraft, endYear: Number(e.target.value)
-                                })}>
-                                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <Label>Amount / month ({currencySymbol})</Label>
-                            <input type="number" min="0" step="any" placeholder="0" value={rangeDraft.amount}
-                                   onChange={e => setRangeDraft({...rangeDraft, amount: e.target.value})}/>
-                        </div>
-                        <div>
-                            <Label>Source</Label>
-                            <input list="sources-range" value={rangeDraft.source}
-                                   onChange={e => setRangeDraft({...rangeDraft, source: e.target.value})}/>
-                            <datalist id="sources-range">
-                                {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
-                            </datalist>
-                        </div>
-                    </div>
-                    <div style={{marginBottom: 14}}>
-                        <Label>Notes</Label>
-                        <input placeholder="Optional — applied to every month in the range"
-                               value={rangeDraft.notes}
-                               onChange={e => setRangeDraft({...rangeDraft, notes: e.target.value})}/>
-                    </div>
-                    {error && <div style={{color: "#C1665A", fontSize: 12.5, marginBottom: 10}}
-                                   className="mono">{error}</div>}
-                    <button type="submit" style={{
-                        background: "#C9A227",
-                        color: "#14181C",
-                        border: "none",
-                        borderRadius: 3,
-                        padding: "10px 16px",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        width: "100%",
-                        justifyContent: "center"
-                    }}>
-                        <Plus size={14}/> Add {(() => {
-                        const n = monthsBetween(rangeDraft.startYear, rangeDraft.startMonth, rangeDraft.endYear, rangeDraft.endMonth).length;
-                        return n > 0 ? `${n} month${n === 1 ? "" : "s"}` : "range";
-                    })()}
-                    </button>
-                </form>)}
-
-            </div>
-
-            {/* Targets & Goal Calculator toggles */}
-            <div style={{display: "flex", gap: 8, marginBottom: 16}}>
-                <button onClick={() => setShowTargets(s => !s)} className="mono"
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            background: showTargets ? "#2A3038" : "#1A1F25",
-                            border: "1px solid #2A3038",
-                            color: "#D8D2C4",
-                            padding: "7px 12px",
-                            borderRadius: 3,
-                            fontSize: 12
-                        }}>
-                    <Target size={13}/> Yearly Targets <ChevronDown size={12}
-                                                                    style={{transform: showTargets ? "rotate(180deg)" : "none"}}/>
-                </button>
-                <button onClick={() => setShowCalculator(s => !s)} className="mono"
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            background: showCalculator ? "#2A3038" : "#1A1F25",
-                            border: "1px solid #2A3038",
-                            color: "#D8D2C4",
-                            padding: "7px 12px",
-                            borderRadius: 3,
-                            fontSize: 12
-                        }}>
-                    <Calculator size={13}/> Goal calculator <ChevronDown size={12}
-                                                                         style={{transform: showCalculator ? "rotate(180deg)" : "none"}}/>
-                </button>
-            </div>
-
-            {showTargets && (<div style={{
-                background: "#1A1F25",
-                border: "1px solid #2A3038",
-                borderRadius: 4,
-                padding: "16px 20px",
-                marginBottom: 20
-            }}>
-                <div className="mono"
-                     style={{fontSize: 11, letterSpacing: "0.05em", color: "#8A8F98", marginBottom: 12}}>
-                    MONTHLY TARGET, BY YEAR — leave blank for no target
-                </div>
+        return (<div className="coins-pane"
+                     style={{padding: "60px 24px", textAlign: "center", maxWidth: "600px", margin: "0 auto"}}>
                 <div style={{
-                    display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10
-                }}>
-                    {YEARS.filter(y => y <= CURRENT_YEAR).map(y => (<div key={y}>
-                        <Label>{y}</Label>
-                        <input type="number" min="0" placeholder={`${currencySymbol} / mo`}
-                               value={(coinsTargets as any)[y] ?? ""}
-                               onChange={e => {
-                                   const v = e.target.value;
-                                   const next: Record<number, string> = {...coinsTargets} as any;
-                                   if (v === "") delete next[y]; else next[y] = v;
-                                   persistTargets(next);
-                               }}/>
-                    </div>))}
-                </div>
-            </div>)}
-
-            {showCalculator && (<div style={{
-                background: "#1A1F25",
-                border: "1px solid #2A3038",
-                borderRadius: 4,
-                padding: "16px 20px",
-                marginBottom: 20
-            }}>
-                <div className="mono"
-                     style={{fontSize: 11, letterSpacing: "0.05em", color: "#8A8F98", marginBottom: 12}}>
-                    REVERSE GOAL CALCULATOR
-                </div>
-                <div style={{
-                    display: "flex",
-                    background: "#14181C",
-                    border: "1px solid #2A3038",
-                    borderRadius: 3,
-                    overflow: "hidden",
-                    width: "fit-content",
-                    marginBottom: 14
-                }}>
-                    {[["forward", "Going forward"], ["career", "Career-wide by a date"]].map(([m, l]) => (
-                        <button key={m} type="button" onClick={() => setCalcMode(m as any)} className="mono"
-                                style={{
-                                    border: "none",
-                                    padding: "6px 12px",
-                                    fontSize: 11.5,
-                                    background: calcMode === m ? "#2A3038" : "transparent",
-                                    color: calcMode === m ? "#EDE7D9" : "#8A8F98"
-                                }}>
-                            {l}
-                        </button>))}
-                </div>
-                <div style={{
-                    display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginBottom: 14
-                }}>
-                    <div style={{width: 160, maxWidth: "100%", flex: "1 1 140px"}}>
-                        <Label>Target avg / month ({currencySymbol})</Label>
-                        <input type="number" min="0" value={calcTarget}
-                               onChange={e => setCalcTarget(e.target.value)}/>
-                    </div>
-                    {calcMode === "career" && (<div>
-                        <Label>By</Label>
-                        <div style={{display: "flex", gap: 6}}>
-                            <select value={calcEndMonth}
-                                    onChange={e => setCalcEndMonth(Number(e.target.value))}>
-                                {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                            </select>
-                            <select value={calcEndYear}
-                                    onChange={e => setCalcEndYear(Number(e.target.value))}>
-                                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
-                        </div>
-                    </div>)}
-
-                </div>
-
-                {(goalResult.error || '') && <div className="mono" style={{
-                    color: "#C1665A", fontSize: 12.5
-                }}>{(goalResult.error || '')}</div>}
-
-                {!(goalResult.error || '') && goalResult.forward && (
-                    <div style={{fontSize: 14, color: "#D8D2C4", lineHeight: 1.6}}>
-                        This one's direct — average {formatCurrency((goalResult.target || 0))}/month from here
-                        on, no catch-up needed since it only looks forward, not at past months.
-                    </div>)}
-
-
-                {!(goalResult.error || '') && !goalResult.forward && (
-                    <div style={{fontSize: 14, color: "#D8D2C4", lineHeight: 1.6}}>
-                        To average {formatCurrency((goalResult.target || 0))}/month across
-                        your <em>entire</em> career ({CAREER_START_YEAR}–{calcEndYear})
-                        by {MONTHS[calcEndMonth - 1]} {calcEndYear},
-                        you'd need {formatCurrency(Math.round((goalResult.requiredTotal || 0)))} total. You've
-                        logged {formatCurrency(Math.round((stats?.total || 0) as number))} so far, so that's
-                        {formatCurrency(Math.round((goalResult.stillNeeded || 0) as number))} still needed over
-                        the {(goalResult.remainingMonths || 0)} months remaining —
-                        <strong
-                            style={{color: "#C9A227"}}> {formatCurrency(Math.round((goalResult.neededPerMonth || 0) as number))}/month</strong> from
-                        here.
-                    </div>)}
-
-            </div>)}
-
-            {/* Summary strip */}
-            {stats && (<div className="summary-grid" style={{
-                display: "grid", gap: 1, background: "#2A3038", marginBottom: 32, border: "1px solid #2A3038"
-            }}>
-                <SummaryCell icon={<Wallet size={15}/>} label="Total earned"
-                             value={`${formatCurrency(stats.total)}`} sub=""/>
-                <SummaryCell icon={<Calendar size={15}/>} label="Career avg / mo"
-                             value={`${formatCurrency(Math.round(stats.avgPerCareerMonth))}`}
-                             sub={`all ${stats.careerMonths} months since 2015`}/>
-                <SummaryCell icon={<TrendingUp size={15}/>} label="Avg / logged mo"
-                             value={`${formatCurrency(Math.round(stats.avgPerLoggedMonth))}`}
-                             sub={`${stats.monthsLogged} months logged`}/>
-                <SummaryCell icon={<Award size={15}/>} label="Best month"
-                             value={`${formatCurrency(Math.round((stats.highest?.total || 0)))}`}
-                             sub={`${MONTHS[(stats.highest?.month || 1) - 1]} ${(stats.highest?.year || 2015)}`}/>
-                <SummaryCell icon={<Calendar size={15}/>} label="Coverage"
-                             value={`${stats.coveragePct.toFixed(0)}%`} sub="of career logged"/>
-            </div>)}
-
-            {/* Key insights */}
-            {insights.length > 0 && (<div style={{
-                background: "#1A1F25",
-                border: "1px solid #2A3038",
-                borderRadius: 4,
-                padding: "18px 20px",
-                marginBottom: 32
-            }}>
-                <div className="mono" style={{
-                    fontSize: 11,
-                    letterSpacing: "0.05em",
-                    color: "#8A8F98",
-                    marginBottom: 12,
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    background: "rgba(201, 162, 39, 0.1)",
+                    border: "1px solid rgba(201, 162, 39, 0.3)",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6
+                    justifyContent: "center",
+                    margin: "0 auto 20px"
                 }}>
-                    <Lightbulb size={13}/> KEY INSIGHTS
-                </div>
-                <ul style={{margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8}}>
-                    {insights.map((line, i) => (
-                        <li key={i} style={{fontSize: 14, color: "#D8D2C4", lineHeight: 1.5}}>{line}</li>))}
-                </ul>
-            </div>)}
-
-            {/* Missing months */}
-            {stats && stats.missingRanges.length > 0 && (<div style={{
-                background: "#1A1F25",
-                border: "1px solid #2A3038",
-                borderRadius: 4,
-                padding: "18px 20px",
-                marginBottom: 32
-            }}>
-                <div className="mono"
-                     style={{fontSize: 11, letterSpacing: "0.05em", color: "#8A8F98", marginBottom: 14}}>
-                    MISSING MONTHS — {stats.careerMonths - stats.monthsLogged} of {stats.careerMonths}
+                    <Lock size={26} color="#C9A227"/>
                 </div>
 
-                {/* Year x month grid */}
+                <div style={{fontSize: "18px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "8px"}}>
+                    Coins Ledger is hidden in public view
+                </div>
+
                 <div style={{
-                    display: "flex", flexDirection: "column", gap: 4, marginBottom: 16, overflowX: "auto"
+                    fontSize: "13px",
+                    maxWidth: "420px",
+                    margin: "0 auto 24px",
+                    lineHeight: 1.6,
+                    color: "var(--text-secondary)"
                 }}>
-                    {YEARS.filter(y => y <= CURRENT_YEAR).map(y => (
-                        <div key={y} style={{display: "flex", alignItems: "center", gap: 6}}>
-                            <div className="mono"
-                                 style={{width: 30, fontSize: 10, color: "#5E6570", flexShrink: 0}}>{y}</div>
-                            <div style={{display: "flex", gap: 2}}>
-                                {MONTHS.map((m, i) => {
-                                    const mm = i + 1;
-                                    const inCareer = y > CAREER_START_YEAR || (y === CAREER_START_YEAR && mm >= CAREER_START_MONTH);
-                                    const inPast = y < CURRENT_YEAR || (y === CURRENT_YEAR && mm <= CURRENT_MONTH);
-                                    const relevant = inCareer && inPast;
-                                    const logged = relevant && stats.loggedSet.has(monthKey(y, mm));
-                                    return (<div key={m}
-                                                 title={relevant ? `${m} ${y} — ${logged ? "logged" : "missing"}` : ""}
-                                                 style={{
-                                                     width: 14,
-                                                     height: 14,
-                                                     borderRadius: 2,
-                                                     flexShrink: 0,
-                                                     background: !relevant ? "transparent" : logged ? "#C9A227" : "#2A3038",
-                                                     border: relevant && !logged ? "1px solid #3A424C" : "none"
-                                                 }}/>);
-                                })}
-                            </div>
-                        </div>))}
-                </div>
-                <div style={{display: "flex", gap: 14, marginBottom: 16}}>
-                    <div className="mono" style={{
-                        fontSize: 10.5, color: "#8A8F98", display: "flex", alignItems: "center", gap: 5
-                    }}>
-                                <span style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: 2,
-                                    background: "#C9A227",
-                                    display: "inline-block"
-                                }}/> logged
-                    </div>
-                    <div className="mono" style={{
-                        fontSize: 10.5, color: "#8A8F98", display: "flex", alignItems: "center", gap: 5
-                    }}>
-                                <span style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: 2,
-                                    border: "1px solid #3A424C",
-                                    display: "inline-block"
-                                }}/> missing
-                    </div>
+                    Your financial income and ledger entries are protected while in Public Mode.
                 </div>
 
-                {/* List of gaps, easiest to act on with the range form above */}
-                <div style={{display: "flex", flexDirection: "column", gap: 6}}>
-                    {stats.missingRanges.map((r, i) => {
-                        const label = r.count === 1 ? `${MONTHS[r.startMonth - 1]} ${r.startYear}` : `${MONTHS[r.startMonth - 1]} ${r.startYear} – ${MONTHS[r.endMonth - 1]} ${r.endYear}`;
-                        return (<div key={i} style={{
+                <div
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid var(--panel-border)",
+                        padding: "10px 18px",
+                        borderRadius: "24px",
+                        cursor: "pointer",
+                        userSelect: "none"
+                    }}
+                    onClick={() => setIsRevealed(true)}
+                >
+                    <span style={{
+                        fontSize: "13px",
+                        color: "var(--text-secondary)",
+                        fontWeight: 500,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px"
+                    }}>
+                        <EyeOff size={14}/> Hidden
+                    </span>
+                    <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={isRevealed} onChange={(e) => setIsRevealed(e.target.checked)}/>
+                        <span className="ios-slider"></span>
+                    </label>
+                    <span style={{
+                        fontSize: "13px",
+                        color: "var(--text-primary)",
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                    }}>
+                        <Eye size={14} color="var(--accent)"/> Reveal
+                    </span>
+                </div>
+            </div>);
+    }
+
+    const currentYearTargetMonthly = Number(coinsTargets[String(CURRENT_YEAR)] || 0);
+    const currentYearEarned = stats?.yearTrend.find(y => y.year === CURRENT_YEAR)?.total || 0;
+    const currentYearTargetAnnual = currentYearTargetMonthly * 12;
+    const currentYearPctMet = currentYearTargetAnnual > 0 ? (currentYearEarned / currentYearTargetAnnual) * 100 : 0;
+    const missingMonthsCount = stats?.unloggedMonthsCount ?? Math.max(0, (stats?.careerMonths || 0) - (stats?.monthsLogged || 0));
+
+    return (<div className="coins-pane" style={{padding: 0, flex: 1, overflowY: "auto", minHeight: 0, height: "100%"}}>
+            {isPublicView && isRevealed && (<div style={{
+                    background: "rgba(234, 179, 8, 0.1)",
+                    borderBottom: "1px solid rgba(234, 179, 8, 0.3)",
+                    padding: "10px 20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    fontSize: "12.5px",
+                    color: "#EAB308",
+                    fontFamily: "var(--font-mono)"
+                }}>
+                    <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+                        <Eye size={15}/>
+                        <span>Coins Ledger temporarily revealed in Public Mode</span>
+                    </div>
+                    <div style={{display: "flex", alignItems: "center", gap: "8px", cursor: "pointer"}}
+                         onClick={() => setIsRevealed(false)}>
+                        <span style={{
+                            fontSize: "12px",
+                            color: "var(--text-primary)",
+                            fontWeight: 600,
                             display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: 13,
-                            color: "#D8D2C4",
-                            borderTop: "1px solid #1F252C",
-                            paddingTop: 6
+                            alignItems: "center",
+                            gap: "4px"
                         }}>
-                            <span>{label}</span>
-                            <span className="mono"
-                                  style={{color: "#5E6570", fontSize: 11.5}}>{r.count} mo</span>
-                        </div>);
-                    })}
-                </div>
-            </div>)}
-
-            {/* Analytics charts */}
-            {stats && stats.yearTrend.length > 0 && (<div className="charts-grid-2" style={{marginBottom: 20}}>
-                <ChartCard title="Yearly total">
-                    <ResponsiveContainer width="100%" height={180}>
-                        <ComposedChart data={yearlyWithTargets}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2A3038" vertical={false}/>
-                            <XAxis dataKey="year" stroke="#5E6570" fontSize={11} tickLine={false}
-                                   axisLine={{stroke: "#2A3038"}}/>
-                            <YAxis stroke="#5E6570" fontSize={11} tickLine={false} axisLine={false}
-                                   tickFormatter={v => `${Math.round(v / 1000)}k`}/>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={(v, name) => [`${formatCurrency(Number(v) || 0)}`, name === "target" ? "Target" : "Total"]}/>
-                            <Bar dataKey="total" fill="#C9A227" radius={[2, 2, 0, 0]}/>
-                            {targetSummary && <Line type="stepAfter" dataKey="target" stroke="#8AA9C9" strokeWidth={2}
-                                                    strokeDasharray="4 3" dot={{r: 3, fill: "#8AA9C9"}} connectNulls/>}
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                    {targetSummary && (<div className="mono" style={{fontSize: 11, color: "#8A8F98", marginTop: 8}}>
-                        Hit target in {targetSummary.hit} of {targetSummary.total} years with a target set ·
-                        dashed line = target
-                    </div>)}
-
-                </ChartCard>
-                <ChartCard title="By source">
-                    <ResponsiveContainer width="100%" height={180}>
-                        <PieChart>
-                            <Pie data={stats.sourceBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                                 outerRadius={65} innerRadius={38}>
-                                {stats.sourceBreakdown.map((entry, i) => (
-                                    <Cell key={entry.name} fill={PALETTE[i % PALETTE.length]}/>))}
-                            </Pie>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={v => `${formatCurrency(Number(v) || 0)}`}/>
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{
-                        display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 4, justifyContent: "center"
-                    }}>
-                        {stats.sourceBreakdown.map((s, i) => (<div key={s.name} className="mono" style={{
-                            fontSize: 11, color: "#8A8F98", display: "flex", alignItems: "center", gap: 5
-                        }}>
-                                        <span style={{
-                                            width: 8,
-                                            height: 8,
-                                            borderRadius: 2,
-                                            background: PALETTE[i % PALETTE.length]
-                                        }}/>
-                            {s.name} · {s.pct.toFixed(0)}%
-                        </div>))}
+                            <EyeOff size={13}/> Hide
+                        </span>
+                        <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                            <input type="checkbox" checked={isRevealed}
+                                   onChange={(e) => setIsRevealed(e.target.checked)}/>
+                            <span className="ios-slider"></span>
+                        </label>
                     </div>
-                </ChartCard>
-            </div>)}
-
-            {stats && stats.cumulative.length > 1 && (
-                <ChartCard title="Cumulative career coins" style={{marginBottom: 20}}>
-                    <ResponsiveContainer width="100%" height={190}>
-                        <AreaChart data={stats.cumulative}>
-                            <defs>
-                                <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#C9A227" stopOpacity={0.35}/>
-                                    <stop offset="100%" stopColor="#C9A227" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2A3038" vertical={false}/>
-                            <XAxis dataKey="label" stroke="#5E6570" fontSize={10} tickLine={false}
-                                   axisLine={{stroke: "#2A3038"}}
-                                   interval={Math.ceil(stats.cumulative.length / 8)}/>
-                            <YAxis stroke="#5E6570" fontSize={11} tickLine={false} axisLine={false}
-                                   tickFormatter={v => `${Math.round(v / 1000)}k`}/>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={v => [`${formatCurrency(Number(v) || 0)}`, "Cumulative"]}/>
-                            <Area type="monotone" dataKey="cumulative" stroke="#C9A227" strokeWidth={2}
-                                  fill="url(#cumFill)"/>
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </ChartCard>)}
-
-            <div className={`charts-grid-2 ${stats && stats.yoyGrowth.length > 0 ? "even" : ""}`}
-                 style={{marginBottom: 32}}>
-                {stats && stats.trendLine.length > 1 && (<ChartCard title="Month-by-month trend">
-                    <ResponsiveContainer width="100%" height={190}>
-                        <LineChart data={stats.trendLine}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2A3038" vertical={false}/>
-                            <XAxis dataKey="label" stroke="#5E6570" fontSize={10} tickLine={false}
-                                   axisLine={{stroke: "#2A3038"}}
-                                   interval={Math.ceil(stats.trendLine.length / 8)}/>
-                            <YAxis stroke="#5E6570" fontSize={11} tickLine={false} axisLine={false}
-                                   tickFormatter={v => `${Math.round(v / 1000)}k`}/>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={v => [`${formatCurrency(Number(v) || 0)}`, "Total"]}/>
-                            <Line type="monotone" dataKey="total" stroke="#7FA87A" strokeWidth={2} dot={false}/>
-                        </LineChart>
-                    </ResponsiveContainer>
-                </ChartCard>)}
-
-                {stats && stats.yoyGrowth.length > 0 && (<ChartCard title="Year-over-year growth">
-                    <ResponsiveContainer width="100%" height={190}>
-                        <BarChart data={stats.yoyGrowth}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2A3038" vertical={false}/>
-                            <XAxis dataKey="year" stroke="#5E6570" fontSize={11} tickLine={false}
-                                   axisLine={{stroke: "#2A3038"}}/>
-                            <YAxis stroke="#5E6570" fontSize={11} tickLine={false} axisLine={false}
-                                   tickFormatter={v => `${v}%`}/>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={v => [`${Number(v).toFixed(0)}%`, "Growth"]}/>
-                            <ReferenceLine y={0} stroke="#333B44"/>
-                            <Bar dataKey="pct" radius={[2, 2, 2, 2]}>
-                                {stats.yoyGrowth.map((entry, i) => (
-                                    <Cell key={i} fill={entry.pct >= 0 ? "#7FA87A" : "#C1665A"}/>))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </ChartCard>)}
-
-            </div>
-
-            {stats && stats.allSources.length > 1 && stats.stackedByYear.length > 0 && (
-                <ChartCard title="Source mix by year" style={{marginBottom: 32}}>
-                    <ResponsiveContainer width="100%" height={190}>
-                        <BarChart data={stats.stackedByYear}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2A3038" vertical={false}/>
-                            <XAxis dataKey="year" stroke="#5E6570" fontSize={11} tickLine={false}
-                                   axisLine={{stroke: "#2A3038"}}/>
-                            <YAxis stroke="#5E6570" fontSize={11} tickLine={false} axisLine={false}
-                                   tickFormatter={v => `${Math.round(v / 1000)}k`}/>
-                            <Tooltip contentStyle={{
-                                background: "#1E242A",
-                                border: "1px solid #333B44",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                fontSize: 12
-                            }}
-                                     formatter={v => `${formatCurrency(Number(v) || 0)}`}/>
-                            {stats.allSources.map((s, i) => (
-                                <Bar key={s} dataKey={s} stackId="a" fill={PALETTE[i % PALETTE.length]}
-                                     radius={i === stats.allSources.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}/>))}
-                        </BarChart>
-                    </ResponsiveContainer>
-                    <div style={{
-                        display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 10, justifyContent: "center"
-                    }}>
-                        {stats.allSources.map((s, i) => (<div key={s} className="mono" style={{
-                            fontSize: 11, color: "#8A8F98", display: "flex", alignItems: "center", gap: 5
-                        }}>
-                                    <span style={{
-                                        width: 8, height: 8, borderRadius: 2, background: PALETTE[i % PALETTE.length]
-                                    }}/>
-                            {s}
-                        </div>))}
-                    </div>
-                </ChartCard>)}
-
-            {/* Ledger table */}
-            <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
-                flexWrap: "wrap",
-                gap: 8
-            }}>
-                <div className="mono" style={{fontSize: 11.5, letterSpacing: "0.05em", color: "#8A8F98"}}>
-                    LEDGER {visibleEntries.length > 0 && `— ${filteredEntries.length}${filtersActive ? ` of ${visibleEntries.length}` : ""} ${filteredEntries.length === 1 ? "entry" : "entries"}`}
-                </div>
-                {visibleEntries.length > 0 && (<button onClick={() => setShowFilters(s => !s)} className="mono"
-                                                       style={{
-                                                           display: "flex",
-                                                           alignItems: "center",
-                                                           gap: 6,
-                                                           background: showFilters || filtersActive ? "#2A3038" : "#1A1F25",
-                                                           border: "1px solid #2A3038",
-                                                           color: "#D8D2C4",
-                                                           padding: "6px 10px",
-                                                           borderRadius: 3,
-                                                           fontSize: 11
-                                                       }}>
-                    <Filter size={12}/> Filter{filtersActive ? " (active)" : ""}
-                </button>)}
-
-            </div>
-
-            {showFilters && (<div style={{
-                background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: 16, marginBottom: 16
-            }}>
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                    gap: 10,
-                    marginBottom: 10
-                }}>
-                    <div>
-                        <Label>Source</Label>
-                        <select value={filters.source}
-                                onChange={e => setFilters({...filters, source: e.target.value})}>
-                            <option value="all">All sources</option>
-                            {uniqueSources.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <Label>From year</Label>
-                        <select value={filters.fromYear}
-                                onChange={e => setFilters({...filters, fromYear: Number(e.target.value)})}>
-                            {YEARS.filter(y => y <= CURRENT_YEAR).map(y => <option key={y}
-                                                                                   value={y}>{y}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <Label>To year</Label>
-                        <select value={filters.toYear}
-                                onChange={e => setFilters({...filters, toYear: Number(e.target.value)})}>
-                            {YEARS.filter(y => y <= CURRENT_YEAR).map(y => <option key={y}
-                                                                                   value={y}>{y}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <Label>Min amount ({currencySymbol})</Label>
-                        <input type="number" min="0" placeholder="—" value={filters.minAmount}
-                               onChange={e => setFilters({...filters, minAmount: e.target.value})}/>
-                    </div>
-                    <div>
-                        <Label>Max amount ({currencySymbol})</Label>
-                        <input type="number" min="0" placeholder="—" value={filters.maxAmount}
-                               onChange={e => setFilters({...filters, maxAmount: e.target.value})}/>
-                    </div>
-                    <div>
-                        <Label>Search notes</Label>
-                        <input placeholder="e.g. bonus, client name…" value={filters.search}
-                               onChange={e => setFilters({...filters, search: e.target.value})}/>
-                    </div>
-                </div>
-                {filtersActive && (<button onClick={() => setFilters({
-                    source: "all",
-                    fromYear: CAREER_START_YEAR,
-                    toYear: CURRENT_YEAR,
-                    minAmount: "",
-                    maxAmount: "",
-                    search: ""
-                })}
-                                           className="row-btn mono" style={{fontSize: 11.5, gap: 4}}>
-                    <X size={12}/> clear filters
-                </button>)}
-
-                <div className="mono" style={{fontSize: 10.5, color: "#5E6570", marginTop: 8}}>
-                    Filters only affect the table below — charts and totals above still reflect everything
-                    logged.
-                </div>
-            </div>)}
-
-            {activeYears.length === 0 && (
-                <div style={{color: "#5E6570", fontSize: 14, padding: "24px 0", borderTop: "1px solid #2A3038"}}>
-                    {visibleEntries.length === 0 ? (isPublicView ? "No public entries found. In Public Mode, only entries containing [public] in notes or source are shown." : "No entries yet. Add your first month above — start wherever you have records, no need to go in order.") : "No entries match these filters."}
                 </div>)}
 
-            {activeYears.map(year => {
-                const list = coinsEntriesByYear[year] || [];
-                const yearTotal = list.reduce((s: number, e: CoinsEntry) => s + e.amount, 0);
-                const isOpen = expandedYear === year;
-                return (<div key={year} style={{
-                    border: "1px solid #2A3038", borderRadius: 4, marginBottom: 10, overflow: "hidden"
+            <style>{`
+                .coins-pane { flex: 1; overflow-y: auto; min-height: 0; height: 100%; }
+                .coins-pane .row-btn { background: transparent; border: none; color: #8A8F98; padding: 6px; border-radius: 3px; display: flex; align-items: center; cursor: pointer; }
+                .coins-pane .row-btn:hover { color: #EDE7D9; background: #262C33; }
+                .coins-pane table { border-collapse: collapse; width: 100%; min-width: 460px; }
+                .coins-pane th, .coins-pane td { text-align: left; padding: 9px 10px; font-size: 13.5px; white-space: nowrap; }
+                .coins-pane td:nth-child(4) { white-space: normal; min-width: 140px; }
+                .coins-pane th { color: #8A8F98; font-weight: 500; font-size: 11.5px; letter-spacing: 0.03em; border-bottom: 1px solid #2A3038; }
+                .coins-pane tbody tr { border-bottom: 1px solid #1F252C; }
+                .coins-pane tbody tr:hover { background: #1A1F25; }
+                .coins-pane input, .coins-pane select, .coins-pane textarea { width: 100%; box-sizing: border-box; min-width: 0; }
+
+                .page-header { padding: 24px 16px 20px; }
+                .page-body { padding: 20px 16px 40px; }
+                .page-title { font-size: 26px; }
+                .header-row { display: flex; flex-direction: column; gap: 16px; }
+                .header-actions { width: 100%; align-items: flex-start; }
+                .toolbar-btns { flex-wrap: wrap; }
+
+                .form-header-row { flex-wrap: wrap; gap: 10px; }
+                .range-endpoints { display: grid; grid-template-columns: 1fr; gap: 12px; }
+                .range-endpoint-inner { display: flex; gap: 6px; }
+
+                .metrics-4-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+                .target-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+                .charts-grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+                .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+                @media (min-width: 640px) {
+                    .page-header { padding: 36px 28px 28px; }
+                    .page-body { padding: 28px; }
+                    .page-title { font-size: 32px; }
+                    .header-row { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+                    .header-actions { width: auto; align-items: flex-end; }
+                    .range-endpoints { grid-template-columns: 1fr 1fr 1fr 1fr; }
+                    .metrics-4-grid { grid-template-columns: repeat(4, 1fr); }
+                    .target-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+                    .charts-grid-2 { grid-template-columns: 1fr 1fr; }
+                }
+
+                .tag-chip {
+                    font-size: 10.5px;
+                    font-weight: 600;
+                    letter-spacing: 0.04em;
+                    padding: 2px 8px;
+                    border-radius: 3px;
+                }
+                .nav-pill {
+                    background: transparent;
+                    border: none;
+                    padding: 6px 12px;
+                    font-size: 11.5px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                .nav-pill.active {
+                    background: #2A3038;
+                    color: #EDE7D9;
+                    font-weight: 600;
+                }
+                .nav-pill:not(.active) {
+                    color: #8A8F98;
+                }
+            `}</style>
+
+            {/* Mobile Wallet Banner */}
+            {walletTotal !== undefined && onNavigateToMoneyGoals && (<div className="hide-on-desktop" style={{
+                    background: "#1A1F25",
+                    borderBottom: "1px solid #2A3038",
+                    padding: "12px 16px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
                 }}>
-                    <button
-                        onClick={() => setExpandedYear(isOpen ? null : (year as any))}
-                        style={{
-                            width: "100%",
+                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                        <Wallet size={16} color="#C9A227"/>
+                        <span style={{fontSize: 13, color: "#D8D2C4"}}>
+                            Wallet Goals: <strong style={{color: "#fff"}}>{formatCurrency(walletTotal)}</strong> remaining
+                        </span>
+                    </div>
+                    <button onClick={onNavigateToMoneyGoals} style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#C9A227",
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4
+                    }}>
+                        View Goals <ArrowRight size={14}/>
+                    </button>
+                </div>)}
+
+            {/* Dashboard Header & Controls */}
+            <div className="page-header" style={{
+                background: "#14181C", borderBottom: "1px solid #2A3038", position: "relative"
+            }}>
+                <div className="header-row" style={{maxWidth: 1080, margin: "0 auto"}}>
+                    <div>
+                        <div className="mono" style={{
+                            fontSize: 11,
+                            color: "#8A8F98",
+                            letterSpacing: "0.08em",
+                            marginBottom: 6,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8
+                        }}>
+                            <span>{CAREER_START_YEAR} — {dynamicTimeline[dynamicTimeline.length - 1]?.year || CURRENT_YEAR}</span>
+                            {saveState === "saving" && <span style={{color: "#C9A227"}}>Saving...</span>}
+                            {saveState === "saved" && <span style={{color: "#7FA87A"}}>Saved</span>}
+                        </div>
+                        <h1 className="page-title" style={{
+                            margin: 0,
+                            fontFamily: "var(--font-serif)",
+                            fontWeight: 400,
+                            color: "#EDE7D9",
+                            lineHeight: 1.1
+                        }}>
+                            Coins Ledger & Analytics
+                        </h1>
+                        <div style={{fontSize: 13, color: "#8A8F98", marginTop: 8}}>
+                            Live financial record of all career months worked, source distribution, and target pacing.
+                        </div>
+                    </div>
+
+                    <div className="header-actions" style={{display: "flex", flexDirection: "column", gap: 10}}>
+                        <div className="toolbar-btns" style={{display: "flex", gap: 6}}>
+                            <button onClick={() => setAllSections(true)} className="mono" style={{
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#8A8F98",
+                                padding: "7px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}>
+                                Expand all
+                            </button>
+                            <button onClick={() => setAllSections(false)} className="mono" style={{
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#8A8F98",
+                                padding: "7px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}>
+                                Collapse all
+                            </button>
+                            <button onClick={exportJSON} className="mono" title="Download JSON backup" style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#8A8F98",
+                                padding: "7px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}>
+                                <Download size={12}/> JSON
+                            </button>
+                            <button onClick={exportCSV} className="mono" title="Download CSV spreadsheet" style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#8A8F98",
+                                padding: "7px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}>
+                                <Download size={12}/> CSV
+                            </button>
+                            <button onClick={triggerImport} className="mono" title="Restore JSON backup" style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 5,
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#8A8F98",
+                                padding: "7px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}>
+                                <Upload size={12}/> Import
+                            </button>
+                            <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportFile}
+                                   style={{display: "none"}}/>
+                        </div>
+                        {importMsg && (<div className="mono" style={{fontSize: 10.5, color: "#8A8F98", maxWidth: 280}}>
+                                {importMsg}
+                            </div>)}
+                    </div>
+                </div>
+            </div>
+
+            <div className="page-body"
+                 style={{maxWidth: 1080, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20}}>
+
+                {/* 1. SECTION: LOG EARNINGS (UNIFIED NON-REDUNDANT MONTHLY & RANGE FORM) */}
+                <AccordionSection
+                    id="coins-entry-form"
+                    isOpen={openSections.form}
+                    onToggle={() => toggleSection("form")}
+                    icon={<Plus size={16} color="#C9A227"/>}
+                    title="LOG EARNINGS / NEW ENTRY"
+                    badge={<span className="mono tag-chip" style={{background: "#2A3038", color: "#8A8F98"}}>
+                            {editingEntry ? "Editing Entry" : (mode === "monthly" ? "Monthly Income" : "Date Range")}
+                        </span>}
+                >
+                    <div className="form-header-row" style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14
+                    }}>
+                        <div className="mono"
+                             style={{fontSize: 11.5, letterSpacing: "0.05em", color: "#8A8F98", fontWeight: 600}}>
+                            {editingEntry ? "EDITING ENTRY" : "LOG MONTHLY EARNINGS"}
+                        </div>
+                        <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                            {!editingEntry && (<div style={{
+                                    display: "flex",
+                                    background: "#14181C",
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 3,
+                                    overflow: "hidden"
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMode("monthly");
+                                            setError("");
+                                        }}
+                                        className="mono"
+                                        style={{
+                                            border: "none",
+                                            padding: "6px 14px",
+                                            fontSize: 11.5,
+                                            background: mode === "monthly" ? "#2A3038" : "transparent",
+                                            color: mode === "monthly" ? "#EDE7D9" : "#8A8F98",
+                                            cursor: "pointer"
+                                        }}
+                                    >
+                                        Monthly Income
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setMode("range");
+                                            setError("");
+                                        }}
+                                        className="mono"
+                                        style={{
+                                            border: "none",
+                                            padding: "6px 14px",
+                                            fontSize: 11.5,
+                                            background: mode === "range" ? "#2A3038" : "transparent",
+                                            color: mode === "range" ? "#EDE7D9" : "#8A8F98",
+                                            cursor: "pointer"
+                                        }}
+                                    >
+                                        Date Range
+                                    </button>
+                                </div>)}
+
+                            {editingEntry && (
+                                <button type="button" onClick={() => setEditingEntry(null)} className="row-btn"
+                                        style={{gap: 4}}>
+                                    <X size={13}/> Cancel Edit
+                                </button>)}
+                        </div>
+                    </div>
+
+                    {/* EDIT SINGLE ENTRY */}
+                    {editingEntry && (<form onSubmit={submitEdit}>
+                            <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "110px 110px 160px 160px 1fr",
+                                gap: 10,
+                                marginBottom: 14
+                            }}>
+                                <div>
+                                    <Label>Year</Label>
+                                    <select value={editingEntry.year} onChange={e => setEditingEntry({
+                                        ...editingEntry,
+                                        year: Number(e.target.value)
+                                    })}>
+                                        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label>Month</Label>
+                                    <select value={editingEntry.month} onChange={e => setEditingEntry({
+                                        ...editingEntry,
+                                        month: Number(e.target.value)
+                                    })}>
+                                        {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label>Amount ({currencySymbol})</Label>
+                                    <input
+                                        id="edit-amount-input"
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        value={editingEntry.amount}
+                                        onChange={e => setEditingEntry({
+                                            ...editingEntry,
+                                            amount: Number(e.target.value)
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Source</Label>
+                                    <input
+                                        list="sources-edit-list"
+                                        value={editingEntry.source}
+                                        onChange={e => setEditingEntry({...editingEntry, source: e.target.value})}
+                                    />
+                                    <datalist id="sources-edit-list">
+                                        {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
+                                    </datalist>
+                                </div>
+                                <div>
+                                    <Label>Notes</Label>
+                                    <input
+                                        value={editingEntry.notes}
+                                        onChange={e => setEditingEntry({...editingEntry, notes: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{display: "flex", gap: 10}}>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        flex: 1,
+                                        background: "#C9A227",
+                                        color: "#14181C",
+                                        border: "none",
+                                        padding: "10px 16px",
+                                        borderRadius: 3,
+                                        fontWeight: 700,
+                                        fontSize: 13,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Update Entry
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingEntry(null)}
+                                    style={{
+                                        background: "#1A1F25",
+                                        border: "1px solid #2A3038",
+                                        color: "#8A8F98",
+                                        padding: "10px 16px",
+                                        borderRadius: 3,
+                                        fontSize: 13,
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>)}
+
+                    {/* UNIFIED MONTHLY INCOME FORM (Supports 1 or more streams naturally!) */}
+                    {mode === "monthly" && !editingEntry && (<form onSubmit={submitMonthlyStreams}>
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 14,
+                                padding: "12px 14px",
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                borderRadius: 4,
+                                marginBottom: 16
+                            }}>
+                                <div style={{flex: 1, maxWidth: 160}}>
+                                    <Label>Target Year</Label>
+                                    <select value={entryYear} onChange={e => setEntryYear(Number(e.target.value))}>
+                                        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{flex: 1, maxWidth: 160}}>
+                                    <Label>Target Month</Label>
+                                    <select value={entryMonth} onChange={e => setEntryMonth(Number(e.target.value))}>
+                                        {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{
+                                    flex: 2,
+                                    display: "flex",
+                                    alignItems: "flex-end",
+                                    justifyContent: "flex-end"
+                                }}>
+                                    <div className="mono" style={{fontSize: 12, color: "#8A8F98", textAlign: "right"}}>
+                                        Month Total:{" "}
+                                        <strong style={{color: "#C9A227", fontSize: 14}}>
+                                            {formatCurrency(streamRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0))}
+                                        </strong>{" "}
+                                        across {streamRows.filter(s => parseFloat(s.amount) > 0).length} active
+                                        stream{streamRows.filter(s => parseFloat(s.amount) > 0).length === 1 ? "" : "s"}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{display: "flex", flexDirection: "column", gap: 10, marginBottom: 14}}>
+                                {streamRows.map((stream, idx) => (<div key={stream.id} style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "150px 180px 1fr 36px",
+                                        gap: 10,
+                                        alignItems: "center",
+                                        background: "#14181C",
+                                        border: "1px solid #2A3038",
+                                        padding: "8px 12px",
+                                        borderRadius: 4
+                                    }}>
+                                        <div>
+                                            <Label>Source {streamRows.length > 1 ? `#${idx + 1}` : ""}</Label>
+                                            <input
+                                                list="sources-unified-list"
+                                                placeholder="Startup, Dividend, Job…"
+                                                value={stream.source}
+                                                onChange={e => updateStreamRow(stream.id, "source", e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Amount ({currencySymbol})</Label>
+                                            <input
+                                                id={`stream-amt-${idx}`}
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="0"
+                                                value={stream.amount}
+                                                onChange={e => updateStreamRow(stream.id, "amount", e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Notes (Optional)</Label>
+                                            <input
+                                                placeholder="e.g. Q3 dividend, contract retainer, bonus…"
+                                                value={stream.notes}
+                                                onChange={e => updateStreamRow(stream.id, "notes", e.target.value)}
+                                            />
+                                        </div>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "flex-end",
+                                            height: "100%",
+                                            paddingBottom: 2
+                                        }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeStreamRow(stream.id)}
+                                                disabled={streamRows.length <= 1}
+                                                className="row-btn"
+                                                title="Remove Stream"
+                                                style={{opacity: streamRows.length <= 1 ? 0.2 : 1}}
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        </div>
+                                    </div>))}
+                            </div>
+
+                            <datalist id="sources-unified-list">
+                                {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
+                            </datalist>
+
+                            {/* Quick Add Stream Buttons */}
+                            <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                marginBottom: 16,
+                                flexWrap: "wrap"
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => addStreamRow()}
+                                    className="mono"
+                                    style={{
+                                        background: "#1F252C",
+                                        border: "1px dashed #2A3038",
+                                        color: "#EDE7D9",
+                                        padding: "5px 10px",
+                                        borderRadius: 3,
+                                        fontSize: 11,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4
+                                    }}
+                                >
+                                    <Plus size={12}/> Add Stream Row
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => addStreamRow("Broke / Nil", "0")}
+                                    className="mono"
+                                    style={{
+                                        background: "#3A281E",
+                                        border: "1px solid #78350F",
+                                        color: "#F59E0B",
+                                        padding: "5px 10px",
+                                        borderRadius: 3,
+                                        fontSize: 11,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        fontWeight: 600
+                                    }}
+                                    title="Log honest zero earnings for this month (e.g. unemployed, broke, sabbatical, student)"
+                                >
+                                    + Log ₹0 (Broke / Nil)
+                                </button>
+                                <span className="mono" style={{fontSize: 11, color: "#5E6570", marginLeft: 4}}>Quick Add:</span>
+                                {SOURCE_PRESETS.map(preset => (<button
+                                        key={preset}
+                                        type="button"
+                                        onClick={() => addStreamRow(preset, preset === "Broke / Nil" ? "0" : undefined)}
+                                        className="mono"
+                                        style={{
+                                            background: preset === "Broke / Nil" ? "#2B1E17" : "#1A1F25",
+                                            border: preset === "Broke / Nil" ? "1px solid #78350F" : "1px solid #2A3038",
+                                            color: preset === "Broke / Nil" ? "#F59E0B" : "#D8D2C4",
+                                            padding: "4px 8px",
+                                            borderRadius: 3,
+                                            fontSize: 11,
+                                            cursor: "pointer"
+                                        }}
+                                    >
+                                        + {preset}
+                                    </button>))}
+                            </div>
+
+                            {error && (
+                                <div style={{color: "#C1665A", fontSize: 12.5, marginBottom: 12}} className="mono">
+                                    {error}
+                                </div>)}
+
+                            {successMsg && (
+                                <div style={{color: "#7FA87A", fontSize: 12.5, marginBottom: 12}} className="mono">
+                                    {successMsg}
+                                </div>)}
+
+                            <button
+                                type="submit"
+                                style={{
+                                    width: "100%",
+                                    background: "#C9A227",
+                                    color: "#14181C",
+                                    border: "none",
+                                    padding: "11px 16px",
+                                    borderRadius: 3,
+                                    fontWeight: 700,
+                                    fontSize: 13,
+                                    cursor: "pointer",
+                                    letterSpacing: "0.03em"
+                                }}
+                            >
+                                {streamRows.filter(s => {
+                                    const a = parseFloat(s.amount.trim());
+                                    return !isNaN(a) && a >= 0 && s.source.trim().length > 0;
+                                }).length > 0 && streamRows.reduce((acc, s) => {
+                                    const a = parseFloat(s.amount.trim());
+                                    return !isNaN(a) && a >= 0 ? acc + a : acc;
+                                }, 0) === 0 ? `Record Honest Zero Income (₹0) for ${MONTHS[entryMonth - 1]} ${entryYear}` : `Save Income for ${MONTHS[entryMonth - 1]} ${entryYear}`}
+                            </button>
+                        </form>)}
+
+                    {/* DATE RANGE ENTRY */}
+                    {mode === "range" && !editingEntry && (<form onSubmit={submitRange}>
+                            <div className="range-endpoints" style={{marginBottom: 10}}>
+                                <div>
+                                    <Label>Start</Label>
+                                    <div className="range-endpoint-inner">
+                                        <select value={rangeDraft.startMonth} onChange={e => setRangeDraft({
+                                            ...rangeDraft,
+                                            startMonth: Number(e.target.value)
+                                        })}>
+                                            {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                                        </select>
+                                        <select value={rangeDraft.startYear} onChange={e => setRangeDraft({
+                                            ...rangeDraft,
+                                            startYear: Number(e.target.value)
+                                        })}>
+                                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>End</Label>
+                                    <div className="range-endpoint-inner">
+                                        <select value={rangeDraft.endMonth} onChange={e => setRangeDraft({
+                                            ...rangeDraft,
+                                            endMonth: Number(e.target.value)
+                                        })}>
+                                            {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                                        </select>
+                                        <select value={rangeDraft.endYear} onChange={e => setRangeDraft({
+                                            ...rangeDraft,
+                                            endYear: Number(e.target.value)
+                                        })}>
+                                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>Amount per Month ({currencySymbol})</Label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        value={rangeDraft.amount}
+                                        onChange={e => setRangeDraft({...rangeDraft, amount: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Source</Label>
+                                    <input
+                                        list="sources-range"
+                                        value={rangeDraft.source}
+                                        onChange={e => setRangeDraft({...rangeDraft, source: e.target.value})}
+                                    />
+                                    <datalist id="sources-range">
+                                        {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
+                                    </datalist>
+                                </div>
+                            </div>
+                            <div style={{marginBottom: 14}}>
+                                <Label>Notes</Label>
+                                <input
+                                    placeholder="Optional note for all entries in range"
+                                    value={rangeDraft.notes}
+                                    onChange={e => setRangeDraft({...rangeDraft, notes: e.target.value})}
+                                />
+                            </div>
+                            {error && (
+                                <div style={{color: "#C1665A", fontSize: 12.5, marginBottom: 10}} className="mono">
+                                    {error}
+                                </div>)}
+                            {successMsg && (
+                                <div style={{color: "#7FA87A", fontSize: 12.5, marginBottom: 10}} className="mono">
+                                    {successMsg}
+                                </div>)}
+                            <button
+                                type="submit"
+                                style={{
+                                    width: "100%",
+                                    background: "#C9A227",
+                                    color: "#14181C",
+                                    border: "none",
+                                    padding: "11px 16px",
+                                    borderRadius: 3,
+                                    fontWeight: 700,
+                                    fontSize: 13,
+                                    cursor: "pointer",
+                                    letterSpacing: "0.03em"
+                                }}
+                            >
+                                Populate Range
+                            </button>
+                        </form>)}
+                </AccordionSection>
+
+                {/* 2. SECTION: OVERVIEW METRICS, KEY INSIGHTS & SOURCE BREAKDOWN */}
+                <AccordionSection
+                    id="coins-overview-insights"
+                    isOpen={openSections.overview}
+                    onToggle={() => toggleSection("overview")}
+                    icon={<BarChart3 size={16} color="#C9A227"/>}
+                    title="OVERVIEW METRICS, INSIGHTS & REVENUE MIX"
+                    badge={<span className="mono tag-chip" style={{background: "#2A3038", color: "#C9A227"}}>
+                            {formatCurrency(stats?.total || 0)} lifetime • {formatCurrency(stats?.avgPerCareerMonth || 0)}/mo
+                        </span>}
+                >
+                    {/* The 4 Core Metric Tiles */}
+                    <div className="metrics-4-grid" style={{marginBottom: 20}}>
+                        <div style={{
                             background: "#1A1F25",
-                            border: "none",
-                            padding: "12px 16px",
+                            border: "1px solid #2A3038",
+                            padding: "14px 16px",
+                            borderRadius: 4
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6
+                            }}>
+                                <span className="mono"
+                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
+                                    TOTAL EARNED
+                                </span>
+                                <Wallet size={14} color="#C9A227"/>
+                            </div>
+                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
+                                {formatCurrency(stats?.total || 0)}
+                            </div>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                                {stats?.positiveMonthsLogged || 0} active earning months
+                                {stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.zeroMonthsLogged} broke / ₹0` : ""}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            padding: "14px 16px",
+                            borderRadius: 4
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6
+                            }}>
+                                <span className="mono"
+                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
+                                    AVG / MO (ALL CAREER)
+                                </span>
+                                <TrendingUp size={14} color="#7FA87A"/>
+                            </div>
+                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#7FA87A"}}>
+                                {formatCurrency(stats?.avgPerCareerMonth || 0)}<span
+                                style={{fontSize: 12, fontWeight: 400}}>/mo</span>
+                            </div>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                                across all {stats?.careerMonths || 0} career mos (unlogged & ₹0 count as $0)
+                            </div>
+                        </div>
+
+                        <div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            padding: "14px 16px",
+                            borderRadius: 4
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6
+                            }}>
+                                <span className="mono"
+                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
+                                    BEST MONTH
+                                </span>
+                                <Award size={14} color="#8AA9C9"/>
+                            </div>
+                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
+                                {formatCurrency(stats?.highest.total || 0)}
+                            </div>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                                {stats && stats.highest.total > 0 ? `${MONTHS[stats.highest.month - 1]} ${stats.highest.year} (peak record)` : "—"}
+                            </div>
+                        </div>
+
+                        <div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            padding: "14px 16px",
+                            borderRadius: 4
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6
+                            }}>
+                                <span className="mono"
+                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
+                                    MISSING MONTHS
+                                </span>
+                                <Calendar size={14} color="#C99A5B"/>
+                            </div>
+                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
+                                {missingMonthsCount} <span style={{fontSize: 12, fontWeight: 400, color: "#8A8F98"}}>mos unlogged</span>
+                            </div>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginTop: 4
+                            }}>
+                                <span className="mono" style={{fontSize: 11, color: "#5E6570"}}>
+                                    {stats?.coveragePct || 0}% career coverage ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} mos)
+                                </span>
+                                {missingMonthsCount > 0 && (<button
+                                        onClick={() => {
+                                            setOpenSections(prev => ({...prev, ledger: true}));
+                                            setTimeout(() => {
+                                                document.getElementById("career-streak-heatmap")?.scrollIntoView({
+                                                    behavior: "smooth",
+                                                    block: "start"
+                                                });
+                                            }, 100);
+                                        }}
+                                        className="mono"
+                                        style={{
+                                            background: "none",
+                                            border: "none",
+                                            color: "#C9A227",
+                                            fontSize: 11,
+                                            cursor: "pointer",
+                                            padding: 0
+                                        }}
+                                    >
+                                        view gaps &rarr;
+                                    </button>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Executive Insights & Signals */}
+                    <div style={{marginBottom: 24}}>
+                        <div className="mono" style={{
+                            fontSize: 11,
+                            letterSpacing: "0.06em",
+                            color: "#8A8F98",
+                            marginBottom: 12,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6
+                        }}>
+                            <Lightbulb size={13} color="#C9A227"/> EXECUTIVE FINANCIAL SIGNALS ({smartInsights.length})
+                        </div>
+
+                        {smartInsights.length === 0 ? (<div style={{color: "#5E6570", fontSize: 13, padding: "12px 0"}}>
+                                Log your monthly earnings above to generate automated financial insights.
+                            </div>) : (<div style={{
+                                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 12
+                            }}>
+                                {smartInsights.map((insight, idx) => (<div
+                                        key={idx}
+                                        style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            borderLeft: `3px solid ${insight.color}`,
+                                            borderRadius: 4,
+                                            padding: "12px 14px"
+                                        }}
+                                    >
+                                        <div style={{display: "flex", alignItems: "center", gap: 8, marginBottom: 5}}>
+                                            {insight.icon}
+                                            <span className="mono tag-chip" style={{
+                                                background: `${insight.color}22`, color: insight.color
+                                            }}>
+                                                {insight.tag}
+                                            </span>
+                                            <span style={{fontSize: 13, fontWeight: 600, color: "#EDE7D9"}}>
+                                                {insight.title}
+                                            </span>
+                                        </div>
+                                        <div style={{fontSize: 12.5, color: "#8A8F98", lineHeight: 1.5}}>
+                                            {insight.desc}
+                                        </div>
+                                    </div>))}
+                            </div>)}
+                    </div>
+
+                    {/* INTERWEAVED CHARTS: SOURCE PIE & ANNUAL SOURCE MIX */}
+                    {stats && stats.sourceBreakdown.length > 0 && (<div style={{
+                            background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: "16px 20px"
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 16
+                            }}>
+                                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                    <PieIcon size={15} color="#C9A227"/>
+                                    <span className="mono" style={{
+                                        fontSize: 11.5,
+                                        letterSpacing: "0.06em",
+                                        color: "#EDE7D9",
+                                        fontWeight: 700
+                                    }}>
+                                        INCOME STREAM DISTRIBUTION & ARCHITECTURE
+                                    </span>
+                                </div>
+                                <span className="mono" style={{fontSize: 11, color: "#8A8F98"}}>
+                                    {stats.allSources.length} distinct income stream{stats.allSources.length === 1 ? "" : "s"}
+                                </span>
+                            </div>
+
+                            <div className="charts-grid-2">
+                                {/* Donut Breakdown */}
+                                <div style={{
+                                    background: "#14181C",
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 4,
+                                    padding: 14
+                                }}>
+                                    <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                        LIFETIME REVENUE BREAKDOWN
+                                    </div>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <PieChart>
+                                            <Pie
+                                                data={stats.sourceBreakdown}
+                                                dataKey="value"
+                                                nameKey="name"
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={48}
+                                                outerRadius={75}
+                                                paddingAngle={3}
+                                            >
+                                                {stats.sourceBreakdown.map((_, i) => (
+                                                    <Cell key={i} fill={PALETTE[i % PALETTE.length]}/>))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{
+                                                    background: "#1A1F25",
+                                                    border: "1px solid #2A3038",
+                                                    borderRadius: 4,
+                                                    fontSize: 11.5
+                                                }}
+                                                formatter={(val: any) => [formatCurrency(Number(val)), "Earnings"]}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 8,
+                                        justifyContent: "center",
+                                        marginTop: 8
+                                    }}>
+                                        {stats.sourceBreakdown.map((s, i) => (<div key={s.name} style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 5,
+                                                fontSize: 11
+                                            }}>
+                                                <span style={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: 2,
+                                                    background: PALETTE[i % PALETTE.length]
+                                                }}></span>
+                                                <span style={{color: "#8A8F98"}}>{s.name} ({s.pct.toFixed(0)}%)</span>
+                                            </div>))}
+                                    </div>
+                                </div>
+
+                                {/* Stacked Bar Chart by Year */}
+                                <div style={{
+                                    background: "#14181C",
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 4,
+                                    padding: 14
+                                }}>
+                                    <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                        SOURCE EVOLUTION BY YEAR
+                                    </div>
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <BarChart data={stats.stackedByYear}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#1F252C" vertical={false}/>
+                                            <XAxis dataKey="year" stroke="#5E6570" tick={{fontSize: 10}}/>
+                                            <YAxis stroke="#5E6570" tick={{fontSize: 10}}
+                                                   tickFormatter={v => `${Math.round(v / 1000)}k`}/>
+                                            <Tooltip
+                                                contentStyle={{
+                                                    background: "#1A1F25",
+                                                    border: "1px solid #2A3038",
+                                                    borderRadius: 4,
+                                                    fontSize: 11.5
+                                                }}
+                                                formatter={(val: any, name: any) => [formatCurrency(Number(val)), String(name)]}
+                                            />
+                                            {stats.allSources.map((source, i) => (
+                                                <Bar key={source} dataKey={source} stackId="a"
+                                                     fill={PALETTE[i % PALETTE.length]}/>))}
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                    <div style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 8,
+                                        justifyContent: "center",
+                                        marginTop: 8
+                                    }}>
+                                        {stats.allSources.map((source, i) => (<div key={source} style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 5,
+                                                fontSize: 11
+                                            }}>
+                                                <span style={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: 2,
+                                                    background: PALETTE[i % PALETTE.length]
+                                                }}></span>
+                                                <span style={{color: "#8A8F98"}}>{source}</span>
+                                            </div>))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>)}
+                </AccordionSection>
+
+                {/* 3. SECTION: TARGETS & GOALS COMMAND CENTER */}
+                <AccordionSection
+                    id="coins-targets-command"
+                    isOpen={openSections.targets}
+                    onToggle={() => toggleSection("targets")}
+                    icon={<Target size={16} color="#7FA87A"/>}
+                    title="TARGETS & GOALS COMMAND CENTER"
+                    badge={<span className="mono tag-chip" style={{
+                        background: currentYearPctMet >= 100 ? "#7FA87A22" : "#2A3038",
+                        color: currentYearPctMet >= 100 ? "#7FA87A" : "#8A8F98"
+                    }}>
+                            {currentYearTargetMonthly > 0 ? `${CURRENT_YEAR}: ${formatCurrency(currentYearTargetMonthly)}/mo (${currentYearPctMet.toFixed(0)}% met)` : `Set ${CURRENT_YEAR} Target`}
+                        </span>}
+                >
+                    {/* Command Tabs */}
+                    <div style={{
+                        display: "flex", borderBottom: "1px solid #2A3038", marginBottom: 16, gap: 2
+                    }}>
+                        <button
+                            type="button"
+                            onClick={() => setTargetActiveTab("yearly")}
+                            className={`mono nav-pill ${targetActiveTab === "yearly" ? "active" : ""}`}
+                        >
+                            Yearly Targets & Run-Rate
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTargetActiveTab("wallet")}
+                            className={`mono nav-pill ${targetActiveTab === "wallet" ? "active" : ""}`}
+                        >
+                            Wallet Goals Funding
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTargetActiveTab("career")}
+                            className={`mono nav-pill ${targetActiveTab === "career" ? "active" : ""}`}
+                        >
+                            Career Average Target
+                        </button>
+                    </div>
+
+                    {/* TAB 1: YEARLY TARGETS & RUN-RATE */}
+                    {targetActiveTab === "yearly" && (<div>
+                            {/* Current Year Target Hero Card */}
+                            <div style={{
+                                background: "#1A1F25",
+                                border: "1px solid #2A3038",
+                                borderRadius: 4,
+                                padding: "16px 18px",
+                                marginBottom: 18
+                            }}>
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 12,
+                                    flexWrap: "wrap",
+                                    gap: 10
+                                }}>
+                                    <div>
+                                        <span style={{fontSize: 14, fontWeight: 700, color: "#EDE7D9"}}>
+                                            {CURRENT_YEAR} ANNUAL TARGET
+                                        </span>
+                                        {currentYearTargetMonthly > 0 && (<span className="mono" style={{
+                                                fontSize: 12,
+                                                color: "#8A8F98",
+                                                marginLeft: 8
+                                            }}>
+                                                ({formatCurrency(currentYearTargetMonthly)}/mo &times; 12 = {formatCurrency(currentYearTargetAnnual)})
+                                            </span>)}
+                                    </div>
+                                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                        <span className="mono"
+                                              style={{fontSize: 11, color: "#8A8F98"}}>Target / mo:</span>
+                                        <div style={{display: "flex", alignItems: "center", width: 140}}>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="₹ / mo"
+                                                value={coinsTargets[String(CURRENT_YEAR)] ?? ""}
+                                                onChange={e => {
+                                                    const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                                    persistTargets({...coinsTargets, [String(CURRENT_YEAR)]: val});
+                                                }}
+                                                style={{fontSize: 12.5, padding: "5px 8px"}}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {currentYearTargetMonthly > 0 ? (<>
+                                        <div style={{marginBottom: 10}}>
+                                            <div style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                fontSize: 11.5,
+                                                marginBottom: 5
+                                            }} className="mono">
+                                                <span style={{color: "#8A8F98"}}>Earned so far: <strong
+                                                    style={{color: "#EDE7D9"}}>{formatCurrency(currentYearEarned)}</strong></span>
+                                                <span style={{
+                                                    color: currentYearPctMet >= 100 ? "#7FA87A" : "#C9A227",
+                                                    fontWeight: 600
+                                                }}>
+                                                    {currentYearPctMet.toFixed(1)}% of {formatCurrency(currentYearTargetAnnual)}
+                                                </span>
+                                            </div>
+                                            <div style={{
+                                                height: 7,
+                                                background: "#14181C",
+                                                borderRadius: 3,
+                                                overflow: "hidden"
+                                            }}>
+                                                <div style={{
+                                                    width: `${Math.min(100, currentYearPctMet)}%`,
+                                                    height: "100%",
+                                                    background: currentYearPctMet >= 100 ? "#7FA87A" : "#C9A227",
+                                                    transition: "width 0.3s ease"
+                                                }}/>
+                                            </div>
+                                        </div>
+
+                                        <div className="target-kpi-grid">
+                                            <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                                <div className="mono"
+                                                     style={{fontSize: 10, color: "#8A8F98"}}>RUN-RATE
+                                                </div>
+                                                <div className="mono" style={{
+                                                    fontSize: 14,
+                                                    fontWeight: 600,
+                                                    color: "#EDE7D9",
+                                                    marginTop: 2
+                                                }}>
+                                                    {formatCurrency(Math.round(currentYearEarned / Math.max(1, CURRENT_MONTH)))}/mo
+                                                </div>
+                                            </div>
+                                            <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                                <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>TARGET
+                                                    NEEDED
+                                                </div>
+                                                <div className="mono" style={{
+                                                    fontSize: 14,
+                                                    fontWeight: 600,
+                                                    color: "#C9A227",
+                                                    marginTop: 2
+                                                }}>
+                                                    {formatCurrency(currentYearTargetMonthly)}/mo
+                                                </div>
+                                            </div>
+                                            <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                                <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>REMAINING
+                                                    PACE
+                                                </div>
+                                                <div className="mono" style={{
+                                                    fontSize: 14,
+                                                    fontWeight: 600,
+                                                    color: currentYearEarned >= currentYearTargetAnnual ? "#7FA87A" : "#F59E0B",
+                                                    marginTop: 2
+                                                }}>
+                                                    {currentYearEarned >= currentYearTargetAnnual ? "Target Achieved!" : formatCurrency(Math.round((currentYearTargetAnnual - currentYearEarned) / Math.max(1, 12 - CURRENT_MONTH))) + "/mo"}
+                                                </div>
+                                            </div>
+                                            <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                                <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>YEAR-END
+                                                    PROJECTED
+                                                </div>
+                                                <div className="mono" style={{
+                                                    fontSize: 14,
+                                                    fontWeight: 600,
+                                                    color: "#EDE7D9",
+                                                    marginTop: 2
+                                                }}>
+                                                    {formatCurrency(Math.round((currentYearEarned / Math.max(1, CURRENT_MONTH)) * 12))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>) : (<div style={{color: "#8A8F98", fontSize: 12.5}}>
+                                        Set a monthly target for {CURRENT_YEAR} above to track your annual progress bar
+                                        and monthly pacing.
+                                    </div>)}
+                            </div>
+
+                            {/* Collapsible Past/Future Target Years */}
+                            <div style={{marginBottom: 18}}>
+                                <button
+                                    onClick={() => setShowAllTargetYears(s => !s)}
+                                    className="mono"
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: "#C9A227",
+                                        fontSize: 12,
+                                        cursor: "pointer",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        padding: 0
+                                    }}
+                                >
+                                    <Target
+                                        size={13}/> {showAllTargetYears ? "Hide past / future target years" : "Set targets for past or future years..."}
+                                </button>
+
+                                {showAllTargetYears && (<div style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+                                        gap: 10,
+                                        marginTop: 12,
+                                        background: "#1A1F25",
+                                        border: "1px solid #2A3038",
+                                        borderRadius: 4,
+                                        padding: 14
+                                    }}>
+                                        {YEARS.map(y => (<div key={y} style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                                gap: 8
+                                            }}>
+                                                <span className="mono" style={{
+                                                    fontSize: 12,
+                                                    color: y === CURRENT_YEAR ? "#C9A227" : "#8A8F98"
+                                                }}>
+                                                    {y}:
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="any"
+                                                    placeholder="—"
+                                                    value={coinsTargets[String(y)] ?? ""}
+                                                    onChange={e => {
+                                                        const val = e.target.value === "" ? 0 : Number(e.target.value);
+                                                        persistTargets({...coinsTargets, [String(y)]: val});
+                                                    }}
+                                                    style={{fontSize: 11.5, padding: "4px 8px", width: 95}}
+                                                />
+                                            </div>))}
+                                    </div>)}
+                            </div>
+                        </div>)}
+
+                    {/* TAB 2: WALLET GOALS FUNDING CALCULATOR (MULTISELECT, EDITABLE TARGET & DEADLINE, ZERO PAST RATE ACCOUNT) */}
+                    {targetActiveTab === "wallet" && (<div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            borderRadius: 4,
+                            padding: "16px 18px",
+                            marginBottom: 18
+                        }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 14,
+                                flexWrap: "wrap",
+                                gap: 10
+                            }}>
+                                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                    <Wallet size={16} color="#C9A227"/>
+                                    <span style={{fontSize: 14, fontWeight: 700, color: "#EDE7D9"}}>
+                                        WALLET GOALS FUNDING CALCULATOR
+                                    </span>
+                                </div>
+                                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedGoalIds(new Set(pendingWalletGoals.map(g => g.id)))}
+                                        className="mono row-btn"
+                                        style={{fontSize: 11, color: "#C9A227"}}
+                                    >
+                                        Select All
+                                    </button>
+                                    <span style={{color: "#2A3038"}}>•</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedGoalIds(new Set())}
+                                        className="mono row-btn"
+                                        style={{fontSize: 11, color: "#8A8F98"}}
+                                    >
+                                        Clear All
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Goal Multiselect Checklist */}
+                            <div style={{
+                                background: "#14181C",
+                                border: "1px solid #2A3038",
+                                borderRadius: 4,
+                                padding: "12px 14px",
+                                marginBottom: 16
+                            }}>
+                                <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                    GOAL SCOPE ({selectedGoalIds.size} of {pendingWalletGoals.length} selected):
+                                </div>
+                                {pendingWalletGoals.length === 0 ? (<div style={{color: "#5E6570", fontSize: 12.5}}>
+                                        No pending wallet goals found. You can enter a custom target amount below.
+                                    </div>) : (<div style={{display: "flex", flexWrap: "wrap", gap: 8}}>
+                                        {pendingWalletGoals.map((g: any) => {
+                                            const isSelected = selectedGoalIds.has(g.id);
+                                            return (<label
+                                                    key={g.id}
+                                                    style={{
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: 8,
+                                                        padding: "6px 12px",
+                                                        borderRadius: 3,
+                                                        background: isSelected ? "#1F252C" : "transparent",
+                                                        border: `1px solid ${isSelected ? "#C9A227" : "#2A3038"}`,
+                                                        cursor: "pointer",
+                                                        userSelect: "none"
+                                                    }}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => {
+                                                            setSelectedGoalIds(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(g.id)) next.delete(g.id); else next.add(g.id);
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        style={{margin: 0, width: "auto", cursor: "pointer"}}
+                                                    />
+                                                    <span style={{
+                                                        fontSize: 12.5,
+                                                        color: isSelected ? "#EDE7D9" : "#8A8F98",
+                                                        fontWeight: isSelected ? 600 : 400
+                                                    }}>
+                                                        {g.name || g.text || "Goal"}
+                                                    </span>
+                                                    <span className="mono" style={{
+                                                        fontSize: 11.5,
+                                                        color: isSelected ? "#C9A227" : "#5E6570",
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {formatCurrency(Number(g.cost || 0))}
+                                                    </span>
+                                                </label>);
+                                        })}
+                                    </div>)}
+                            </div>
+
+                            {/* Direct Target Amount & Direct Target Deadline Controls */}
+                            <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                                gap: 14,
+                                marginBottom: 16
+                            }}>
+                                <div style={{
+                                    background: "#14181C",
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 4,
+                                    padding: "12px 14px"
+                                }}>
+                                    <div style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: 6
+                                    }}>
+                                        <Label>Target Amount ({currencySymbol}) — Directly Editable</Label>
+                                        {customTargetAmount !== "" && (<button
+                                                type="button"
+                                                onClick={() => setCustomTargetAmount("")}
+                                                className="mono"
+                                                style={{
+                                                    background: "none",
+                                                    border: "none",
+                                                    color: "#C9A227",
+                                                    fontSize: 10.5,
+                                                    cursor: "pointer",
+                                                    padding: 0
+                                                }}
+                                            >
+                                                Reset to selected ({formatCurrency(selectedGoalsSum)})
+                                            </button>)}
+                                    </div>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        placeholder="0"
+                                        value={customTargetAmount !== "" ? customTargetAmount : (selectedGoalsSum > 0 ? selectedGoalsSum : "")}
+                                        onChange={e => setCustomTargetAmount(e.target.value)}
+                                        style={{fontSize: 14, fontWeight: 700, color: "#C9A227"}}
+                                    />
+                                    <div className="mono" style={{fontSize: 10.5, color: "#5E6570", marginTop: 5}}>
+                                        Selected goals sum: {formatCurrency(selectedGoalsSum)}
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    background: "#14181C",
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 4,
+                                    padding: "12px 14px"
+                                }}>
+                                    <div style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: 6
+                                    }}>
+                                        <Label>Target Deadline — Directly Editable</Label>
+                                        <span className="mono" style={{fontSize: 10.5, color: "#8A8F98"}}>
+                                            {walletFundingCalc.daysRemaining} days from today
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="date"
+                                        value={targetDeadline}
+                                        min={TODAY_STR}
+                                        onChange={e => setTargetDeadline(e.target.value)}
+                                        style={{fontSize: 12.5, color: "#EDE7D9"}}
+                                    />
+                                    {/* Quick Deadline Pills */}
+                                    <div style={{display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap"}}>
+                                        <button type="button" onClick={() => setTargetDeadline(addMonthsToToday(3))}
+                                                className="mono tag-chip" style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            color: "#8A8F98",
+                                            cursor: "pointer"
+                                        }}>+3 Mo
+                                        </button>
+                                        <button type="button" onClick={() => setTargetDeadline(addMonthsToToday(6))}
+                                                className="mono tag-chip" style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            color: "#8A8F98",
+                                            cursor: "pointer"
+                                        }}>+6 Mo
+                                        </button>
+                                        <button type="button" onClick={() => setTargetDeadline(`${CURRENT_YEAR}-12-31`)}
+                                                className="mono tag-chip" style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            color: "#8A8F98",
+                                            cursor: "pointer"
+                                        }}>End of {CURRENT_YEAR}</button>
+                                        <button type="button" onClick={() => setTargetDeadline(addMonthsToToday(12))}
+                                                className="mono tag-chip" style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            color: "#8A8F98",
+                                            cursor: "pointer"
+                                        }}>+1 Year
+                                        </button>
+                                        <button type="button" onClick={() => setTargetDeadline(addMonthsToToday(24))}
+                                                className="mono tag-chip" style={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            color: "#8A8F98",
+                                            cursor: "pointer"
+                                        }}>+2 Years
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* The 4 Pure Forward-Looking Calculation Cards */}
+                            {walletFundingCalc.error ? (
+                                <div style={{color: "#8A8F98", fontSize: 13, padding: "12px 0"}}>
+                                    {walletFundingCalc.error}
+                                </div>) : (<div>
+                                    <div className="target-kpi-grid">
+                                        <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                            <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>TARGET
+                                                SCOPE
+                                            </div>
+                                            <div className="mono" style={{
+                                                fontSize: 15,
+                                                fontWeight: 700,
+                                                color: "#EDE7D9",
+                                                marginTop: 2
+                                            }}>
+                                                {formatCurrency(walletFundingCalc.targetAmount)}
+                                            </div>
+                                            <div className="mono"
+                                                 style={{fontSize: 10.5, color: "#5E6570", marginTop: 2}}>
+                                                across {selectedGoalIds.size} selected
+                                                goal{selectedGoalIds.size === 1 ? "" : "s"}
+                                            </div>
+                                        </div>
+
+                                        <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                            <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>TIME
+                                                HORIZON
+                                            </div>
+                                            <div className="mono" style={{
+                                                fontSize: 15,
+                                                fontWeight: 700,
+                                                color: "#8AA9C9",
+                                                marginTop: 2
+                                            }}>
+                                                {walletFundingCalc.daysRemaining} days
+                                            </div>
+                                            <div className="mono"
+                                                 style={{fontSize: 10.5, color: "#5E6570", marginTop: 2}}>
+                                                by {walletFundingCalc.targetDateFormatted}
+                                            </div>
+                                        </div>
+
+                                        <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                            <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>NEEDED /
+                                                MONTH
+                                            </div>
+                                            <div className="mono" style={{
+                                                fontSize: 15,
+                                                fontWeight: 700,
+                                                color: "#C9A227",
+                                                marginTop: 2
+                                            }}>
+                                                {formatCurrency(walletFundingCalc.neededPerMonth)}<span
+                                                style={{fontSize: 11, fontWeight: 400}}>/mo</span>
+                                            </div>
+                                            <div className="mono"
+                                                 style={{fontSize: 10.5, color: "#5E6570", marginTop: 2}}>
+                                                over {walletFundingCalc.monthsRemaining.toFixed(1)} months
+                                            </div>
+                                        </div>
+
+                                        <div style={{background: "#14181C", padding: "10px 12px", borderRadius: 3}}>
+                                            <div className="mono" style={{fontSize: 10, color: "#8A8F98"}}>NEEDED / DAY
+                                                FROM TODAY
+                                            </div>
+                                            <div className="mono" style={{
+                                                fontSize: 15,
+                                                fontWeight: 700,
+                                                color: "#7FA87A",
+                                                marginTop: 2
+                                            }}>
+                                                {formatCurrency(walletFundingCalc.neededPerDay)}<span
+                                                style={{fontSize: 11, fontWeight: 400}}>/day</span>
+                                            </div>
+                                            <div className="mono"
+                                                 style={{fontSize: 10.5, color: "#5E6570", marginTop: 2}}>
+                                                daily funding required
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>)}
+                        </div>)}
+
+                    {/* TAB 3: CAREER AVERAGE TARGET CALCULATOR */}
+                    {targetActiveTab === "career" && (<div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            borderRadius: 4,
+                            padding: "16px 18px",
+                            marginBottom: 18
+                        }}>
+                            <div style={{fontSize: 14, fontWeight: 700, color: "#EDE7D9", marginBottom: 8}}>
+                                CAREER AVERAGE TARGET CALCULATOR
+                            </div>
+                            <div style={{fontSize: 12.5, color: "#8A8F98", lineHeight: 1.5, marginBottom: 14}}>
+                                Your current lifetime career average is <strong
+                                style={{color: "#C9A227"}}>{formatCurrency(stats?.avgPerCareerMonth || 0)}/mo</strong> across
+                                all {stats?.careerMonths || 0} elapsed career months since Jan 2015.
+                            </div>
+                            <div style={{display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap"}}>
+                                <div style={{flex: 1, minWidth: 200}}>
+                                    <Label>Desired Lifetime Career Average ({currencySymbol}/mo)</Label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="e.g. 50000"
+                                        value={calcTarget}
+                                        onChange={e => setCalcTarget(e.target.value)}
+                                    />
+                                </div>
+                                {parseFloat(calcTarget) > 0 && stats && (<div
+                                        style={{flex: 2, background: "#14181C", padding: "10px 14px", borderRadius: 3}}>
+                                        <div className="mono" style={{fontSize: 11, color: "#8A8F98"}}>REQUIRED LIFETIME
+                                            ACCUMULATION
+                                        </div>
+                                        <div className="mono"
+                                             style={{fontSize: 16, fontWeight: 700, color: "#EDE7D9", marginTop: 2}}>
+                                            {formatCurrency(parseFloat(calcTarget) * stats.careerMonths)}
+                                        </div>
+                                        <div style={{fontSize: 11.5, color: "#8A8F98", marginTop: 4}}>
+                                            Current
+                                            gap: {formatCurrency(Math.max(0, (parseFloat(calcTarget) * stats.careerMonths) - stats.total))}
+                                        </div>
+                                    </div>)}
+                            </div>
+                        </div>)}
+
+                    {/* INTERWEAVED CHARTS: TARGET VS ACTUAL BENCHMARK & CUMULATIVE TRAJECTORY */}
+                    <div className="charts-grid-2">
+                        {/* Target Benchmark Chart */}
+                        <div style={{background: "#14181C", border: "1px solid #2A3038", borderRadius: 4, padding: 14}}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 10
+                            }}>
+                                <div className="mono" style={{fontSize: 10.5, color: "#8A8F98"}}>
+                                    YEARLY EARNINGS VS TARGET BENCHMARK
+                                </div>
+                                <div style={{display: "flex", gap: 4}}>
+                                    {(["annual", "monthly"] as const).map(m => (<button
+                                            key={m}
+                                            onClick={() => setYearlyChartMode(m)}
+                                            className="mono"
+                                            style={{
+                                                background: yearlyChartMode === m ? "#2A3038" : "transparent",
+                                                color: yearlyChartMode === m ? "#EDE7D9" : "#8A8F98",
+                                                border: "none",
+                                                padding: "3px 7px",
+                                                borderRadius: 2,
+                                                fontSize: 10,
+                                                cursor: "pointer"
+                                            }}
+                                        >
+                                            {m === "annual" ? "Annual" : "Monthly Pace"}
+                                        </button>))}
+                                </div>
+                            </div>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <ComposedChart data={targetComparisonData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F252C" vertical={false}/>
+                                    <XAxis dataKey="year" stroke="#5E6570" tick={{fontSize: 10}}/>
+                                    <YAxis stroke="#5E6570" tick={{fontSize: 10}}
+                                           tickFormatter={v => `${Math.round(v / 1000)}k`}/>
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            borderRadius: 4,
+                                            fontSize: 11.5
+                                        }}
+                                        formatter={(val: any, name: any) => [formatCurrency(Number(val)), name === "actual" ? "Actual Earned" : "Target Benchmark"]}
+                                    />
+                                    <Bar dataKey="actual" fill="#C9A227" radius={[2, 2, 0, 0]}/>
+                                    <Line type="stepAfter" dataKey="target" stroke="#8AA9C9" strokeWidth={2}
+                                          strokeDasharray="4 4" dot={{r: 3, fill: "#8AA9C9"}}/>
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                            <div className="mono"
+                                 style={{fontSize: 10, color: "#8A8F98", textAlign: "center", marginTop: 6}}>
+                                Dashed line = Target Benchmark • Yellow bars = Actual Earned
+                            </div>
+                        </div>
+
+                        {/* Cumulative Lifetime Trajectory Curve */}
+                        <div style={{background: "#14181C", border: "1px solid #2A3038", borderRadius: 4, padding: 14}}>
+                            <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                CUMULATIVE LIFETIME WEALTH TRAJECTORY
+                            </div>
+                            <ResponsiveContainer width="100%" height={220}>
+                                <AreaChart data={stats?.cumulative || []}>
+                                    <defs>
+                                        <linearGradient id="wealthGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#C9A227" stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor="#C9A227" stopOpacity={0.0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F252C" vertical={false}/>
+                                    <XAxis dataKey="label" stroke="#5E6570" tick={{fontSize: 10}} minTickGap={30}/>
+                                    <YAxis stroke="#5E6570" tick={{fontSize: 10}}
+                                           tickFormatter={v => `${Math.round(v / 1000)}k`}/>
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            borderRadius: 4,
+                                            fontSize: 11.5
+                                        }}
+                                        formatter={(val: any) => [formatCurrency(Number(val)), "Cumulative Total"]}
+                                    />
+                                    <Area type="monotone" dataKey="cumulative" stroke="#C9A227" strokeWidth={2}
+                                          fill="url(#wealthGrad)"/>
+                                </AreaChart>
+                            </ResponsiveContainer>
+                            <div className="mono"
+                                 style={{fontSize: 10, color: "#8A8F98", textAlign: "center", marginTop: 6}}>
+                                Total wealth curve accumulated over career timeline
+                            </div>
+                        </div>
+                    </div>
+                </AccordionSection>
+
+                {/* 4. SECTION: EARNINGS LEDGER & CAREER TIMELINE */}
+                <AccordionSection
+                    id="coins-ledger-timeline"
+                    isOpen={openSections.ledger}
+                    onToggle={() => toggleSection("ledger")}
+                    icon={<Calendar size={16} color="#8AA9C9"/>}
+                    title="EARNINGS LEDGER & CAREER TIMELINE"
+                    badge={<span className="mono tag-chip" style={{background: "#2A3038", color: "#8A8F98"}}>
+                            {visibleEntries.length} entries • {missingMonthsCount} unlogged
+                        </span>}
+                >
+                    {/* GITHUB-STYLE CAREER STREAK HEATMAP */}
+                    <div id="career-streak-heatmap" style={{
+                        background: "#1A1F25",
+                        border: "1px solid #2A3038",
+                        borderRadius: 4,
+                        padding: "16px 20px",
+                        marginBottom: 20
+                    }}>
+                        <div style={{
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            color: "#EDE7D9"
-                        }}
-                    >
-                        <span style={{fontSize: 16, fontWeight: 600}}>{year}</span>
-                        <span className="mono"
-                              style={{fontSize: 13, color: "#C9A227"}}>{formatCurrency(yearTotal)}</span>
-                    </button>
-                    {isOpen && (<div className="table-scroll">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th style={{width: 70}}>Month</th>
-                                <th style={{width: 110}}>Amount</th>
-                                <th style={{width: 110}}>Source</th>
-                                <th>Notes</th>
-                                <th style={{width: 64}}></th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {list.map((en: CoinsEntry) => (<tr key={en.id}>
-                                <td>{MONTHS[en.month - 1]}</td>
-                                <td className="mono">{formatCurrency(en.amount)}</td>
-                                <td style={{color: "#8A8F98"}}>{en.source}</td>
-                                <td style={{color: "#8A8F98", fontSize: 13}}>{en.notes || "—"}</td>
-                                <td>
-                                    <div style={{display: "flex", gap: 2}}>
-                                        <button className="row-btn"
-                                                onClick={() => startEdit(en as CoinsEntry)}><Pencil
-                                            size={13}/></button>
-                                        <button className="row-btn" onClick={() => removeEntry(en.id)}>
-                                            <Trash2 size={13}/></button>
-                                    </div>
-                                </td>
-                            </tr>))}
-                            </tbody>
-                        </table>
-                    </div>)}
+                            marginBottom: 14,
+                            flexWrap: "wrap",
+                            gap: 10
+                        }}>
+                            <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                <Flame size={15} color="#C9A227"/>
+                                <span className="mono" style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    letterSpacing: "0.06em",
+                                    color: "#EDE7D9"
+                                }}>
+                                    CAREER TIMELINE & LOGGED MONTHS ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} logged{stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.positiveMonthsLogged} positive, ${stats.zeroMonthsLogged} broke/₹0` : ""})
+                                </span>
+                            </div>
+                            <div style={{display: "flex", alignItems: "center", gap: 14, fontSize: 11}}
+                                 className="mono">
+                                <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
+                                    <span style={{width: 9, height: 9, background: "#C9A227", borderRadius: 2}}></span> logged (&gt;₹0)
+                                </span>
+                                <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
+                                    <span style={{
+                                        width: 9,
+                                        height: 9,
+                                        background: "#78350F",
+                                        border: "1px solid #F59E0B",
+                                        borderRadius: 2
+                                    }}></span> logged (₹0 / broke)
+                                </span>
+                                <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
+                                    <span style={{
+                                        width: 9,
+                                        height: 9,
+                                        background: "#14181C",
+                                        border: "1px solid #2A3038",
+                                        borderRadius: 2
+                                    }}></span> unlogged
+                                </span>
+                            </div>
+                        </div>
 
-                </div>);
-            })}
-        </div>
-    </div>);
+                        {/* Heatmap Grid */}
+                        <div style={{overflowX: "auto", paddingBottom: 6}}>
+                            <div style={{display: "flex", flexDirection: "column", gap: 4, minWidth: 320}}>
+                                {YEARS.filter(y => y <= (dynamicTimeline[dynamicTimeline.length - 1]?.year || CURRENT_YEAR)).map(y => (
+                                    <div key={y} style={{display: "flex", alignItems: "center", gap: 6}}>
+                                        <span className="mono" style={{fontSize: 10.5, color: "#8A8F98", width: 34}}>
+                                            {y}
+                                        </span>
+                                        <div style={{display: "flex", gap: 4}}>
+                                            {MONTHS.map((m, idx) => {
+                                                const mm = idx + 1;
+                                                const isPastOrPresent = y < CURRENT_YEAR || (y === CURRENT_YEAR && mm <= CURRENT_MONTH) || dynamicTimeline.some(d => d.year === y && d.month === mm);
+                                                const k = monthKey(y, mm);
+                                                const isPositive = stats?.positiveMonthSet.has(k);
+                                                const isZeroLogged = stats?.zeroMonthSet.has(k);
+                                                const monthData = stats?.byMonthMap?.[k];
+
+                                                const cellBg = isPositive ? "#C9A227" : isZeroLogged ? "#78350F" : (isPastOrPresent ? "#14181C" : "transparent");
+
+                                                const cellBorder = isPositive ? "1px solid #E0B838" : isZeroLogged ? "1px solid #F59E0B" : (isPastOrPresent ? "1px solid #2A3038" : "1px dashed #1F252C");
+
+                                                const cellTitle = isPositive ? `${m} ${y}: Logged ${formatCurrency(monthData?.total || 0)} (${monthData?.sources.join(", ") || "Income"})` : isZeroLogged ? `${m} ${y}: Logged ₹0.00 (Broke / Zero Income - ${monthData?.sources.join(", ") || "Nil"})` : (isPastOrPresent ? `${m} ${y}: Unlogged (Missing record)` : `${m} ${y}: Future`);
+
+                                                return (<div
+                                                        key={mm}
+                                                        title={cellTitle}
+                                                        onClick={() => {
+                                                            setMode("monthly");
+                                                            setEntryYear(y);
+                                                            setEntryMonth(mm);
+                                                            setOpenSections(prev => ({...prev, form: true}));
+                                                            setTimeout(() => {
+                                                                document.getElementById("coins-entry-form")?.scrollIntoView({behavior: "smooth"});
+                                                            }, 100);
+                                                        }}
+                                                        style={{
+                                                            width: 14,
+                                                            height: 14,
+                                                            borderRadius: 2,
+                                                            background: cellBg,
+                                                            border: cellBorder,
+                                                            cursor: "pointer",
+                                                            transition: "transform 0.1s ease"
+                                                        }}
+                                                    />);
+                                            })}
+                                        </div>
+                                    </div>))}
+                            </div>
+                        </div>
+
+                        {/* Missing Spans with 1-Click Backfill */}
+                        {stats && stats.missingRanges.length > 0 && (
+                            <div style={{marginTop: 14, paddingTop: 12, borderTop: "1px solid #2A3038"}}>
+                                <div className="mono" style={{fontSize: 11, color: "#8A8F98", marginBottom: 8}}>
+                                    UNLOGGED RANGES (CLICK TO AUTOFİLL FORM):
+                                </div>
+                                <div style={{display: "flex", flexWrap: "wrap", gap: 8}}>
+                                    {stats.missingRanges.slice(0, 5).map((r, i) => (<div
+                                            key={i}
+                                            style={{
+                                                background: "#14181C",
+                                                border: "1px solid #2A3038",
+                                                borderRadius: 3,
+                                                padding: "4px 8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 8,
+                                                fontSize: 11
+                                            }}
+                                            className="mono"
+                                        >
+                                            <span style={{color: "#EDE7D9"}}>
+                                                {MONTHS[r.startMonth - 1]} {r.startYear} &ndash; {MONTHS[r.endMonth - 1]} {r.endYear}
+                                            </span>
+                                            <span style={{color: "#8A8F98"}}>({r.count} mos)</span>
+                                            <button
+                                                onClick={() => handleFillMissingRange(r)}
+                                                className="tag-chip"
+                                                style={{
+                                                    background: "#2A3038",
+                                                    color: "#C9A227",
+                                                    border: "none",
+                                                    cursor: "pointer"
+                                                }}
+                                            >
+                                                Fill
+                                            </button>
+                                        </div>))}
+                                </div>
+                            </div>)}
+                    </div>
+
+                    {/* INTERWEAVED CHARTS: MONTHLY TRENDLINE & YOY GROWTH */}
+                    <div className="charts-grid-2" style={{marginBottom: 20}}>
+                        {/* Month by month trend */}
+                        <div style={{background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: 14}}>
+                            <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                HISTORICAL MONTH-BY-MONTH TREND
+                            </div>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <LineChart data={stats?.trendLine || []}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F252C" vertical={false}/>
+                                    <XAxis dataKey="label" stroke="#5E6570" tick={{fontSize: 9}} minTickGap={25}/>
+                                    <YAxis stroke="#5E6570" tick={{fontSize: 10}}
+                                           tickFormatter={v => `${Math.round(v / 1000)}k`}/>
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            borderRadius: 4,
+                                            fontSize: 11.5
+                                        }}
+                                        formatter={(val: any) => [formatCurrency(Number(val)), "Monthly Total"]}
+                                    />
+                                    <Line type="monotone" dataKey="total" stroke="#7FA87A" strokeWidth={2} dot={false}/>
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* YoY Growth % */}
+                        <div style={{background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: 14}}>
+                            <div className="mono" style={{fontSize: 10.5, color: "#8A8F98", marginBottom: 10}}>
+                                YEAR-OVER-YEAR REVENUE GROWTH (%)
+                            </div>
+                            <ResponsiveContainer width="100%" height={200}>
+                                <BarChart data={stats?.yoyGrowth || []}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1F252C" vertical={false}/>
+                                    <XAxis dataKey="year" stroke="#5E6570" tick={{fontSize: 10}}/>
+                                    <YAxis stroke="#5E6570" tick={{fontSize: 10}} tickFormatter={v => `${v}%`}/>
+                                    <Tooltip
+                                        contentStyle={{
+                                            background: "#1A1F25",
+                                            border: "1px solid #2A3038",
+                                            borderRadius: 4,
+                                            fontSize: 11.5
+                                        }}
+                                        formatter={(val: any) => [`${Number(val)}%`, "YoY Growth"]}
+                                    />
+                                    <Bar dataKey="pct" fill="#7FA87A" radius={[2, 2, 0, 0]}/>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Filter Bar */}
+                    <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 12,
+                        flexWrap: "wrap",
+                        gap: 10
+                    }}>
+                        <div className="mono"
+                             style={{fontSize: 11, color: "#8A8F98", letterSpacing: "0.06em", fontWeight: 600}}>
+                            FILTER & SEARCH ENTRIES
+                        </div>
+                        <button
+                            onClick={() => setShowFilters(s => !s)}
+                            className="mono"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                background: showFilters || filtersActive ? "#2A3038" : "#1A1F25",
+                                border: "1px solid #2A3038",
+                                color: "#D8D2C4",
+                                padding: "6px 10px",
+                                borderRadius: 3,
+                                fontSize: 11,
+                                cursor: "pointer"
+                            }}
+                        >
+                            <Filter size={12}/> Filter{filtersActive ? " (Active)" : ""}
+                        </button>
+                    </div>
+
+                    {showFilters && (<div style={{
+                            background: "#1A1F25",
+                            border: "1px solid #2A3038",
+                            borderRadius: 4,
+                            padding: 14,
+                            marginBottom: 16
+                        }}>
+                            <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                                gap: 10,
+                                marginBottom: 10
+                            }}>
+                                <div>
+                                    <Label>Source</Label>
+                                    <select value={filters.source}
+                                            onChange={e => setFilters({...filters, source: e.target.value})}>
+                                        <option value="all">All Sources</option>
+                                        {uniqueSources.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label>From Year</Label>
+                                    <select value={filters.fromYear}
+                                            onChange={e => setFilters({...filters, fromYear: Number(e.target.value)})}>
+                                        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label>To Year</Label>
+                                    <select value={filters.toYear}
+                                            onChange={e => setFilters({...filters, toYear: Number(e.target.value)})}>
+                                        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <Label>Min Amount ({currencySymbol})</Label>
+                                    <input type="number" min="0" placeholder="—" value={filters.minAmount}
+                                           onChange={e => setFilters({...filters, minAmount: e.target.value})}/>
+                                </div>
+                                <div>
+                                    <Label>Max Amount ({currencySymbol})</Label>
+                                    <input type="number" min="0" placeholder="—" value={filters.maxAmount}
+                                           onChange={e => setFilters({...filters, maxAmount: e.target.value})}/>
+                                </div>
+                                <div>
+                                    <Label>Search Notes</Label>
+                                    <input placeholder="startup, dividend, raise…" value={filters.search}
+                                           onChange={e => setFilters({...filters, search: e.target.value})}/>
+                                </div>
+                            </div>
+
+                            {filtersActive && (<button
+                                    onClick={() => setFilters({
+                                        source: "all",
+                                        fromYear: CAREER_START_YEAR,
+                                        toYear: CURRENT_YEAR + 1,
+                                        minAmount: "",
+                                        maxAmount: "",
+                                        search: ""
+                                    })}
+                                    className="row-btn mono"
+                                    style={{fontSize: 11.5, gap: 4}}
+                                >
+                                    <X size={12}/> Clear Filters
+                                </button>)}
+                        </div>)}
+
+                    {/* Year-by-Year Collapsible Ledger Tables */}
+                    {activeYears.length === 0 ? (
+                        <div style={{color: "#5E6570", fontSize: 13.5, padding: "20px 0", textAlign: "center"}}>
+                            {visibleEntries.length === 0 ? "No entries found. Log your first month above." : "No entries match these filters."}
+                        </div>) : (activeYears.map(year => {
+                            const list = coinsEntriesByYear[year] || [];
+                            const yearTotal = list.reduce((s, e) => s + e.amount, 0);
+                            const isOpen = expandedYear === year;
+                            return (<div key={year} style={{
+                                    border: "1px solid #2A3038",
+                                    borderRadius: 4,
+                                    marginBottom: 10,
+                                    overflow: "hidden"
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpandedYear(isOpen ? null : year)}
+                                        style={{
+                                            width: "100%",
+                                            background: "#1A1F25",
+                                            border: "none",
+                                            padding: "12px 16px",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                            color: "#EDE7D9",
+                                            cursor: "pointer"
+                                        }}
+                                    >
+                                        <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                                            <ChevronRight size={14} style={{
+                                                transform: isOpen ? "rotate(90deg)" : "none",
+                                                transition: "transform 0.15s ease",
+                                                color: "#8A8F98"
+                                            }}/>
+                                            <span style={{fontSize: 15, fontWeight: 600}}>{year}</span>
+                                            <span className="mono" style={{
+                                                fontSize: 11,
+                                                color: "#8A8F98"
+                                            }}>({list.length} {list.length === 1 ? "stream entry" : "stream entries"})</span>
+                                        </div>
+                                        <span className="mono"
+                                              style={{fontSize: 13, color: "#C9A227", fontWeight: 600}}>
+                                            {formatCurrency(yearTotal)}
+                                        </span>
+                                    </button>
+
+                                    {isOpen && (<div className="table-scroll">
+                                            <table>
+                                                <thead>
+                                                <tr>
+                                                    <th style={{width: 80}}>Month</th>
+                                                    <th style={{width: 130}}>Amount</th>
+                                                    <th style={{width: 130}}>Source</th>
+                                                    <th>Notes</th>
+                                                    <th style={{width: 64}}></th>
+                                                </tr>
+                                                </thead>
+                                                <tbody>
+                                                {list.map(en => (<tr key={en.id}>
+                                                        <td>
+                                                                <span className="mono"
+                                                                      style={{fontWeight: 600, color: "#EDE7D9"}}>
+                                                                    {MONTHS[en.month - 1]}
+                                                                </span>
+                                                        </td>
+                                                        <td className="mono" style={{
+                                                            fontWeight: 600,
+                                                            color: en.amount === 0 ? "#8A8F98" : "#C9A227"
+                                                        }}>
+                                                            {formatCurrency(en.amount)}
+                                                            {en.amount === 0 && (<span style={{
+                                                                    fontSize: 9.5,
+                                                                    marginLeft: 6,
+                                                                    padding: "1px 5px",
+                                                                    background: "#3A281E",
+                                                                    color: "#F59E0B",
+                                                                    borderRadius: 2,
+                                                                    border: "1px solid #78350F"
+                                                                }}>
+                                                                        Broke / Nil
+                                                                    </span>)}
+                                                        </td>
+                                                        <td>
+                                                                <span className="mono tag-chip" style={{
+                                                                    background: en.amount === 0 ? "#2B1E17" : "#2A3038",
+                                                                    color: en.amount === 0 ? "#F59E0B" : "#EDE7D9",
+                                                                    border: en.amount === 0 ? "1px solid #78350F" : "none"
+                                                                }}>
+                                                                    {en.source}
+                                                                </span>
+                                                        </td>
+                                                        <td style={{
+                                                            color: "#8A8F98",
+                                                            fontSize: 13
+                                                        }}>{en.notes || "—"}</td>
+                                                        <td>
+                                                            <div style={{display: "flex", gap: 2}}>
+                                                                <button className="row-btn"
+                                                                        onClick={() => startEdit(en)}
+                                                                        title="Edit entry">
+                                                                    <Pencil size={13}/>
+                                                                </button>
+                                                                <button className="row-btn"
+                                                                        onClick={() => removeEntry(en.id)}
+                                                                        title="Delete entry">
+                                                                    <Trash2 size={13}/>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>))}
+                                                </tbody>
+                                            </table>
+                                        </div>)}
+                                </div>);
+                        }))}
+                </AccordionSection>
+
+            </div>
+        </div>);
 }
 
-function SummaryCell({icon, label, value, sub}: { icon: React.ReactNode, label: string, value: string, sub?: string }) {
-    return (<div style={{background: "#1A1F25", padding: "16px 18px"}}>
-        <div style={{display: "flex", alignItems: "center", gap: 6, color: "#8A8F98", marginBottom: 8}}>
-            {icon}
-            <span className="mono" style={{fontSize: 10.5, letterSpacing: "0.05em"}}>{label.toUpperCase()}</span>
-        </div>
-        <div style={{fontSize: 20, fontWeight: 600}}>{value}</div>
-        {sub && <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 2}}>{sub}</div>}
-    </div>);
-}
-
-function ChartCard({title, children, style}: {
-    title: string, children: React.ReactNode, style?: React.CSSProperties
+function AccordionSection({
+                              id, isOpen, onToggle, icon, title, badge, children, headerRight
+                          }: {
+    id?: string;
+    isOpen: boolean;
+    onToggle: () => void;
+    icon: React.ReactNode;
+    title: string;
+    badge?: React.ReactNode;
+    children: React.ReactNode;
+    headerRight?: React.ReactNode;
 }) {
-    return (<div style={{
-        background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: "16px 18px", ...style
-    }}>
-        <div className="mono" style={{
-            fontSize: 11, letterSpacing: "0.05em", color: "#8A8F98", marginBottom: 10
-        }}>{title.toUpperCase()}</div>
-        {children}
-    </div>);
+    return (
+        <div id={id} style={{borderRadius: 4, overflow: "hidden", border: "1px solid #2A3038", background: "#14181C"}}>
+            <div
+                className="accordion-header"
+                onClick={onToggle}
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "13px 18px",
+                    background: "#1A1F25",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    borderBottom: isOpen ? "1px solid #2A3038" : "none",
+                    transition: "background 0.15s ease"
+                }}
+            >
+                <div style={{display: "flex", alignItems: "center", gap: 10, minWidth: 0, flexWrap: "wrap"}}>
+                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                        {icon}
+                        <span className="mono"
+                              style={{fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", color: "#EDE7D9"}}>
+                            {title}
+                        </span>
+                    </div>
+                    {badge && (<div>{badge}</div>)}
+                </div>
+
+                <div style={{display: "flex", alignItems: "center", gap: 10, flexShrink: 0}}>
+                    {headerRight}
+                    <ChevronDown
+                        size={16}
+                        style={{
+                            color: "#8A8F98",
+                            transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)",
+                            transition: "transform 0.2s ease"
+                        }}
+                    />
+                </div>
+            </div>
+
+            {isOpen && (<div style={{padding: "18px 20px"}}>
+                    {children}
+                </div>)}
+        </div>);
 }
 
 function Label({children}: { children: React.ReactNode }) {

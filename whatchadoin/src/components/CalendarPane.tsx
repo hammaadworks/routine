@@ -16,6 +16,7 @@ interface CalendarPaneProps {
     dayMapping: DayMapping;
     setCalendarSubTab?: (tab: CalendarSubTab) => void;
     calendarSubTab?: CalendarSubTab;
+    milestones?: Record<string, string>;
 }
 
 const CalendarPane: React.FC<CalendarPaneProps> = ({
@@ -29,6 +30,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        templates,
                                                        dayMapping,
                                                        setCalendarSubTab,
+                                                       milestones: passedMilestones,
                                                    }) => {
     const visibleHabits = useMemo(() => {
         return (habits || []).filter((h) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
@@ -138,7 +140,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         return !!activeRoutine.start && !!activeRoutine.end && dateStr >= activeRoutine.start && dateStr <= activeRoutine.end;
     };
 
-    const milestones = (activeRoutine.milestones as Record<string, string> | undefined) || {};
+    const milestones = passedMilestones || (activeRoutine.milestones as Record<string, string> | undefined) || {};
 
     return (<div style={{
         display: 'flex', flexDirection: 'column', height: '100%', flex: 1, overflow: 'hidden', minHeight: 0

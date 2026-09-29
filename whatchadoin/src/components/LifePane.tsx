@@ -1,13 +1,14 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {Activity, Plus, Star, Clock, Pencil} from 'lucide-react';
+import {Activity, Clock, Pencil, Plus, Star} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
-import { useDragReorder } from '../hooks/useDragReorder';
-import { formatCompactDuration } from '../utils';
+import {useDragReorder} from '../hooks/useDragReorder';
+import {formatCompactDuration} from '../utils';
+import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -30,10 +31,13 @@ interface LifePaneProps {
     setLifeGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
     routineGoals?: Goal[];
     setRoutineGoals?: React.Dispatch<React.SetStateAction<Goal[]>>;
+    moneyGoals?: any[];
+    setMoneyGoals?: React.Dispatch<React.SetStateAction<any[]>>;
     habits?: any[];
     setHabits?: React.Dispatch<React.SetStateAction<any[]>>;
     headerTabs?: React.ReactNode;
     onLifeGoalBadgeClick?: (id: string) => void;
+    setActiveLeftTab?: (tab: GoalCategory) => void;
 }
 
 interface ConfirmConfig {
@@ -45,25 +49,40 @@ interface ConfirmConfig {
 }
 
 export default function LifePane({
-    isPublicView,
+                                     isPublicView,
                                      lifeGoals,
                                      setLifeGoals,
                                      routineGoals,
                                      setRoutineGoals,
+                                     setMoneyGoals,
                                      habits,
                                      setHabits,
                                      headerTabs,
-                                     onLifeGoalBadgeClick
+                                     onLifeGoalBadgeClick,
+                                     setActiveLeftTab
                                  }: LifePaneProps) {
     const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
     const [editingLifeGoalId, setEditingLifeGoalId] = useState<string | null>(null);
-    const [lifeGoalForm, setLifeGoalForm] = useState<{name: string; color: string; desc: string; cost: string, isPublic?: boolean}>({name: '', color: '', desc: '', cost: ''});
+    const [lifeGoalForm, setLifeGoalForm] = useState<{
+        name: string;
+        color: string;
+        desc: string;
+        cost: string;
+        isPublic?: boolean;
+        category?: GoalCategory
+    }>({name: '', color: '', desc: '', cost: '', category: 'life'});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerLifeGoalId, setDrawerLifeGoalId] = useState<string | null>(null);
     const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
 
-    const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(lifeGoals, setLifeGoals as any);
+    const {
+        handleDragStart,
+        handleDragEnter,
+        handleDragEnd,
+        dragItemIndex,
+        dragOverItemIndex
+    } = useDragReorder(lifeGoals, setLifeGoals as any);
 
     useEffect(() => {
         const handleFab = () => openAddLifeGoal();
@@ -76,7 +95,7 @@ export default function LifePane({
     const openAddLifeGoal = () => {
         setEditingLifeGoalId(null);
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setLifeGoalForm({name: '', isPublic: true, color: randomColor, desc: '', cost: ''});
+        setLifeGoalForm({name: '', isPublic: true, color: randomColor, desc: '', cost: '', category: 'life'});
         setShowLifeGoalModal(true);
     };
 
@@ -85,41 +104,51 @@ export default function LifePane({
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
         const goalName = goal.name || '';
-        setLifeGoalForm({name: goalName, color: goalColor, desc: goal.desc || '', cost: goal.cost ? String(goal.cost) : '', isPublic: !!goal.isPublic});
+        setLifeGoalForm({
+            name: goalName,
+            color: goalColor,
+            desc: goal.desc || '',
+            cost: goal.cost ? String(goal.cost) : '',
+            isPublic: !!goal.isPublic,
+            category: 'life'
+        });
         setShowLifeGoalModal(true);
     };
 
     const saveLifeGoal = (e: React.SyntheticEvent) => {
         e.preventDefault();
-        const cleanName = lifeGoalForm.name.trim();
-        if (!cleanName) return;
-        const costValue = lifeGoalForm.cost ? parseFloat(String(lifeGoalForm.cost)) : undefined;
+        const originalGoal = editingLifeGoalId ? lifeGoals.find(g => g.id === editingLifeGoalId) : undefined;
+        moveOrSaveGoal({
+            goalId: editingLifeGoalId,
+            sourceCategory: 'life',
+            targetCategory: lifeGoalForm.category || 'life',
+            isDuplicate: false,
+            formData: lifeGoalForm,
+            originalGoal,
+            setLifeGoals,
+            setMoneyGoals,
+            setRoutineGoals,
+            setActiveLeftTab,
+            onSuccess: () => setShowLifeGoalModal(false)
+        });
+    };
 
-        if (editingLifeGoalId) {
-            setLifeGoals(prev => prev.map(g => {
-                if (g.id !== editingLifeGoalId) return g;
-                const { text: _text, title: _title, task: _task, ...cleanG } = g as any;
-                return {
-                    ...cleanG,
-                    name: cleanName,
-                    isPublic: !!lifeGoalForm.isPublic, color: lifeGoalForm.color,
-                    desc: lifeGoalForm.desc,
-                    cost: costValue
-                };
-            }));
-        } else {
-            const now = new Date().toISOString();
-            setLifeGoals([...lifeGoals, {
-                id: 'lg-' + Date.now(),
-                name: cleanName,
-                isPublic: !!lifeGoalForm.isPublic, color: lifeGoalForm.color,
-                completed: false,
-                desc: lifeGoalForm.desc,
-                cost: costValue,
-                createdAt: now
-            }]);
-        }
-        setShowLifeGoalModal(false);
+    const handleDuplicateLifeGoal = () => {
+        if (!editingLifeGoalId) return;
+        const originalGoal = lifeGoals.find(g => g.id === editingLifeGoalId);
+        moveOrSaveGoal({
+            goalId: editingLifeGoalId,
+            sourceCategory: 'life',
+            targetCategory: lifeGoalForm.category || 'life',
+            isDuplicate: true,
+            formData: lifeGoalForm,
+            originalGoal,
+            setLifeGoals,
+            setMoneyGoals,
+            setRoutineGoals,
+            setActiveLeftTab,
+            onSuccess: () => setShowLifeGoalModal(false)
+        });
     };
 
     const toggleLife = (id: string) => {
@@ -128,9 +157,7 @@ export default function LifePane({
             if (g.id !== id) return g;
             const isCompleting = !g.completed;
             return {
-                ...g,
-                completed: isCompleting,
-                completedAt: isCompleting ? ((g as any).completedAt || now) : undefined
+                ...g, completed: isCompleting, completedAt: isCompleting ? ((g as any).completedAt || now) : undefined
             };
         }));
     };
@@ -151,7 +178,7 @@ export default function LifePane({
                     setHabits(habits.map(g => {
                         const lIds = Array.isArray(g.lifeGoalIds) ? g.lifeGoalIds : (g.lifeGoalId ? [g.lifeGoalId] : []);
                         const newLIds = lIds.filter((lid: string) => lid !== id);
-                        return { ...g, lifeGoalIds: newLIds, lifeGoalId: g.lifeGoalId === id ? '' : g.lifeGoalId };
+                        return {...g, lifeGoalIds: newLIds, lifeGoalId: g.lifeGoalId === id ? '' : g.lifeGoalId};
                     }));
                 }
 
@@ -182,7 +209,6 @@ export default function LifePane({
     if (sortByName) {
         displayedGoals.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
-
 
 
     return (
@@ -274,35 +300,48 @@ export default function LifePane({
 
                         return (<>
                             {activeGoals.map(renderGoal)}
-                            {completedGoals.length > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 8px 0', justifyContent: 'space-between' }}>
-                                  <span style={{ 
-                                    padding: '0 12px 0 0', 
-                                    fontSize: '12px', 
-                                    color: 'var(--text-secondary)',
-                                    fontWeight: 500
+                            {completedGoals.length > 0 && (<div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                margin: '16px 0 8px 0',
+                                justifyContent: 'space-between'
+                            }}>
+                                  <span style={{
+                                      padding: '0 12px 0 0',
+                                      fontSize: '12px',
+                                      color: 'var(--text-secondary)',
+                                      fontWeight: 500
                                   }}>
                                     Completed
                                   </span>
-                                  <div style={{ flex: 1, height: '1px', background: 'var(--panel-border)' }}></div>
-                                  <button 
-                                     onClick={() => {
+                                <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                <button
+                                    onClick={() => {
                                         setConfirmConfig({
-                                          title: 'Delete All Completed',
-                                          message: 'Are you sure you want to delete all completed life goals? This cannot be undone.',
-                                          isDanger: true,
-                                          onConfirm: () => {
-                                            setLifeGoals(lifeGoals.filter((g: any) => !g.completed));
-                                            setConfirmConfig(null);
-                                          },
-                                          onCancel: () => setConfirmConfig(null)
+                                            title: 'Delete All Completed',
+                                            message: 'Are you sure you want to delete all completed life goals? This cannot be undone.',
+                                            isDanger: true,
+                                            onConfirm: () => {
+                                                setLifeGoals(lifeGoals.filter((g: any) => !g.completed));
+                                                setConfirmConfig(null);
+                                            },
+                                            onCancel: () => setConfirmConfig(null)
                                         });
-                                     }}
-                                     className="icon-btn"
-                                     style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', cursor: 'pointer', padding: '4px 8px', fontWeight: 500, opacity: 0.8 }}>
-                                     Delete all
-                                  </button>
-                              </div>)}
+                                    }}
+                                    className="icon-btn"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--danger)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        fontWeight: 500,
+                                        opacity: 0.8
+                                    }}>
+                                    Delete all
+                                </button>
+                            </div>)}
                             {completedGoals.map(renderGoal)}
                         </>);
                     })()}
@@ -344,7 +383,8 @@ export default function LifePane({
                     <Activity size={14} color="var(--accent)"/>
                     {(() => {
                         const visibleLifeGoals = (lifeGoals || []).filter((g: any) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
-                        return <>Life Goals : {visibleLifeGoals.filter((g: any) => g.completed).length} / {visibleLifeGoals.length}</>;
+                        return <>Life Goals
+                            : {visibleLifeGoals.filter((g: any) => g.completed).length} / {visibleLifeGoals.length}</>;
                     })()}
                 </div>
             </div>
@@ -357,6 +397,7 @@ export default function LifePane({
             <Star size={18} color="var(--accent)"/>
                     {editingLifeGoalId ? 'Edit Life Goal' : 'What you wanna achieve in life?'}
           </span>}
+                bodyClassName="modal-body-fixed-footer"
             >
                 <GoalForm
                     formData={lifeGoalForm}
@@ -367,9 +408,11 @@ export default function LifePane({
                         deleteLifeGoal(editingLifeGoalId, lifeGoalForm.name);
                         setShowLifeGoalModal(false);
                     } : undefined}
+                    onDuplicate={editingLifeGoalId ? handleDuplicateLifeGoal : undefined}
                     isEditing={!!editingLifeGoalId}
                     colorError={colorError}
                     setColorError={setColorError}
+                    currentCategory="life"
                 />
             </BaseModal>
 
@@ -447,20 +490,16 @@ export default function LifePane({
                     return lIds.includes(infoGoalId) && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
                 });
 
-                return (
-                    <BaseModal
+                return (<BaseModal
                         isOpen={true}
                         onClose={() => setInfoGoalId(null)}
-                        title={
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hex }}>
-                                <Star size={18} color={hex} />
-                                {goal.name}
-                            </span>
-                        }
+                        title={<span style={{display: 'flex', alignItems: 'center', gap: '8px', color: hex}}>
+                                <Star size={18} color={hex}/>
+                            {goal.name}
+                            </span>}
                     >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {timeInfo && (
-                                <div style={{
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            {timeInfo && (<div style={{
                                     background: `${hex}15`,
                                     border: `1px solid ${hex}40`,
                                     padding: '12px',
@@ -471,61 +510,91 @@ export default function LifePane({
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                    <Clock size={16} color={hex} />
+                                    <Clock size={16} color={hex}/>
                                     <span>{timeInfo.fullText}</span>
-                                </div>
-                            )}
+                                </div>)}
 
-                            {goal.desc && (
-                                <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                            {goal.desc && (<div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Description
                                     </div>
-                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                                    <div style={{
+                                        background: 'var(--surface-light)',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        whiteSpace: 'pre-wrap'
+                                    }}>
                                         {goal.desc}
                                     </div>
-                                </div>
-                            )}
+                                </div>)}
 
-                            {typeof goal.cost === 'number' && goal.cost > 0 && (
-                                <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                            {typeof goal.cost === 'number' && goal.cost > 0 && (<div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Estimated Cost
                                     </div>
-                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px' }}>
+                                    <div style={{
+                                        background: 'var(--surface-light)',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        fontSize: '14px'
+                                    }}>
                                         ${goal.cost}
                                     </div>
-                                </div>
-                            )}
+                                </div>)}
 
                             <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold' }}>
+                                <div style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '6px',
+                                    fontWeight: 'bold'
+                                }}>
                                     Linked Habits & Routines ({linkedHabits.length + linkedRoutines.length})
                                 </div>
-                                {linkedHabits.length === 0 && linkedRoutines.length === 0 ? (
-                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No linked habits yet.</div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                        {linkedRoutines.map(r => (
-                                            <span key={r.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                {linkedHabits.length === 0 && linkedRoutines.length === 0 ? (<div style={{
+                                        fontSize: '13px',
+                                        color: 'var(--text-secondary)',
+                                        fontStyle: 'italic'
+                                    }}>No linked habits yet.</div>) : (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                        {linkedRoutines.map(r => (<span key={r.id} style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                background: 'var(--surface-light)',
+                                                fontSize: '12px',
+                                                border: '1px solid var(--border)'
+                                            }}>
                                                 {r.name}
-                                            </span>
-                                        ))}
-                                        {linkedHabits.map(h => (
-                                            <span key={h.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                            </span>))}
+                                        {linkedHabits.map(h => (<span key={h.id} style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                background: 'var(--surface-light)',
+                                                fontSize: '12px',
+                                                border: '1px solid var(--border)'
+                                            }}>
                                                 {h.name}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                            </span>))}
+                                    </div>)}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                 <button
                                     type="button"
                                     className="secondary"
                                     onClick={() => setInfoGoalId(null)}
-                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}
+                                    style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500'}}
                                 >
                                     Close
                                 </button>
@@ -536,14 +605,22 @@ export default function LifePane({
                                         setInfoGoalId(null);
                                         openEditLifeGoal(goal);
                                     }}
-                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 0',
+                                        borderRadius: '6px',
+                                        fontWeight: 'bold',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}
                                 >
-                                    <Pencil size={14} /> Edit Goal
+                                    <Pencil size={14}/> Edit Goal
                                 </button>
                             </div>
                         </div>
-                    </BaseModal>
-                );
+                    </BaseModal>);
             })()}
 
         </div>);

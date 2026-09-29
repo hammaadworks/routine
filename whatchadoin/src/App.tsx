@@ -91,17 +91,79 @@ export default function App() {
         try {
             const parsed = JSON.parse(localStorage.getItem('whatchadoin_life_goals') || '[]');
             return Array.isArray(parsed) ? parsed : [];
-        } catch { return []; }
+        } catch {
+            return [];
+        }
     });
 
     const [moneyGoals, setMoneyGoals] = useState<any[]>(() => {
         try {
             const parsed = JSON.parse(localStorage.getItem('whatchadoin_money_goals') || '[]');
             return Array.isArray(parsed) ? parsed : [];
-        } catch { return []; }
+        } catch {
+            return [];
+        }
     });
 
     const [activeRoutineId, setActiveRoutineId] = useState<string>(loadActiveRoutineId);
+
+    const [milestones, setMilestones] = useState<Record<string, string>>(() => {
+        try {
+            const raw = localStorage.getItem('whatchadoin_milestones');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {
+            console.error('Failed to parse milestones from storage', e);
+        }
+        // Auto-migration: gather milestones from all existing routines
+        const merged: Record<string, string> = {};
+        try {
+            const routinesRaw = localStorage.getItem('whatchadoin_routines');
+            if (routinesRaw) {
+                const parsed = JSON.parse(routinesRaw);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach((r: any) => {
+                        if (r.milestones && typeof r.milestones === 'object') {
+                            Object.assign(merged, r.milestones);
+                        }
+                    });
+                }
+            }
+        } catch {
+        }
+        return merged;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('whatchadoin_milestones', JSON.stringify(milestones));
+    }, [milestones]);
+
+    useEffect(() => {
+        const handleMilestonesUpdate = (e: any) => {
+            if (e.detail) {
+                setMilestones(e.detail);
+            } else {
+                try {
+                    const raw = localStorage.getItem('whatchadoin_milestones');
+                    if (raw) setMilestones(JSON.parse(raw));
+                } catch {
+                }
+            }
+        };
+        window.addEventListener('whatchadoin_milestones_updated', handleMilestonesUpdate);
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'whatchadoin_milestones' && e.newValue) {
+                try {
+                    setMilestones(JSON.parse(e.newValue));
+                } catch {
+                }
+            }
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => {
+            window.removeEventListener('whatchadoin_milestones_updated', handleMilestonesUpdate);
+            window.removeEventListener('storage', handleStorage);
+        };
+    }, []);
 
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
     const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
@@ -356,6 +418,7 @@ export default function App() {
         const currency = localStorage.getItem('whatchadoin_currency') || 'USD';
         const quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
         const aiConfig = JSON.parse(localStorage.getItem('whatchadoin_ai_config') || '{}');
+        const milestonesData = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
 
         const backupData = {
             isFullBackup: true,
@@ -372,7 +435,8 @@ export default function App() {
             lifeFolders,
             currency,
             quotes,
-            aiConfig
+            aiConfig,
+            milestones: milestonesData
         };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -447,6 +511,11 @@ export default function App() {
                             if (data.aiConfig) {
                                 localStorage.setItem('whatchadoin_ai_config', JSON.stringify(data.aiConfig));
                                 setAiConfig(data.aiConfig);
+                            }
+                            if (data.milestones) {
+                                localStorage.setItem('whatchadoin_milestones', JSON.stringify(data.milestones));
+                                setMilestones(data.milestones);
+                                window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
                             }
                             sanitizeAllStorage();
                             window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
@@ -679,6 +748,10 @@ export default function App() {
                                                      activeTemplateId={activeTemplateId}
                                                      onRoutineGoalBadgeClick={(id) => setHabitFilterRoutineGoalId(id)}
                                                      lifeGoals={lifeGoals}
+                                                     setLifeGoals={setLifeGoals}
+                                                     moneyGoals={moneyGoals}
+                                                     setMoneyGoals={setMoneyGoals as any}
+                                                     setActiveLeftTab={setActiveLeftTab}
                                                      headerTabs={headerTabs}
                                     />
                                 </React.Suspense>);
@@ -692,8 +765,11 @@ export default function App() {
                                                habits={habits}
                                                headerTabs={headerTabs}
                                                allWalletGoals={allWalletGoals}
+                                               lifeGoals={lifeGoals}
+                                               routineGoals={routineGoals}
                                                setLifeGoals={setLifeGoals}
                                                setRoutineGoals={setRoutineGoals as any}
+                                               setActiveLeftTab={setActiveLeftTab}
                                                onNavigateToCoins={() => {
                                                    setActiveCenterTab('coins');
                                                    setMobileTab('coins');
@@ -707,8 +783,10 @@ export default function App() {
                                 <LifePane isPublicView={isPublicView}
                                           lifeGoals={lifeGoals} setLifeGoals={setLifeGoals}
                                           routineGoals={routineGoals} setRoutineGoals={setRoutineGoals as any}
+                                          moneyGoals={moneyGoals} setMoneyGoals={setMoneyGoals as any}
                                           habits={habits} setHabits={setHabits as any}
                                           onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
+                                          setActiveLeftTab={setActiveLeftTab}
                                           headerTabs={headerTabs}
                                 />
                             </React.Suspense>);
@@ -819,6 +897,7 @@ export default function App() {
                                     fallback={<div style={{padding: '20px'}}>Loading Coins...</div>}><CoinsPane
                                     isPublicView={isPublicView}
                                     walletTotal={isPublicView ? headerWalletTotal : walletTotal}
+                                    walletGoals={isPublicView ? visibleWalletGoals : allWalletGoals}
                                     onNavigateToMoneyGoals={() => {
                                         setMobileTab('goals');
                                         setActiveLeftTab('money');
@@ -836,6 +915,7 @@ export default function App() {
                                                                      habits={habits}
                                                                      templates={templates}
                                                                      dayMapping={dayMapping}
+                                                                     milestones={milestones}
                             /></React.Suspense>)}
                         </TabErrorBoundary>
                     </div>
@@ -866,6 +946,8 @@ export default function App() {
                                 updateActiveRoutine={updateActiveRoutine}
                                 isRoutineDrawerOpen={isRoutineDrawerOpen}
                                 setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
+                                milestones={milestones}
+                                setMilestones={setMilestones}
                     />
                 </React.Suspense>
             </main>

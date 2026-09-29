@@ -1,13 +1,14 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {ArrowRight, DollarSign, Plus, TrendingUp, Wallet, Clock, Pencil} from 'lucide-react';
+import {ArrowRight, Clock, DollarSign, Pencil, Plus, TrendingUp, Wallet} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
-import { useDragReorder } from '../hooks/useDragReorder';
-import { formatCompactDuration } from '../utils';
+import {useDragReorder} from '../hooks/useDragReorder';
+import {formatCompactDuration} from '../utils';
+import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
@@ -32,8 +33,11 @@ interface MoneyPaneProps {
     habits?: any[];
     headerTabs?: React.ReactNode;
     allWalletGoals?: any[];
+    lifeGoals?: any[];
+    routineGoals?: any[];
     setLifeGoals?: React.Dispatch<React.SetStateAction<any[]>>;
     setRoutineGoals?: React.Dispatch<React.SetStateAction<any[]>>;
+    setActiveLeftTab?: (tab: GoalCategory) => void;
     onNavigateToCoins?: () => void;
 }
 
@@ -46,7 +50,7 @@ interface ConfirmConfig {
 }
 
 export default function MoneyPane({
-    isPublicView,
+                                      isPublicView,
                                       moneyGoals,
                                       setMoneyGoals,
                                       habits,
@@ -54,12 +58,20 @@ export default function MoneyPane({
                                       allWalletGoals,
                                       setLifeGoals,
                                       setRoutineGoals,
+                                      setActiveLeftTab,
                                       onNavigateToCoins
                                   }: MoneyPaneProps) {
     const [showMoneyGoalModal, setShowMoneyGoalModal] = useState(false);
     const [editingMoneyGoalId, setEditingMoneyGoalId] = useState<string | null>(null);
-    const [editingGoalType, setEditingGoalType] = useState<string>('money');
-    const [moneyGoalForm, setMoneyGoalForm] = useState<{name: string, color: string, cost: string, desc: string, isPublic?: boolean}>({name: '', color: '', cost: '', desc: ''});
+    const [editingGoalType, setEditingGoalType] = useState<GoalCategory>('money');
+    const [moneyGoalForm, setMoneyGoalForm] = useState<{
+        name: string,
+        color: string,
+        cost: string,
+        desc: string,
+        isPublic?: boolean,
+        category?: GoalCategory
+    }>({name: '', color: '', cost: '', desc: '', category: 'money'});
     const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
     const [colorError, setColorError] = useState('');
     const [drawerMoneyGoalId, setDrawerMoneyGoalId] = useState<string | null>(null);
@@ -67,7 +79,13 @@ export default function MoneyPane({
     const [isWalletView, setIsWalletView] = useState(false);
 
 
-    const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(moneyGoals, (newList) => {
+    const {
+        handleDragStart,
+        handleDragEnter,
+        handleDragEnd,
+        dragItemIndex,
+        dragOverItemIndex
+    } = useDragReorder(moneyGoals, (newList) => {
         if (!isWalletView) setMoneyGoals(newList);
     });
 
@@ -87,59 +105,71 @@ export default function MoneyPane({
         setEditingMoneyGoalId(null);
         setEditingGoalType('money');
         const randomColor = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
-        setMoneyGoalForm({name: '', isPublic: true, color: randomColor, cost: '', desc: ''});
+        setMoneyGoalForm({name: '', isPublic: true, color: randomColor, cost: '', desc: '', category: 'money'});
         setShowMoneyGoalModal(true);
     };
 
     const openEditMoneyGoal = (goal: MoneyGoal) => {
         setEditingMoneyGoalId(goal.id);
-        setEditingGoalType(goal.type || 'money');
+        const cat = (goal.type as GoalCategory) || 'money';
+        setEditingGoalType(cat);
         setColorError('');
         const goalColor = goal.color || PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)] || '#FF595E';
         const goalName = goal.name || '';
-        setMoneyGoalForm({name: goalName, color: goalColor, cost: String(goal.cost), desc: goal.desc || '', isPublic: !!goal.isPublic});
+        setMoneyGoalForm({
+            name: goalName,
+            color: goalColor,
+            cost: goal.cost !== undefined && goal.cost !== null ? String(goal.cost) : '',
+            desc: goal.desc || '',
+            isPublic: !!goal.isPublic,
+            category: cat
+        });
         setShowMoneyGoalModal(true);
     };
 
 
     const saveMoneyGoal = (e: React.SyntheticEvent) => {
         e.preventDefault();
-        const goalName = moneyGoalForm.name.trim();
-        if (!goalName || !moneyGoalForm.cost.trim()) return;
-        const costValue = parseFloat(moneyGoalForm.cost);
-        if (isNaN(costValue)) return;
+        const srcCat = editingGoalType || 'money';
+        const targetCat = moneyGoalForm.category || srcCat;
+        const currentGoals = isWalletView && allWalletGoals ? allWalletGoals : moneyGoals;
+        const originalGoal = editingMoneyGoalId ? (currentGoals.find((g: any) => g.id === editingMoneyGoalId) || moneyGoals.find(g => g.id === editingMoneyGoalId)) : undefined;
 
-        if (editingMoneyGoalId) {
-            const cleanUpdates = (g: any) => {
-                const { text: _text, title: _title, task: _task, ...cleanG } = g;
-                return {
-                    ...cleanG,
-                    name: goalName,
-                    isPublic: !!moneyGoalForm.isPublic, color: moneyGoalForm.color,
-                    cost: costValue,
-                    desc: moneyGoalForm.desc || ''
-                };
-            };
-            if (editingGoalType === 'life' && setLifeGoals) {
-                setLifeGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
-            } else if (editingGoalType === 'routine' && setRoutineGoals) {
-                setRoutineGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
-            } else {
-                setMoneyGoals(prev => prev.map(g => g.id === editingMoneyGoalId ? cleanUpdates(g) : g));
-            }
-        } else {
-            const now = new Date().toISOString();
-            setMoneyGoals([...moneyGoals, {
-                id: 'mg-' + Date.now(),
-                name: goalName,
-                isPublic: !!moneyGoalForm.isPublic, color: moneyGoalForm.color,
-                cost: costValue,
-                completed: false,
-                desc: moneyGoalForm.desc || '',
-                createdAt: now
-            }]);
-        }
-        setShowMoneyGoalModal(false);
+        moveOrSaveGoal({
+            goalId: editingMoneyGoalId,
+            sourceCategory: srcCat,
+            targetCategory: targetCat,
+            isDuplicate: false,
+            formData: moneyGoalForm,
+            originalGoal,
+            setLifeGoals,
+            setMoneyGoals,
+            setRoutineGoals,
+            setActiveLeftTab,
+            onSuccess: () => setShowMoneyGoalModal(false)
+        });
+    };
+
+    const handleDuplicateMoneyGoal = () => {
+        if (!editingMoneyGoalId) return;
+        const srcCat = editingGoalType || 'money';
+        const targetCat = moneyGoalForm.category || srcCat;
+        const currentGoals = isWalletView && allWalletGoals ? allWalletGoals : moneyGoals;
+        const originalGoal = currentGoals.find((g: any) => g.id === editingMoneyGoalId) || moneyGoals.find(g => g.id === editingMoneyGoalId);
+
+        moveOrSaveGoal({
+            goalId: editingMoneyGoalId,
+            sourceCategory: srcCat,
+            targetCategory: targetCat,
+            isDuplicate: true,
+            formData: moneyGoalForm,
+            originalGoal,
+            setLifeGoals,
+            setMoneyGoals,
+            setRoutineGoals,
+            setActiveLeftTab,
+            onSuccess: () => setShowMoneyGoalModal(false)
+        });
     };
 
     const toggleGoal = (id: string, type?: string) => {
@@ -147,9 +177,7 @@ export default function MoneyPane({
         const toggleItem = (g: any) => {
             const isCompleting = !g.completed;
             return {
-                ...g,
-                completed: isCompleting,
-                completedAt: isCompleting ? (g.completedAt || now) : undefined
+                ...g, completed: isCompleting, completedAt: isCompleting ? (g.completedAt || now) : undefined
             };
         };
 
@@ -311,11 +339,11 @@ export default function MoneyPane({
                         return (<>
                             {activeGoals.map(renderGoal)}
                             {completedGoals.length > 0 && (<div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    margin: '16px 0 8px 0',
-                                    justifyContent: 'space-between'
-                                }}>
+                                display: 'flex',
+                                alignItems: 'center',
+                                margin: '16px 0 8px 0',
+                                justifyContent: 'space-between'
+                            }}>
                                       <span style={{
                                           padding: '0 12px 0 0',
                                           fontSize: '12px',
@@ -324,61 +352,57 @@ export default function MoneyPane({
                                       }}>
                                         Completed
                                       </span>
-                                    <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
-                                    <button
-                                        onClick={() => {
-                                            setConfirmConfig({
-                                                title: 'Delete All Completed',
-                                                message: 'Are you sure you want to delete all completed money goals? This cannot be undone.',
-                                                isDanger: true,
-                                                onConfirm: () => {
-                                                    setMoneyGoals(moneyGoals.filter((g: any) => !g.completed));
-                                                    setConfirmConfig(null);
-                                                },
-                                                onCancel: () => setConfirmConfig(null)
-                                            });
-                                        }}
-                                        className="icon-btn"
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            color: 'var(--danger)',
-                                            fontSize: '12px',
-                                            cursor: 'pointer',
-                                            padding: '4px 8px',
-                                            fontWeight: 500,
-                                            opacity: 0.8
-                                        }}>
-                                        Delete all
-                                    </button>
-                                </div>)}
+                                <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
+                                <button
+                                    onClick={() => {
+                                        setConfirmConfig({
+                                            title: 'Delete All Completed',
+                                            message: 'Are you sure you want to delete all completed money goals? This cannot be undone.',
+                                            isDanger: true,
+                                            onConfirm: () => {
+                                                setMoneyGoals(moneyGoals.filter((g: any) => !g.completed));
+                                                setConfirmConfig(null);
+                                            },
+                                            onCancel: () => setConfirmConfig(null)
+                                        });
+                                    }}
+                                    className="icon-btn"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--danger)',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        fontWeight: 500,
+                                        opacity: 0.8
+                                    }}>
+                                    Delete all
+                                </button>
+                            </div>)}
                             {completedGoals.map(renderGoal)}
                         </>);
                     })()}
                     {baseGoals.length === 0 && (<div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '40px 20px',
-                            color: 'var(--text-secondary)',
-                            textAlign: 'center',
-                            border: '1px dashed var(--panel-border)',
-                            borderRadius: '12px',
-                            marginTop: '8px'
-                        }}>
-                            <DollarSign size={32} style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
-                            <div style={{
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#fff'
-                            }}>{isWalletView ? 'No goals with cost yet' : 'No money goals yet'}</div>
-                            <div style={{
-                                fontSize: '12px',
-                                marginTop: '4px',
-                                opacity: 0.7
-                            }}>{isWalletView ? 'Add costs to your goals to see them here.' : 'Add goals you want to save money for.'}</div>
-                        </div>)}
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '40px 20px',
+                        color: 'var(--text-secondary)',
+                        textAlign: 'center',
+                        border: '1px dashed var(--panel-border)',
+                        borderRadius: '12px',
+                        marginTop: '8px'
+                    }}>
+                        <DollarSign size={32} style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
+                        <div style={{
+                            fontSize: '14px', fontWeight: '500', color: '#fff'
+                        }}>{isWalletView ? 'No goals with cost yet' : 'No money goals yet'}</div>
+                        <div style={{
+                            fontSize: '12px', marginTop: '4px', opacity: 0.7
+                        }}>{isWalletView ? 'Add costs to your goals to see them here.' : 'Add goals you want to save money for.'}</div>
+                    </div>)}
                 </div>
             </div>
 
@@ -400,7 +424,8 @@ export default function MoneyPane({
                         const visibleBaseGoals = baseGoals.filter(g => !isPublicView || (g as any).isPublic || (g.name || '').includes('[public]'));
                         return (<>
                             <Wallet size={14} color="var(--accent)"/>
-                            Wallet Goals : {visibleBaseGoals.filter(g => g.completed).length} / {visibleBaseGoals.length}
+                            Wallet Goals
+                            : {visibleBaseGoals.filter(g => g.completed).length} / {visibleBaseGoals.length}
                         </>);
                     })() : (() => {
                         const visibleMoneyGoals = moneyGoals.filter(g => !isPublicView || (g as any).isPublic || (g.name || '').includes('[public]'));
@@ -411,12 +436,12 @@ export default function MoneyPane({
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
-                            Money Goals : {visibleMoneyGoals.filter(g => g.completed).length} / {visibleMoneyGoals.length}
+                            Money Goals
+                            : {visibleMoneyGoals.filter(g => g.completed).length} / {visibleMoneyGoals.length}
                         </>);
                     })()}
                 </div>
-                {onNavigateToCoins && (
-                    <button
+                {onNavigateToCoins && (<button
                         onClick={onNavigateToCoins}
                         style={{
                             background: 'none',
@@ -436,35 +461,37 @@ export default function MoneyPane({
                         <TrendingUp size={13}/>
                         <span>Coins Ledger</span>
                         <ArrowRight size={13}/>
-                    </button>
-                )}
+                    </button>)}
             </div>
 
             {confirmConfig && (<ConfirmModal
-                    title={confirmConfig.title}
-                    message={confirmConfig.message}
-                    isDanger={confirmConfig.isDanger}
-                    onConfirm={confirmConfig.onConfirm}
-                    onCancel={confirmConfig.onCancel}
-                />)}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                isDanger={confirmConfig.isDanger}
+                onConfirm={confirmConfig.onConfirm}
+                onCancel={confirmConfig.onCancel}
+            />)}
 
             {showMoneyGoalModal && (<BaseModal title={editingMoneyGoalId ? "Edit Goal" : "New Money Goal"}
-                                               onClose={() => setShowMoneyGoalModal(false)}>
-                    <GoalForm
-                        formData={moneyGoalForm}
-                        setFormData={setMoneyGoalForm as any}
-                        onSubmit={saveMoneyGoal}
-                        onCancel={() => setShowMoneyGoalModal(false)}
-                        onDelete={editingMoneyGoalId ? () => {
-                            deleteMoneyGoal(editingMoneyGoalId, moneyGoalForm.name, editingGoalType);
-                            setShowMoneyGoalModal(false);
-                        } : undefined}
-                        isEditing={!!editingMoneyGoalId}
-                        colorError={colorError}
-                        setColorError={setColorError}
-                        requireCost={true}
-                    />
-                </BaseModal>)}
+                                               onClose={() => setShowMoneyGoalModal(false)}
+                                               bodyClassName="modal-body-fixed-footer">
+                <GoalForm
+                    formData={moneyGoalForm}
+                    setFormData={setMoneyGoalForm as any}
+                    onSubmit={saveMoneyGoal}
+                    onCancel={() => setShowMoneyGoalModal(false)}
+                    onDelete={editingMoneyGoalId ? () => {
+                        deleteMoneyGoal(editingMoneyGoalId, moneyGoalForm.name, editingGoalType);
+                        setShowMoneyGoalModal(false);
+                    } : undefined}
+                    onDuplicate={editingMoneyGoalId ? handleDuplicateMoneyGoal : undefined}
+                    isEditing={!!editingMoneyGoalId}
+                    colorError={colorError}
+                    setColorError={setColorError}
+                    requireCost={true}
+                    currentCategory={editingGoalType || 'money'}
+                />
+            </BaseModal>)}
 
             {drawerMoneyGoalId && (() => {
                 const goal = baseGoals.find(g => g.id === drawerMoneyGoalId);
@@ -477,23 +504,28 @@ export default function MoneyPane({
                     return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
                 });
                 return (<BaseModal isOpen={true} onClose={() => setDrawerMoneyGoalId(null)} title="Linked Items">
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                            {linkedHabits.length === 0 ? (
-                                <div style={{color: 'var(--text-secondary)'}}>No items linked to this goal.</div>
-                            ) : (
-                                <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 'bold' }}>
-                                        Habits
-                                    </div>
-                                    {linkedHabits.map((h: any) => (
-                                        <div key={h.id} style={{ padding: '8px', background: 'var(--surface-light)', borderRadius: '6px', marginBottom: '4px' }}>
-                                            {h.name}
-                                        </div>
-                                    ))}
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                        {linkedHabits.length === 0 ? (
+                            <div style={{color: 'var(--text-secondary)'}}>No items linked to this goal.</div>) : (<div>
+                                <div style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '8px',
+                                    fontWeight: 'bold'
+                                }}>
+                                    Habits
                                 </div>
-                            )}
-                        </div>
-                    </BaseModal>);
+                                {linkedHabits.map((h: any) => (<div key={h.id} style={{
+                                        padding: '8px',
+                                        background: 'var(--surface-light)',
+                                        borderRadius: '6px',
+                                        marginBottom: '4px'
+                                    }}>
+                                        {h.name}
+                                    </div>))}
+                            </div>)}
+                    </div>
+                </BaseModal>);
             })()}
 
             {infoGoalId && (() => {
@@ -509,20 +541,16 @@ export default function MoneyPane({
                     return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
                 });
 
-                return (
-                    <BaseModal
+                return (<BaseModal
                         isOpen={true}
                         onClose={() => setInfoGoalId(null)}
-                        title={
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hex }}>
-                                <Wallet size={18} color={hex} />
-                                {goal.name}
-                            </span>
-                        }
+                        title={<span style={{display: 'flex', alignItems: 'center', gap: '8px', color: hex}}>
+                                <Wallet size={18} color={hex}/>
+                            {goal.name}
+                            </span>}
                     >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {timeInfo && (
-                                <div style={{
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            {timeInfo && (<div style={{
                                     background: `${hex}15`,
                                     border: `1px solid ${hex}40`,
                                     padding: '12px',
@@ -533,56 +561,84 @@ export default function MoneyPane({
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                    <Clock size={16} color={hex} />
+                                    <Clock size={16} color={hex}/>
                                     <span>{timeInfo.fullText}</span>
-                                </div>
-                            )}
+                                </div>)}
 
-                            {goal.desc && (
-                                <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                            {goal.desc && (<div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Description
                                     </div>
-                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                                    <div style={{
+                                        background: 'var(--surface-light)',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        whiteSpace: 'pre-wrap'
+                                    }}>
                                         {goal.desc}
                                     </div>
-                                </div>
-                            )}
+                                </div>)}
 
-                            {typeof goal.cost === 'number' && goal.cost > 0 && (
-                                <div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold' }}>
+                            {typeof goal.cost === 'number' && goal.cost > 0 && (<div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '4px',
+                                        fontWeight: 'bold'
+                                    }}>
                                         Target Cost
                                     </div>
-                                    <div style={{ background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', color: hex }}>
+                                    <div style={{
+                                        background: 'var(--surface-light)',
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontWeight: 'bold',
+                                        color: hex
+                                    }}>
                                         ${goal.cost}
                                     </div>
-                                </div>
-                            )}
+                                </div>)}
 
                             <div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold' }}>
+                                <div style={{
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    marginBottom: '6px',
+                                    fontWeight: 'bold'
+                                }}>
                                     Linked Habits ({linkedHabits.length})
                                 </div>
-                                {linkedHabits.length === 0 ? (
-                                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>No linked habits yet.</div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                        {linkedHabits.map((h: any) => (
-                                            <span key={h.id} style={{ padding: '4px 8px', borderRadius: '6px', background: 'var(--surface-light)', fontSize: '12px', border: '1px solid var(--border)' }}>
+                                {linkedHabits.length === 0 ? (<div style={{
+                                        fontSize: '13px',
+                                        color: 'var(--text-secondary)',
+                                        fontStyle: 'italic'
+                                    }}>No linked habits yet.</div>) : (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                        {linkedHabits.map((h: any) => (<span key={h.id} style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                background: 'var(--surface-light)',
+                                                fontSize: '12px',
+                                                border: '1px solid var(--border)'
+                                            }}>
                                                 {h.name}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                                            </span>))}
+                                    </div>)}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                 <button
                                     type="button"
                                     className="secondary"
                                     onClick={() => setInfoGoalId(null)}
-                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500' }}
+                                    style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500'}}
                                 >
                                     Close
                                 </button>
@@ -593,14 +649,22 @@ export default function MoneyPane({
                                         setInfoGoalId(null);
                                         openEditMoneyGoal(goal);
                                     }}
-                                    style={{ flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 0',
+                                        borderRadius: '6px',
+                                        fontWeight: 'bold',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}
                                 >
-                                    <Pencil size={14} /> Edit Goal
+                                    <Pencil size={14}/> Edit Goal
                                 </button>
                             </div>
                         </div>
-                    </BaseModal>
-                );
+                    </BaseModal>);
             })()}
         </div>);
 }

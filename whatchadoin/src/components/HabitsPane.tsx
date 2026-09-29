@@ -1,7 +1,8 @@
 import * as React from 'react';
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Activity,
+    Calendar,
     CheckCircle2,
     ChevronDown,
     Clock,
@@ -60,6 +61,8 @@ interface HabitsPaneProps {
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
     moneyGoals?: any[];
+    milestones?: Record<string, string>;
+    setMilestones?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 export default function HabitsPane({
@@ -87,8 +90,12 @@ export default function HabitsPane({
                                        calendarSubTab = 'mark_goals',
                                        setCalendarSubTab,
                                        isRoutineDrawerOpen,
-                                       setIsRoutineDrawerOpen
+                                       setIsRoutineDrawerOpen,
+                                       milestones: passedMilestones,
+                                       setMilestones
                                    }: HabitsPaneProps) {
+    const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
+    const [showAllMilestones, setShowAllMilestones] = useState(false);
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
@@ -175,7 +182,8 @@ export default function HabitsPane({
             isDanger: true,
             onConfirm: () => {
                 const {dateStr, idx} = editingMilestoneIdx;
-                const newMilestones = {...(activeRoutine.milestones || {})};
+                const sourceMilestones = passedMilestones || activeRoutine?.milestones || {};
+                const newMilestones = {...sourceMilestones};
                 const blocks = (newMilestones[dateStr] || '').split('\n\n');
                 blocks.splice(idx, 1);
                 newMilestones[dateStr] = blocks.join('\n\n');
@@ -184,6 +192,9 @@ export default function HabitsPane({
                     delete newMilestones[dateStr];
                 }
 
+                if (setMilestones) {
+                    setMilestones(newMilestones);
+                }
                 if (updateActiveRoutine) {
                     updateActiveRoutine({
                         ...activeRoutine, milestones: newMilestones
@@ -288,7 +299,8 @@ export default function HabitsPane({
         newBlock += `**${finalName}**`;
         if (desc) newBlock += `  \n${desc}`;
 
-        const newMilestones = {...(activeRoutine.milestones || {})};
+        const sourceMilestones = passedMilestones || activeRoutine?.milestones || {};
+        const newMilestones = {...sourceMilestones};
 
         if (editingMilestoneIdx) {
             const {dateStr: oldDate, idx} = editingMilestoneIdx;
@@ -310,10 +322,20 @@ export default function HabitsPane({
             }
         });
 
+        if (setMilestones) {
+            setMilestones(newMilestones);
+        }
         if (updateActiveRoutine) {
             updateActiveRoutine({
                 ...activeRoutine, milestones: newMilestones
             });
+        }
+
+        // Auto-switch to "All" view if the milestone is outside the active routine range
+        if (activeRoutine?.start && activeRoutine?.end) {
+            if (dateStr < activeRoutine.start || dateStr > activeRoutine.end) {
+                setShowAllMilestones(true);
+            }
         }
 
         setShowMilestoneModal(false);
@@ -350,7 +372,14 @@ export default function HabitsPane({
     const openAddHabit = () => {
         setEditingHabitId(null);
         setHabitForm({
-            name: '', isPublic: true, desc: '', timeValue: '1:15', routineGoalIds: [], lifeGoalIds: [], moneyGoalIds: [], color: ''
+            name: '',
+            isPublic: true,
+            desc: '',
+            timeValue: '1:15',
+            routineGoalIds: [],
+            lifeGoalIds: [],
+            moneyGoalIds: [],
+            color: ''
         });
         setShowHabitModal(true);
     };
@@ -750,7 +779,7 @@ export default function HabitsPane({
         displayedRoutineGoals = sortHabits(displayedRoutineGoals);
     }
 
-    const isMilestoneBlockPublic = (block: string) => {
+    const isMilestoneBlockPublic = useCallback((block: string) => {
         if (block.toLowerCase().includes('[public]')) return true;
         const tagsMatch = block.match(/@([^\s*]+)/g);
         if (tagsMatch) {
@@ -760,16 +789,38 @@ export default function HabitsPane({
             });
         }
         return false;
-    };
+    }, [allGoals]);
 
-    const milestoneDates = Object.keys(activeRoutine?.milestones || {}).filter(d => {
-        const text = (activeRoutine?.milestones?.[d] || '').trim();
-        if (!text) return false;
-        if (!isPublicView) return true;
-        const blocks = text.split('\n\n');
-        return blocks.some((b: string) => b.trim() && isMilestoneBlockPublic(b));
-    });
-    milestoneDates.sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime());
+    const currentMilestones = useMemo(() => passedMilestones || activeRoutine?.milestones || {}, [passedMilestones, activeRoutine?.milestones]);
+    const milestoneDates = useMemo(() => {
+        const dates = Object.keys(currentMilestones).filter(d => {
+            const text = (currentMilestones[d] || '').trim();
+            if (!text) return false;
+
+            // Filter by routine range if not showing all
+            if (!showAllMilestones && activeRoutine?.start && activeRoutine?.end) {
+                if (d < activeRoutine.start || d > activeRoutine.end) {
+                    return false;
+                }
+            }
+
+            // Filter by search query (matches date or content)
+            if (milestoneSearchQuery.trim()) {
+                const query = milestoneSearchQuery.toLowerCase().trim();
+                const matchesDate = d.toLowerCase().includes(query);
+                const matchesContent = text.toLowerCase().includes(query);
+                if (!matchesDate && !matchesContent) {
+                    return false;
+                }
+            }
+
+            if (!isPublicView) return true;
+            const blocks = text.split('\n\n');
+            return blocks.some((b: string) => b.trim() && isMilestoneBlockPublic(b));
+        });
+        dates.sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime());
+        return dates;
+    }, [currentMilestones, showAllMilestones, activeRoutine?.start, activeRoutine?.end, milestoneSearchQuery, isPublicView, isMilestoneBlockPublic]);
 
     useEffect(() => {
         if (isCalendarTab && calendarSubTab === 'milestones' && effectiveDate) {
@@ -1140,11 +1191,7 @@ export default function HabitsPane({
                 </div>
             </>)}
 
-            {calendarSubTab === 'milestones' && (<div
-                className="milestones-list-scroll-container"
-                style={{
-                    flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflowY: 'auto'
-                }}>
+            {calendarSubTab === 'milestones' && (<>
                 <button
                     onClick={() => {
                         setEditingMilestoneIdx(null);
@@ -1170,146 +1217,186 @@ export default function HabitsPane({
                 >
                     <Plus size={16}/> Add Milestone
                 </button>
-                {milestoneDates.length === 0 ? (
-                    <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
-                        {isCalendarTab ? "No milestones found. Click 'Add Milestone' to create one." : "No milestones found."}
-                    </div>) : (<div style={{
-                    maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px'
-                }}>
-                    <div style={{
-                        borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px'
+
+                <SearchSortBar
+                    searchQuery={milestoneSearchQuery}
+                    setSearchQuery={setMilestoneSearchQuery}
+                    placeholder="Search milestones..."
+                    customButton={(<button
+                            className={`secondary ${showAllMilestones ? 'sort-active-glow' : ''}`}
+                            onClick={() => setShowAllMilestones(!showAllMilestones)}
+                            style={{
+                                padding: '8px 12px',
+                                background: showAllMilestones ? 'var(--accent)' : '',
+                                boxShadow: showAllMilestones ? '0 0 12px var(--accent)' : 'none',
+                                color: showAllMilestones ? '#000' : 'currentColor',
+                                borderColor: showAllMilestones ? 'var(--accent)' : '',
+                                height: '37px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                            }}
+                            title={showAllMilestones ? "Showing All Milestones (Click for Routine)" : "Showing Routine Milestones (Click for All)"}
+                        >
+                            {showAllMilestones ? <Globe size={14}/> : <Calendar size={14}/>}
+                        </button>)}
+                />
+
+                <div
+                    className="milestones-list-scroll-container"
+                    style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        overflowY: 'auto',
+                        paddingRight: '4px',
+                        minHeight: 0
+                    }}
+                >
+
+                    {milestoneDates.length === 0 ? (
+                        <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
+                            {milestoneSearchQuery.trim() ? "No milestones match your search." : (showAllMilestones ? "No milestones found. Click 'Add Milestone' to create one." : "No routine milestones found. Switch to 'All' or click 'Add Milestone'.")}
+                        </div>) : (<div style={{
+                        maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px'
                     }}>
-                        {milestoneDates.map((dateStr) => {
-                            const contentStr = (activeRoutine?.milestones || {})[dateStr] || '';
-                            const blocks = (contentStr || '').split('\n\n');
-                            const isActiveDate = effectiveDate === dateStr;
+                        <div style={{
+                            borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px'
+                        }}>
+                            {milestoneDates.map((dateStr) => {
+                                const contentStr = currentMilestones[dateStr] || '';
+                                const blocks = (contentStr || '').split('\n\n');
+                                const isActiveDate = effectiveDate === dateStr;
 
-                            const todayDate = new Date();
-                            todayDate.setHours(0, 0, 0, 0);
-                            const blockDate = new Date(dateStr);
-                            blockDate.setHours(0, 0, 0, 0);
-                            const isPast = blockDate < todayDate;
+                                const todayDate = new Date();
+                                todayDate.setHours(0, 0, 0, 0);
+                                const blockDate = new Date(dateStr);
+                                blockDate.setHours(0, 0, 0, 0);
+                                const isPast = blockDate < todayDate;
 
-                            const diffTime = blockDate.getTime() - todayDate.getTime();
-                            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                            const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
+                                const diffTime = blockDate.getTime() - todayDate.getTime();
+                                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+                                const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
 
-                            const validBlocks = blocks.filter((b: string) => b.trim());
-                            const isAllDone = validBlocks.length > 0 && validBlocks.every((b: string) => {
-                                const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
-                                const titleMatchWithoutTag = b.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
-                                const title = titleMatchWithTag ? (titleMatchWithTag[2] || '') : (titleMatchWithoutTag ? (titleMatchWithoutTag[1] || '') : b);
-                                return title.startsWith('[x] ');
-                            });
-
-                            let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
-                            let multiColors: string[] = [];
-                            const tagsMatch = contentStr.match(/@([^\s*]+)/g);
-                            if (tagsMatch) {
-                                const uniqueTags: string[] = Array.from(new Set(tagsMatch.map((t: string) => t.slice(1).toLowerCase())));
-                                uniqueTags.forEach((tag: string) => {
-                                    const goal = allGoals.find(g => (g.name || '').toLowerCase() === tag);
-                                    if (goal && goal.color) {
-                                        multiColors.push(String(goal.color));
-                                    }
+                                const validBlocks = blocks.filter((b: string) => b.trim());
+                                const isAllDone = validBlocks.length > 0 && validBlocks.every((b: string) => {
+                                    const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                                    const titleMatchWithoutTag = b.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                                    const title = titleMatchWithTag ? (titleMatchWithTag[2] || '') : (titleMatchWithoutTag ? (titleMatchWithoutTag[1] || '') : b);
+                                    return title.startsWith('[x] ');
                                 });
-                            }
 
-                            let backgroundStyle = nodeColor;
-                            if (multiColors.length > 1) {
-                                const sliceSize = 100 / multiColors.length;
-                                let gradientStops: string[] = [];
-                                multiColors.forEach((color, i) => {
-                                    gradientStops.push(`${color} ${i * sliceSize}% ${(i + 1) * sliceSize}%`);
-                                });
-                                backgroundStyle = `conic-gradient(${gradientStops.join(', ')})`;
-                            } else if (multiColors.length === 1) {
-                                backgroundStyle = multiColors[0] || '';
-                                nodeColor = multiColors[0] || '';
-                            }
+                                let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
+                                let multiColors: string[] = [];
+                                const tagsMatch = contentStr.match(/@([^\s*]+)/g);
+                                if (tagsMatch) {
+                                    const uniqueTags: string[] = Array.from(new Set(tagsMatch.map((t: string) => t.slice(1).toLowerCase())));
+                                    uniqueTags.forEach((tag: string) => {
+                                        const goal = allGoals.find(g => (g.name || '').toLowerCase() === tag);
+                                        if (goal && goal.color) {
+                                            multiColors.push(String(goal.color));
+                                        }
+                                    });
+                                }
 
-                            return (<div key={dateStr} id={`milestone-block-${dateStr}`} style={{
-                                position: 'relative', marginBottom: '40px', paddingLeft: '24px'
-                            }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '-7px',
-                                    top: '4px',
-                                    width: '12px',
-                                    height: '12px',
-                                    borderRadius: '50%',
-                                    background: backgroundStyle,
-                                    border: '2px solid var(--panel-bg)',
-                                    boxShadow: isActiveDate ? `0 0 10px ${nodeColor}80` : 'none',
-                                    opacity: isActiveDate ? 1 : 0.6
-                                }}/>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '16px'
+                                let backgroundStyle = nodeColor;
+                                if (multiColors.length > 1) {
+                                    const sliceSize = 100 / multiColors.length;
+                                    let gradientStops: string[] = [];
+                                    multiColors.forEach((color, i) => {
+                                        gradientStops.push(`${color} ${i * sliceSize}% ${(i + 1) * sliceSize}%`);
+                                    });
+                                    backgroundStyle = `conic-gradient(${gradientStops.join(', ')})`;
+                                } else if (multiColors.length === 1) {
+                                    backgroundStyle = multiColors[0] || '';
+                                    nodeColor = multiColors[0] || '';
+                                }
+
+                                return (<div key={dateStr} id={`milestone-block-${dateStr}`} style={{
+                                    position: 'relative', marginBottom: '40px', paddingLeft: '24px'
                                 }}>
-                                    <div
-                                        onClick={() => {
-                                            if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
-                                        }}
-                                        style={{
-                                            fontSize: '16px',
-                                            fontWeight: 'bold',
-                                            color: isActiveDate ? '#fff' : 'var(--text-secondary)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
+                                    <div style={{
+                                        position: 'absolute',
+                                        left: '-7px',
+                                        top: '4px',
+                                        width: '12px',
+                                        height: '12px',
+                                        borderRadius: '50%',
+                                        background: backgroundStyle,
+                                        border: '2px solid var(--panel-bg)',
+                                        boxShadow: isActiveDate ? `0 0 10px ${nodeColor}80` : 'none',
+                                        opacity: isActiveDate ? 1 : 0.6
+                                    }}/>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '16px'
+                                    }}>
+                                        <div
+                                            onClick={() => {
+                                                if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
+                                            }}
+                                            style={{
+                                                fontSize: '16px',
+                                                fontWeight: 'bold',
+                                                color: isActiveDate ? '#fff' : 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px'
+                                            }}
+                                        >
                                         <span>
                                             {new Date(dateStr).toLocaleDateString('en-US', {
                                                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
                                             })}
                                         </span>
-                                        {isAllDone ? (<CheckCircle2 size={16} color="var(--success, #22c55e)"/>) : (
-                                            <span style={{
-                                                fontSize: '12px',
-                                                color: diffDays < 0 ? '#ef4444' : 'var(--accent)',
-                                                fontWeight: 'normal'
-                                            }}>
+                                            {isAllDone ? (<CheckCircle2 size={16} color="var(--success, #22c55e)"/>) : (
+                                                <span style={{
+                                                    fontSize: '12px',
+                                                    color: diffDays < 0 ? '#ef4444' : 'var(--accent)',
+                                                    fontWeight: 'normal'
+                                                }}>
                                                 {diffStr}
                                             </span>)}
-                                    </div>
-                                    <button
-                                        className="icon-btn"
-                                        onClick={() => openEditMilestone(dateStr, 0, blocks[0])}
-                                        style={{padding: '4px', display: 'flex', alignItems: 'center'}}
-                                    >
-                                        <Pencil size={14} color="var(--text-secondary)"/>
-                                    </button>
-                                </div>
-
-                                {blocks.map((block: string, idx: number) => {
-                                    if (!block.trim()) return null;
-                                    if (isPublicView && !isMilestoneBlockPublic(block)) return null;
-                                    return (<div
-                                        key={idx}
-                                        style={{
-                                            padding: '2px 0', marginBottom: '8px'
-                                        }}
-                                    >
-                                        <div className="markdown-preview">
-                                            <ReactMarkdown
-                                                components={customMarkdownComponents as any}>
-                                                {block === '' ? '\u00A0' : block.trim()}
-                                            </ReactMarkdown>
                                         </div>
-                                    </div>);
-                                })}
-                            </div>);
-                        })}
-                    </div>
+                                        <button
+                                            className="icon-btn"
+                                            onClick={() => openEditMilestone(dateStr, 0, blocks[0])}
+                                            style={{padding: '4px', display: 'flex', alignItems: 'center'}}
+                                        >
+                                            <Pencil size={14} color="var(--text-secondary)"/>
+                                        </button>
+                                    </div>
 
-                    <div style={{height: '20vh'}}/>
-                </div>)}
-            </div>)}
+                                    {blocks.map((block: string, idx: number) => {
+                                        if (!block.trim()) return null;
+                                        if (isPublicView && !isMilestoneBlockPublic(block)) return null;
+                                        return (<div
+                                            key={idx}
+                                            style={{
+                                                padding: '2px 0', marginBottom: '8px'
+                                            }}
+                                        >
+                                            <div className="markdown-preview">
+                                                <ReactMarkdown
+                                                    components={customMarkdownComponents as any}>
+                                                    {block === '' ? '\u00A0' : block.trim()}
+                                                </ReactMarkdown>
+                                            </div>
+                                        </div>);
+                                    })}
+                                </div>);
+                            })}
+                        </div>
+
+                        <div style={{height: '20vh'}}/>
+                    </div>)}
+                </div>
+            </>)}
 
             {calendarSubTab === 'timelog' && (<div className="timelog-tab-container" style={{
                 flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
@@ -1658,6 +1745,7 @@ export default function HabitsPane({
             isOpen={showHabitModal}
             onClose={() => setShowHabitModal(false)}
             maxWidth="460px"
+            bodyClassName="modal-body-fixed-footer"
             title={<div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                     <div style={{background: 'rgba(234, 179, 8, 0.15)', padding: '8px', borderRadius: '8px'}}>
@@ -1670,282 +1758,288 @@ export default function HabitsPane({
                 </p>
             </div>}
         >
-            <form onSubmit={saveHabit} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            <form onSubmit={saveHabit} className="modal-form-layout">
+                <div className="modal-form-content">
 
-                <div>
-                    <label style={{
-                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                    }}>Habit Name</label>
-                    <input name="auto_field_29"
-                           type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
-                           onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
-                           style={{width: '100%'}}
-                    />
-                </div>
-                <div>
-                    <label style={{
-                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                    }}>Details / Notes <span style={{opacity: 0.5}}>(optional)</span></label>
-                    <textarea name="auto_field_30"
-                              placeholder="Add any specific criteria for success..." value={habitForm.desc}
-                              onChange={(e) => setHabitForm({...habitForm, desc: e.target.value})}
-                              style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
-                    />
-                </div>
-
-                <div className="form-row" style={{display: 'flex', gap: '24px', flexWrap: 'wrap'}}>
-                    <div style={{flex: '0 0 140px'}}>
+                    <div>
                         <label style={{
                             fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                        }}>Duration</label>
-                        <input name="auto_field_31"
-                               type="text" placeholder="1:20" value={String(habitForm.timeValue)}
-                               onChange={(e) => setHabitForm({...habitForm, timeValue: e.target.value})}
+                        }}>Habit Name</label>
+                        <input name="auto_field_29"
+                               type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
+                               onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
                                style={{width: '100%'}}
                         />
                     </div>
-
-                    <div style={{flex: 1, minWidth: '200px'}}>
+                    <div>
                         <label style={{
-                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
-                        }}>
-                            Override Color <span style={{opacity: 0.5}}>(optional)</span>
-                        </label>
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
-                            <div
-                                onClick={() => setHabitForm({...habitForm, color: ''})}
-                                style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
-                                    cursor: 'pointer',
-                                    border: (!habitForm.color || habitForm.color === '') ? '2px solid white' : '2px solid transparent',
-                                    background: 'var(--panel-bg)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '9px',
-                                    color: 'var(--text-secondary)',
-                                    transition: 'transform 0.1s',
-                                    transform: (!habitForm.color || habitForm.color === '') ? 'scale(1.1)' : 'scale(1)'
-                                }}
-                                title="Auto (inherit from links)"
-                            >
-                                Auto
-                            </div>
-                            {COLORS.slice(0, 7).map(c => {
-                                const isSelected = habitForm.color && habitForm.color.toLowerCase() === c.toLowerCase();
-                                return (<button
-                                    key={c}
-                                    type="button"
-                                    onClick={() => setHabitForm({...habitForm, color: c})}
+                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
+                        }}>Details / Notes <span style={{opacity: 0.5}}>(optional)</span></label>
+                        <textarea name="auto_field_30"
+                                  placeholder="Add any specific criteria for success..." value={habitForm.desc}
+                                  onChange={(e) => setHabitForm({...habitForm, desc: e.target.value})}
+                                  style={{width: '100%', minHeight: '80px', resize: 'vertical'}}
+                        />
+                    </div>
+
+                    <div className="form-row" style={{display: 'flex', gap: '24px', flexWrap: 'wrap'}}>
+                        <div style={{flex: '0 0 140px'}}>
+                            <label style={{
+                                fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
+                            }}>Duration</label>
+                            <input name="auto_field_31"
+                                   type="text" placeholder="1:20" value={String(habitForm.timeValue)}
+                                   onChange={(e) => setHabitForm({...habitForm, timeValue: e.target.value})}
+                                   style={{width: '100%'}}
+                            />
+                        </div>
+
+                        <div style={{flex: 1, minWidth: '200px'}}>
+                            <label style={{
+                                fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
+                            }}>
+                                Override Color <span style={{opacity: 0.5}}>(optional)</span>
+                            </label>
+                            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center'}}>
+                                <div
+                                    onClick={() => setHabitForm({...habitForm, color: ''})}
                                     style={{
                                         width: '24px',
                                         height: '24px',
                                         borderRadius: '50%',
-                                        padding: 0,
-                                        background: c,
-                                        border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
                                         cursor: 'pointer',
+                                        border: (!habitForm.color || habitForm.color === '') ? '2px solid white' : '2px solid transparent',
+                                        background: 'var(--panel-bg)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '9px',
+                                        color: 'var(--text-secondary)',
                                         transition: 'transform 0.1s',
-                                        transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                                        transform: (!habitForm.color || habitForm.color === '') ? 'scale(1.1)' : 'scale(1)'
                                     }}
-                                />);
-                            })}
+                                    title="Auto (inherit from links)"
+                                >
+                                    Auto
+                                </div>
+                                {COLORS.slice(0, 7).map(c => {
+                                    const isSelected = habitForm.color && habitForm.color.toLowerCase() === c.toLowerCase();
+                                    return (<button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => setHabitForm({...habitForm, color: c})}
+                                        style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            padding: 0,
+                                            background: c,
+                                            border: `2px solid ${isSelected ? '#fff' : 'transparent'}`,
+                                            cursor: 'pointer',
+                                            transition: 'transform 0.1s',
+                                            transform: isSelected ? 'scale(1.1)' : 'scale(1)'
+                                        }}
+                                    />);
+                                })}
 
-                            <div style={{
-                                position: 'relative',
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                background: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? habitForm.color : 'rgba(255, 255, 255, 0.1)',
-                                border: `2px solid ${(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'transparent'}`,
-                                cursor: 'pointer',
-                                transition: 'all 0.1s',
-                                transform: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? 'scale(1.1)' : 'scale(1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'var(--text-secondary)'
-                            }}>
-                                {!(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) &&
-                                    <Palette size={12}/>}
-                                <input name="auto_field_32"
-                                       type="color"
-                                       value={habitForm.color ? habitForm.color.toLowerCase() : '#ffffff'}
-                                       onChange={(e) => setHabitForm({
-                                           ...habitForm, color: e.target.value
-                                       })}
-                                       style={{
-                                           position: 'absolute',
-                                           top: '-10px',
-                                           left: '-10px',
-                                           width: '44px',
-                                           height: '44px',
-                                           cursor: 'pointer',
-                                           opacity: 0
-                                       }}
-                                       title="Custom Color"
-                                />
+                                <div style={{
+                                    position: 'relative',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '50%',
+                                    background: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? habitForm.color : 'rgba(255, 255, 255, 0.1)',
+                                    border: `2px solid ${(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'transparent'}`,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.1s',
+                                    transform: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? 'scale(1.1)' : 'scale(1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: (habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) ? '#fff' : 'var(--text-secondary)'
+                                }}>
+                                    {!(habitForm.color && !COLORS.some(c => c.toLowerCase() === habitForm.color.toLowerCase())) &&
+                                        <Palette size={12}/>}
+                                    <input name="auto_field_32"
+                                           type="color"
+                                           value={habitForm.color ? habitForm.color.toLowerCase() : '#ffffff'}
+                                           onChange={(e) => setHabitForm({
+                                               ...habitForm, color: e.target.value
+                                           })}
+                                           style={{
+                                               position: 'absolute',
+                                               top: '-10px',
+                                               left: '-10px',
+                                               width: '44px',
+                                               height: '44px',
+                                               cursor: 'pointer',
+                                               opacity: 0
+                                           }}
+                                           title="Custom Color"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div>
-                    <label style={{
-                        fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
-                    }}>
-                        Link to Goals <span style={{opacity: 0.5}}>- Select goals this habit supports</span>
-                    </label>
+                    <div>
+                        <label style={{
+                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
+                        }}>
+                            Link to Goals <span style={{opacity: 0.5}}>- Select goals this habit supports</span>
+                        </label>
 
-                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
-                        {/* Routine Goals */}
-                        {(routineGoals || []).map(sg => {
-                            const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
-                            const hex = sg.color || '#3b82f6';
-                            return (
-                                <div
-                                    key={sg.id}
-                                    onClick={() => {
-                                        const current = habitForm.routineGoalIds || [];
-                                        const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
-                                        setHabitForm({...habitForm, routineGoalIds: next});
-                                    }}
-                                    style={{
-                                        padding: '6px 12px',
-                                        borderRadius: '6px',
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                        fontWeight: isSelected ? '500' : 'normal',
-                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                        color: isSelected ? hex : 'var(--text-secondary)',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    {sg.name}
-                                </div>
-                            );
-                        })}
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                            {/* Routine Goals */}
+                            {(routineGoals || []).map(sg => {
+                                const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
+                                const hex = sg.color || '#3b82f6';
+                                return (<div
+                                        key={sg.id}
+                                        onClick={() => {
+                                            const current = habitForm.routineGoalIds || [];
+                                            const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
+                                            setHabitForm({...habitForm, routineGoalIds: next});
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            fontWeight: isSelected ? '500' : 'normal',
+                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                            color: isSelected ? hex : 'var(--text-secondary)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {sg.name}
+                                    </div>);
+                            })}
 
-                        {/* Money Goals */}
-                        {(moneyGoals || []).map(mg => {
-                            const isSelected = (habitForm.moneyGoalIds || []).includes(mg.id);
-                            const hex = mg.color || '#8AC926';
-                            return (
-                                <div
-                                    key={mg.id}
-                                    onClick={() => {
-                                        const current = habitForm.moneyGoalIds || [];
-                                        const next = isSelected ? current.filter((id: string) => id !== mg.id) : [...current, mg.id];
-                                        setHabitForm({...habitForm, moneyGoalIds: next});
-                                    }}
-                                    style={{
-                                        padding: '6px 12px',
-                                        borderRadius: '6px',
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                        fontWeight: isSelected ? '500' : 'normal',
-                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                        color: isSelected ? hex : 'var(--text-secondary)',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    {mg.name}
-                                </div>
-                            );
-                        })}
+                            {/* Money Goals */}
+                            {(moneyGoals || []).map(mg => {
+                                const isSelected = (habitForm.moneyGoalIds || []).includes(mg.id);
+                                const hex = mg.color || '#8AC926';
+                                return (<div
+                                        key={mg.id}
+                                        onClick={() => {
+                                            const current = habitForm.moneyGoalIds || [];
+                                            const next = isSelected ? current.filter((id: string) => id !== mg.id) : [...current, mg.id];
+                                            setHabitForm({...habitForm, moneyGoalIds: next});
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            fontWeight: isSelected ? '500' : 'normal',
+                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                            color: isSelected ? hex : 'var(--text-secondary)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {mg.name}
+                                    </div>);
+                            })}
 
-                        {/* Life Goals */}
-                        {(lifeGoals || []).map(lg => {
-                            const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
-                            const hex = lg.color || '#eab308';
-                            return (
-                                <div
-                                    key={lg.id}
-                                    onClick={() => {
-                                        const current = habitForm.lifeGoalIds || [];
-                                        const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
-                                        setHabitForm({...habitForm, lifeGoalIds: next});
-                                    }}
-                                    style={{
-                                        padding: '6px 12px',
-                                        borderRadius: '6px',
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                        fontWeight: isSelected ? '500' : 'normal',
-                                        background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                        border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                        color: isSelected ? hex : 'var(--text-secondary)',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
-                                    {lg.name}
-                                </div>
-                            );
-                        })}
+                            {/* Life Goals */}
+                            {(lifeGoals || []).map(lg => {
+                                const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
+                                const hex = lg.color || '#eab308';
+                                return (<div
+                                        key={lg.id}
+                                        onClick={() => {
+                                            const current = habitForm.lifeGoalIds || [];
+                                            const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
+                                            setHabitForm({...habitForm, lifeGoalIds: next});
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            fontWeight: isSelected ? '500' : 'normal',
+                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
+                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                            color: isSelected ? hex : 'var(--text-secondary)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {lg.name}
+                                    </div>);
+                            })}
 
-                        {(routineGoals || []).length === 0 && (moneyGoals || []).length === 0 && (lifeGoals || []).length === 0 && (
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {(routineGoals || []).length === 0 && (moneyGoals || []).length === 0 && (lifeGoals || []).length === 0 && (
+                                <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
                                 No goals available
-                            </span>
-                        )}
+                            </span>)}
+                        </div>
                     </div>
-                </div>
 
-                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px', cursor: 'pointer'}}
-                     onClick={() => setHabitForm({...habitForm, isPublic: !habitForm.isPublic})}>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '16px',
+                        cursor: 'pointer'
+                    }}
+                         onClick={() => setHabitForm({...habitForm, isPublic: !habitForm.isPublic})}>
                     <span style={{
                         fontSize: '13px',
                         color: !habitForm.isPublic ? 'var(--danger)' : 'var(--text-secondary)',
                         fontWeight: !habitForm.isPublic ? 600 : 400,
                         opacity: !habitForm.isPublic ? 1 : 0.6
                     }}>Private</span>
-                    <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
-                        <input
-                            type="checkbox"
-                            id="habit-public"
-                            checked={!!habitForm.isPublic}
-                            onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
-                        />
-                        <span className="ios-slider"></span>
-                    </label>
-                    <span style={{
-                        fontSize: '13px',
-                        color: habitForm.isPublic ? 'var(--success)' : 'var(--text-secondary)',
-                        fontWeight: habitForm.isPublic ? 600 : 400,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        opacity: habitForm.isPublic ? 1 : 0.6
-                    }}>
+                        <label className="ios-switch" onClick={(e) => e.stopPropagation()}>
+                            <input
+                                type="checkbox"
+                                id="habit-public"
+                                checked={!!habitForm.isPublic}
+                                onChange={(e) => setHabitForm({...habitForm, isPublic: e.target.checked})}
+                            />
+                            <span className="ios-slider"></span>
+                        </label>
+                        <span style={{
+                            fontSize: '13px',
+                            color: habitForm.isPublic ? 'var(--success)' : 'var(--text-secondary)',
+                            fontWeight: habitForm.isPublic ? 600 : 400,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            opacity: habitForm.isPublic ? 1 : 0.6
+                        }}>
                         <Globe size={13}/> Public (Visible to others)
                     </span>
+                    </div>
                 </div>
-                <div style={{display: 'flex', gap: '8px', marginTop: '16px', width: '100%', padding: '8px 0'}}>
+
+                <div className="modal-form-actions" style={{flexWrap: 'wrap'}}>
                     {editingHabitId && (<button type="button"
                                                 onClick={() => confirmDeleteHabit(editingHabitId, habitForm.name)}
                                                 style={{
-                                                    flex: '0 0 20%',
+                                                    flex: '1 1 calc(30% - 4px)',
                                                     background: '#ef4444',
                                                     color: 'white',
                                                     border: 'none',
                                                     padding: '10px 0',
                                                     borderRadius: '6px',
-                                                    fontWeight: '500'
+                                                    fontWeight: '500',
+                                                    cursor: 'pointer'
                                                 }}>Delete</button>)}
                     <button type="button" onClick={() => setShowHabitModal(false)} className="secondary"
                             style={{
-                                flex: editingHabitId ? '0 0 25%' : '0 0 30%',
+                                flex: editingHabitId ? '1 1 calc(30% - 4px)' : '1 1 80px',
                                 padding: '10px 0',
                                 borderRadius: '6px',
                                 fontWeight: '500'
                             }}>Cancel
                     </button>
                     <button type="submit" className="primary" style={{
-                        flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: 'bold'
+                        flex: editingHabitId ? '2 1 calc(40% - 4px)' : '2 1 120px',
+                        padding: '10px 0',
+                        borderRadius: '6px',
+                        fontWeight: 'bold'
                     }}>{editingHabitId ? 'Update' : 'Save'}</button>
                 </div>
             </form>
@@ -1957,6 +2051,7 @@ export default function HabitsPane({
             isOpen={showMilestoneModal}
             onClose={() => setShowMilestoneModal(false)}
             maxWidth="460px"
+            bodyClassName="modal-body-fixed-footer"
             title={<div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                     <div style={{background: 'rgba(168, 85, 247, 0.15)', padding: '8px', borderRadius: '8px'}}>
@@ -1969,19 +2064,82 @@ export default function HabitsPane({
                 </p>
             </div>}
         >
-            <form onSubmit={saveMilestone} style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
-
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '16px',
-                    background: 'rgba(0,0,0,0.2)',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--panel-border)'
-                }}>
-                    <div className="form-row">
-                        <div style={{flex: 1}}>
+            <form onSubmit={saveMilestone} className="modal-form-layout">
+                <div className="modal-form-content">
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px',
+                        background: 'rgba(0,0,0,0.2)',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--panel-border)'
+                    }}>
+                        <div className="form-row">
+                            <div style={{flex: 1}}>
+                                <label style={{
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    color: 'var(--text-secondary)',
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>Date</label>
+                                <input name="auto_field_33"
+                                       type="date" value={milestoneForm.date}
+                                       onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
+                                       required
+                                       onKeyDown={(e) => e.preventDefault()}
+                                       onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                                       style={{
+                                           width: '100%',
+                                           fontSize: '14px',
+                                           padding: '12px 14px',
+                                           colorScheme: 'dark',
+                                           cursor: 'pointer'
+                                       }}
+                                />
+                            </div>
+                            <div style={{flex: 1}}>
+                                <label style={{
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    color: 'var(--text-secondary)',
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>Tag (Optional)</label>
+                                <Dropdown
+                                    value={milestoneForm.tag}
+                                    onChange={(val) => setMilestoneForm({...milestoneForm, tag: String(val)})}
+                                    options={[{
+                                        value: '', label: 'No Tag'
+                                    }, ...allGoals.map(g => ({
+                                        value: g.name, label: `[${g.type}] ${g.name}`
+                                    }))]}
+                                />
+                            </div>
+                        </div>
+                        {editingMilestoneIdx !== null && (
+                            <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
+                                <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
+                                       onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})}
+                                       style={{
+                                           width: '18px',
+                                           height: '18px',
+                                           margin: 0,
+                                           cursor: 'pointer',
+                                           accentColor: 'var(--accent)'
+                                       }}/>
+                                <label htmlFor="milestone-done"
+                                       style={{
+                                           fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0
+                                       }}>Mark
+                                    as Done</label>
+                            </div>)}
+                        <div style={{position: 'relative'}}>
                             <label style={{
                                 fontSize: '12px',
                                 fontWeight: '500',
@@ -1990,23 +2148,58 @@ export default function HabitsPane({
                                 marginBottom: '8px',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px'
-                            }}>Date</label>
-                            <input name="auto_field_33"
-                                   type="date" value={milestoneForm.date}
-                                   onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
-                                   required
-                                   onKeyDown={(e) => e.preventDefault()}
-                                   onClick={(e) => (e.target as HTMLInputElement).showPicker()}
-                                   style={{
-                                       width: '100%',
-                                       fontSize: '14px',
-                                       padding: '12px 14px',
-                                       colorScheme: 'dark',
-                                       cursor: 'pointer'
+                            }}>Milestone Name</label>
+                            <input name="auto_field_34"
+                                   type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.name}
+                                   ref={(el) => {
+                                       modalInputRefs.current['name'] = el;
                                    }}
+                                   onChange={(e) => handleModalInput(e, 'name')}
+                                   onKeyDown={(e) => handleModalKeyDown(e, 'name')} required
+                                   style={{width: '100%', fontSize: '16px', padding: '12px 14px'}}
                             />
+
+                            {showMentionMenu && activeModalField === 'name' && filteredGoals.length > 0 && (<div
+                                style={{
+                                    position: 'absolute',
+                                    top: mentionCoords.top + 'px',
+                                    left: mentionCoords.left + 'px',
+                                    background: 'var(--bg)',
+                                    border: '1px solid var(--panel-border)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                    zIndex: 100,
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    minWidth: '250px'
+                                }}
+                            >
+                                {filteredGoals.map((g, i) => (<div
+                                    key={String(g.id || i)}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        insertModalMention(g, 'name');
+                                    }}
+                                    onMouseEnter={() => setMentionIndex(i)}
+                                    style={{
+                                        padding: '10px 14px',
+                                        cursor: 'pointer',
+                                        background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                >
+                    <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
+                      {g.name}
+                    </span>
+                                    <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
+                      {g.type}
+                    </span>
+                                </div>))}
+                            </div>)}
+
                         </div>
-                        <div style={{flex: 1}}>
+                        <div style={{position: 'relative'}}>
                             <label style={{
                                 fontSize: '12px',
                                 fontWeight: '500',
@@ -2015,179 +2208,94 @@ export default function HabitsPane({
                                 marginBottom: '8px',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px'
-                            }}>Tag (Optional)</label>
-                            <Dropdown
-                                value={milestoneForm.tag}
-                                onChange={(val) => setMilestoneForm({...milestoneForm, tag: String(val)})}
-                                options={[{
-                                    value: '', label: 'No Tag'
-                                }, ...allGoals.map(g => ({
-                                    value: g.name, label: `[${g.type}] ${g.name}`
-                                }))]}
+                            }}>Description (Optional)</label>
+                            <textarea name="auto_field_35"
+                                      placeholder="Any extra details..." value={milestoneForm.desc}
+                                      ref={(el) => {
+                                          modalInputRefs.current['desc'] = el;
+                                      }}
+                                      onChange={(e) => handleModalInput(e, 'desc')}
+                                      onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
+                                      style={{
+                                          width: '100%',
+                                          fontSize: '16px',
+                                          padding: '12px 14px',
+                                          minHeight: '60px',
+                                          resize: 'vertical',
+                                          fontFamily: 'inherit'
+                                      }}
                             />
+
+                            {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (<div
+                                style={{
+                                    position: 'absolute',
+                                    top: mentionCoords.top + 'px',
+                                    left: mentionCoords.left + 'px',
+                                    background: 'var(--bg)',
+                                    border: '1px solid var(--panel-border)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                                    zIndex: 100,
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    minWidth: '250px'
+                                }}
+                            >
+                                {filteredGoals.map((g, i) => (<div
+                                    key={String(g.id || i)}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        insertModalMention(g, 'desc');
+                                    }}
+                                    onMouseEnter={() => setMentionIndex(i)}
+                                    style={{
+                                        padding: '10px 14px',
+                                        cursor: 'pointer',
+                                        background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                >
+                    <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
+                      {g.name}
+                    </span>
+                                    <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
+                      {g.type}
+                    </span>
+                                </div>))}
+                            </div>)}
+
                         </div>
-                    </div>
-                    {editingMilestoneIdx !== null && (
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px'}}>
-                            <input type="checkbox" id="milestone-done" checked={milestoneForm.done}
-                                   onChange={(e) => setMilestoneForm({...milestoneForm, done: e.target.checked})}
-                                   style={{
-                                       width: '18px',
-                                       height: '18px',
-                                       margin: 0,
-                                       cursor: 'pointer',
-                                       accentColor: 'var(--accent)'
-                                   }}/>
-                            <label htmlFor="milestone-done"
-                                   style={{
-                                       fontSize: '14px', color: 'var(--text-primary)', cursor: 'pointer', margin: 0
-                                   }}>Mark
-                                as Done</label>
-                        </div>)}
-                    <div style={{position: 'relative'}}>
-                        <label style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            color: 'var(--text-secondary)',
-                            display: 'block',
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                        }}>Milestone Name</label>
-                        <input name="auto_field_34"
-                               type="text" placeholder="e.g. Go live @inmasjid" value={milestoneForm.name}
-                               ref={(el) => {
-                                   modalInputRefs.current['name'] = el;
-                               }}
-                               onChange={(e) => handleModalInput(e, 'name')}
-                               onKeyDown={(e) => handleModalKeyDown(e, 'name')} required
-                               style={{width: '100%', fontSize: '16px', padding: '12px 14px'}}
-                        />
-
-                        {showMentionMenu && activeModalField === 'name' && filteredGoals.length > 0 && (<div
-                            style={{
-                                position: 'absolute',
-                                top: mentionCoords.top + 'px',
-                                left: mentionCoords.left + 'px',
-                                background: 'var(--bg)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '8px',
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                                zIndex: 100,
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                minWidth: '250px'
-                            }}
-                        >
-                            {filteredGoals.map((g, i) => (<div
-                                key={String(g.id || i)}
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    insertModalMention(g, 'name');
-                                }}
-                                onMouseEnter={() => setMentionIndex(i)}
-                                style={{
-                                    padding: '10px 14px',
-                                    cursor: 'pointer',
-                                    background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                                    display: 'flex',
-                                    flexDirection: 'column'
-                                }}
-                            >
-                    <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
-                      {g.name}
-                    </span>
-                                <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
-                      {g.type}
-                    </span>
-                            </div>))}
-                        </div>)}
-
-                    </div>
-                    <div style={{position: 'relative'}}>
-                        <label style={{
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            color: 'var(--text-secondary)',
-                            display: 'block',
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                        }}>Description (Optional)</label>
-                        <textarea name="auto_field_35"
-                                  placeholder="Any extra details..." value={milestoneForm.desc}
-                                  ref={(el) => {
-                                      modalInputRefs.current['desc'] = el;
-                                  }}
-                                  onChange={(e) => handleModalInput(e, 'desc')}
-                                  onKeyDown={(e) => handleModalKeyDown(e, 'desc')}
-                                  style={{
-                                      width: '100%',
-                                      fontSize: '16px',
-                                      padding: '12px 14px',
-                                      minHeight: '60px',
-                                      resize: 'vertical',
-                                      fontFamily: 'inherit'
-                                  }}
-                        />
-
-                        {showMentionMenu && activeModalField === 'desc' && filteredGoals.length > 0 && (<div
-                            style={{
-                                position: 'absolute',
-                                top: mentionCoords.top + 'px',
-                                left: mentionCoords.left + 'px',
-                                background: 'var(--bg)',
-                                border: '1px solid var(--panel-border)',
-                                borderRadius: '8px',
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                                zIndex: 100,
-                                maxHeight: '200px',
-                                overflowY: 'auto',
-                                minWidth: '250px'
-                            }}
-                        >
-                            {filteredGoals.map((g, i) => (<div
-                                key={String(g.id || i)}
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    insertModalMention(g, 'desc');
-                                }}
-                                onMouseEnter={() => setMentionIndex(i)}
-                                style={{
-                                    padding: '10px 14px',
-                                    cursor: 'pointer',
-                                    background: i === mentionIndex ? 'rgba(234, 179, 8, 0.15)' : 'transparent',
-                                    display: 'flex',
-                                    flexDirection: 'column'
-                                }}
-                            >
-                    <span style={{fontSize: '13px', color: '#fff', fontWeight: i === mentionIndex ? 'bold' : 'normal'}}>
-                      {g.name}
-                    </span>
-                                <span style={{fontSize: '11px', color: 'var(--accent)', marginTop: '2px'}}>
-                      {g.type}
-                    </span>
-                            </div>))}
-                        </div>)}
-
                     </div>
                 </div>
 
-                <div style={{display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px'}}>
+                <div className="modal-form-actions" style={{flexWrap: 'wrap'}}>
                     {editingMilestoneIdx !== null && (<button type="button" onClick={confirmDeleteMilestone}
                                                               style={{
-                                                                  padding: '10px 20px',
+                                                                  flex: '1 1 calc(30% - 4px)',
+                                                                  padding: '10px 0',
                                                                   background: '#ef4444',
                                                                   color: 'white',
                                                                   border: 'none',
-                                                                  borderRadius: '8px',
-                                                                  marginRight: 'auto'
+                                                                  borderRadius: '6px',
+                                                                  fontWeight: '500',
+                                                                  cursor: 'pointer'
                                                               }}>Delete</button>)}
                     <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary"
-                            style={{padding: '10px 20px'}}>Cancel
+                            style={{
+                                flex: editingMilestoneIdx !== null ? '1 1 calc(30% - 4px)' : '1 1 80px',
+                                padding: '10px 0',
+                                borderRadius: '6px',
+                                fontWeight: '500'
+                            }}>Cancel
                     </button>
                     <button type="submit" className="primary"
-                            style={{padding: '10px 20px'}}>{editingMilestoneIdx !== null ? 'Update Milestone' : 'Save Milestone'}</button>
+                            style={{
+                                flex: editingMilestoneIdx !== null ? '2 1 calc(40% - 4px)' : '2 1 120px',
+                                padding: '10px 0',
+                                borderRadius: '6px',
+                                fontWeight: 'bold'
+                            }}>{editingMilestoneIdx !== null ? 'Update Milestone' : 'Save Milestone'}</button>
                 </div>
             </form>
         </BaseModal>
