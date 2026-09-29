@@ -139,34 +139,19 @@ export default function HabitsPane({
     const [activeModalField, setActiveModalField] = useState<any>(null);
 
     const openEditMilestone = (dateStr: string, idx: number, block: string) => {
-        let tag = '';
-        let name = '';
-        let desc = '';
-        let done = false;
         const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
         const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
 
-        if (matchWithTag) {
-            tag = matchWithTag[1] || '';
-            name = matchWithTag[2] || '';
-            desc = (matchWithTag[3] || '').trim().replace(/ {2}\n/g, '\n');
-        } else if (matchWithoutTag) {
-            tag = '';
-            name = matchWithoutTag[1] || '';
-            desc = (matchWithoutTag[2] || '').trim().replace(/ {2}\n/g, '\n');
-        } else {
-            tag = '';
-            name = block || '';
-            desc = '';
-        }
+        const tag = matchWithTag ? (matchWithTag[1] || '') : '';
+        const rawName = matchWithTag ? (matchWithTag[2] || '') : (matchWithoutTag ? (matchWithoutTag[1] || '') : (block || ''));
+        const desc = matchWithTag
+            ? (matchWithTag[3] || '').trim().replace(/ {2}\n/g, '\n')
+            : (matchWithoutTag ? (matchWithoutTag[2] || '').trim().replace(/ {2}\n/g, '\n') : '');
 
-        if (name.startsWith('[x] ')) {
-            done = true;
-            name = name.substring(4);
-        } else if (name.startsWith('[ ] ')) {
-            done = false;
-            name = name.substring(4);
-        }
+        const done = rawName.startsWith('[x] ');
+        const name = done
+            ? rawName.substring(4)
+            : (rawName.startsWith('[ ] ') ? rawName.substring(4) : rawName);
 
         setEditingMilestoneIdx({dateStr, idx});
         setMilestoneForm({date: dateStr, tag: tag || '', name: name || '', desc: desc || '', done});
@@ -353,12 +338,14 @@ export default function HabitsPane({
         }
     }, [calendarSubTab]);
 
-    let quickTasks: any[] = [];
-    try {
-        quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
-    } catch {
-        quickTasks = [];
-    }
+    const quickTasks: any[] = (() => {
+        try {
+            const parsed = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    })();
 
     const publicFilter = (item: any) => !isPublicView || item.isPublic || (item.name || '').includes('[public]');
     const {

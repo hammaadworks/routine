@@ -427,12 +427,15 @@ export default function CoinsPane({
         reader.onload = () => {
             try {
                 const parsed = JSON.parse(reader.result as string);
-                const incoming = Array.isArray(parsed) ? parsed : (parsed.coinsEntries || []);
-                if (!Array.isArray(incoming)) throw new Error("bad shape");
+                const incoming: any[] | null = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.coinsEntries) ? parsed.coinsEntries : null);
+                if (!incoming) {
+                    setImportMsg("Failed to parse JSON backup file.");
+                    return;
+                }
                 const existingIds = new Set(coinsEntries.map(en => en.id));
                 let added = 0;
                 const toAdd: CoinsEntry[] = [];
-                incoming.forEach(en => {
+                incoming.forEach((en: any) => {
                     if (!en || !en.year || !en.month || typeof en.amount !== "number") return;
                     const id = en.id || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
                     if (existingIds.has(id)) return;
@@ -3388,7 +3391,7 @@ export default function CoinsPane({
         </div>);
 }
 
-function AccordionSection({
+export function AccordionSection({
                               id, isOpen, onToggle, icon, title, badge, children, headerRight
                           }: {
     id?: string;
@@ -3447,6 +3450,6 @@ function AccordionSection({
         </div>);
 }
 
-function Label({children}: { children: React.ReactNode }) {
+export function Label({children}: { children: React.ReactNode }) {
     return <div className="mono" style={{fontSize: 10.5, color: "#5E6570", marginBottom: 4}}>{children}</div>;
 }

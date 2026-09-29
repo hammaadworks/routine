@@ -83,7 +83,6 @@ export default function GoalForm({
                             color: '#10b981'
                         }, {key: 'routine' as const, label: 'Routine', icon: Target, color: '#3b82f6'}]).map(cat => {
                             const isSelected = targetCategory === cat.key;
-                            const Icon = cat.icon;
                             return (<button
                                     key={cat.key}
                                     type="button"
@@ -104,7 +103,7 @@ export default function GoalForm({
                                         transition: 'all 0.15s ease'
                                     }}
                                 >
-                                    <Icon size={14} color={isSelected ? cat.color : 'currentColor'}/>
+                                    <cat.icon size={14} color={isSelected ? cat.color : 'currentColor'}/>
                                     <span>{cat.label}</span>
                                 </button>);
                         })}

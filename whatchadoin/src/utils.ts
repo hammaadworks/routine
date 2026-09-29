@@ -483,30 +483,19 @@ export function formatCompactDuration(createdAt?: string | number, completedAt?:
         month: 'short', day: 'numeric', year: 'numeric'
     }) : '';
 
-    let formatted = '';
-
-    if (diffSec < 60) {
-        formatted = `${diffSec}s`;
-    } else if (diffMin < 60) {
-        const roundedMin = Math.ceil(diffMs / (1000 * 60));
-        formatted = `${roundedMin}m`;
-    } else if (diffHr < 24) {
-        formatted = `${diffHr}h`;
-    } else if (diffDays < 14) {
-        formatted = `${diffDays}d`;
-    } else if (diffDays < 60) {
-        formatted = `${diffWeeks}w`;
-    } else {
-        formatted = `${diffMonths}M`;
-    }
+    const formatted = (() => {
+        if (diffSec < 60) return `${diffSec}s`;
+        if (diffMin < 60) return `${Math.ceil(diffMs / (1000 * 60))}m`;
+        if (diffHr < 24) return `${diffHr}h`;
+        if (diffDays < 14) return `${diffDays}d`;
+        if (diffDays < 60) return `${diffWeeks}w`;
+        return `${diffMonths}M`;
+    })();
 
     const completedState = !!(isCompleted || completedMs);
-    let fullText = '';
-    if (completedState) {
-        fullText = endDateStr ? `Achieved on ${endDateStr} (Took ${formatted}, dreamt on ${startDateStr})` : `Achieved (Took ${formatted}, dreamt on ${startDateStr})`;
-    } else {
-        fullText = `Dreamt on ${startDateStr} (${formatted} ago)`;
-    }
+    const fullText = completedState
+        ? (endDateStr ? `Achieved on ${endDateStr} (Took ${formatted}, dreamt on ${startDateStr})` : `Achieved (Took ${formatted}, dreamt on ${startDateStr})`)
+        : `Dreamt on ${startDateStr} (${formatted} ago)`;
 
     return {formatted, fullText, isCompleted: completedState};
 }

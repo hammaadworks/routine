@@ -25,7 +25,7 @@ function safeLazy<T extends React.ComponentType<any>>(factory: () => Promise<{ d
     });
 }
 
-class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, {
+export class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, {
     hasError: boolean; error: Error | null
 }> {
     constructor(props: any) {
@@ -68,21 +68,21 @@ class TabErrorBoundary extends React.Component<{ tabName: string; children: Reac
     }
 }
 
-const RoutineGoalPane = safeLazy(() => import('./components/RoutineGoalPane'));
+export const RoutineGoalPane = safeLazy(() => import('./components/RoutineGoalPane'));
 
-const PlansPane = safeLazy(() => import('./components/PlansPane'));
-const CoinsPane = safeLazy(() => import('./components/CoinsPane'));
-const CalendarPane = safeLazy(() => import('./components/CalendarPane'));
-const TasksPane = safeLazy(() => import('./components/TasksPane'));
+export const PlansPane = safeLazy(() => import('./components/PlansPane'));
+export const CoinsPane = safeLazy(() => import('./components/CoinsPane'));
+export const CalendarPane = safeLazy(() => import('./components/CalendarPane'));
+export const TasksPane = safeLazy(() => import('./components/TasksPane'));
 
-const LifePane = safeLazy(() => import('./components/LifePane'));
-const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
-const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
-const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
+export const LifePane = safeLazy(() => import('./components/LifePane'));
+export const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
+export const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
+export const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
 
-const WalletModal = safeLazy(() => import('./components/WalletModal'));
-const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
-const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
+export const WalletModal = safeLazy(() => import('./components/WalletModal'));
+export const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
+export const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
