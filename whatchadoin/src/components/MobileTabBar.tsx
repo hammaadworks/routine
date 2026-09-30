@@ -83,7 +83,6 @@ export default function MobileTabBar({
     return (<>
         <div className="mobile-tab-bar">
             {tabs.map(tab => {
-                // noinspection JSUnusedLocalSymbols
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (<button

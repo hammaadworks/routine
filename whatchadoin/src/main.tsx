@@ -20,7 +20,7 @@ polyfill({
         let el = target;
         while (el && el !== document.body) {
             if (el.getAttribute && el.getAttribute('draggable') === 'false') return undefined;
-            if (el.draggable === true || (el.getAttribute && el.getAttribute('draggable') === 'true')) {
+            if (el.draggable || (el.getAttribute && el.getAttribute('draggable') === 'true')) {
                 return el;
             }
             el = el.parentElement;

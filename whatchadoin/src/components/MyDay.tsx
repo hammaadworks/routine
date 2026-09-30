@@ -4,6 +4,7 @@ import {Clock, Target, X, ZoomIn, ZoomOut} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import MyDayMaker from './MyDayMaker';
+import type { TemplateBlock } from '../types/routine';
 
 import {getGoalColor, parseDuration, sortHabits} from '../utils';
 
@@ -351,7 +352,7 @@ const hexToRgb = (hex: string) => {
     return `${r}, ${g}, ${b}`;
 };
 
-const calculateNextStartTime = (blocks: any[]) => {
+const calculateNextStartTime = (blocks: TemplateBlock[]) => {
     let startMinutes;
     if (blocks.length > 0) {
         const lastBlock = blocks.reduce((prev, current) => (prev.startTime + prev.duration > current.startTime + current.duration) ? prev : current);
@@ -365,10 +366,21 @@ const calculateNextStartTime = (blocks: any[]) => {
     return startMinutes;
 };
 
-function getLayout(blocks: any[]) {
+export interface LaidOutBlock extends TemplateBlock {
+    originalId?: string;
+    actualStartTime?: number;
+    actualDuration?: number;
+    isWrapFirst?: boolean;
+    isWrapSecond?: boolean;
+    colIndex?: number;
+    width?: number;
+    left?: number;
+}
+
+function getLayout(blocks: TemplateBlock[]): LaidOutBlock[] {
     if (!blocks || blocks.length === 0) return [];
 
-    const processedBlocks: any[] = [];
+    const processedBlocks: LaidOutBlock[] = [];
     blocks.forEach(b => {
         if (b.startTime + b.duration > 1440) {
             processedBlocks.push({
@@ -395,8 +407,8 @@ function getLayout(blocks: any[]) {
     });
 
     const sorted = [...processedBlocks].sort((a, b) => a.startTime - b.startTime || b.duration - a.duration);
-    const groups = [];
-    let currentGroup: any[] = [];
+    const groups: LaidOutBlock[][] = [];
+    let currentGroup: LaidOutBlock[] = [];
     let currentGroupEnd = 0;
 
     sorted.forEach(block => {
@@ -414,16 +426,16 @@ function getLayout(blocks: any[]) {
     });
     if (currentGroup.length > 0) groups.push(currentGroup);
 
-    const laidOutBlocks: any[] = [];
+    const laidOutBlocks: LaidOutBlock[] = [];
     groups.forEach(group => {
-        const columns: any[][] = [];
+        const columns: LaidOutBlock[][] = [];
         group.forEach(block => {
             let placed = false;
             for (let i = 0; i < columns.length; i++) {
                 const col = columns[i];
                 if (!col) continue;
                 const lastBlock = col[col.length - 1];
-                if (lastBlock.startTime + lastBlock.duration <= block.startTime) {
+                if (!lastBlock || lastBlock.startTime + lastBlock.duration <= block.startTime) {
                     col.push(block);
                     block.colIndex = i;
                     placed = true;
@@ -439,7 +451,7 @@ function getLayout(blocks: any[]) {
         const numCols = columns.length;
         group.forEach(block => {
             block.width = 100 / numCols;
-            block.left = block.colIndex * block.width;
+            block.left = (block.colIndex || 0) * block.width;
             laidOutBlocks.push(block);
         });
     });
@@ -1075,7 +1087,7 @@ export default function MyDay({
                                 onPointerDown={(e) => e.stopPropagation()}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    deleteBlock(block.originalId);
+                                    deleteBlock(block.originalId || block.id);
                                 }}
                                 style={{
                                     position: 'absolute',

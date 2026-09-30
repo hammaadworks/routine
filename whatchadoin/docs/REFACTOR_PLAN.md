@@ -267,3 +267,6 @@ Each phase must satisfy the following verification criteria prior to merge:
    - Verify `isPublicView` masking across all tabs and header totals.
    - Verify all 22 WebMCP tools execute properly through the AI Assistant.
    - Test backup export and import cycle with currency preservation.
+
+## 2026-09-30 Refactor Note
+- **Context Providers:** `CoinsContext.tsx`, `GoalsContext.tsx`, `UIContext.tsx`, and `RoutineContext.tsx` were completely unused and have been deleted to remove dead code. If context-based refactoring is planned in the future, they should be recreated from scratch based on concrete requirements.

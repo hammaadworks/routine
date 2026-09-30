@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type {Habit, QuickTask, Routine, RoutineGoal} from './types/routine';
 import type {LifeGoal, MoneyGoal, WalletGoal} from './types/goals';
 
@@ -44,19 +45,6 @@ export function parseDuration(val: string | number | null | undefined): number {
     return parseInt(str, 10) || 0;
 }
 
-export function validateColor(hex: string): { isValid: boolean; error: string } {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const diff = max - min;
-
-    if (diff < 30 || min > 220) {
-        return {isValid: false, error: 'Grey/white is reserved.'};
-    }
-    return {isValid: true, error: ''};
-}
 
 export function getScheduledGoalsForDate(dateStr: string, habits: Habit[], dayMapping: Record<string, string> | null | undefined, templates: Routine['templates'] | null | undefined): Habit[] {
     if (!habits || habits.length === 0) return [];
@@ -372,7 +360,7 @@ export function sortHabits<T extends {
     });
 }
 
-export function getCardBgStyle(hexColors: string[] | string | null | undefined, hasColorExplicit = false): React.CSSProperties {
+export function getCardBgStyle(hexColors: string[] | string | null | undefined, hasColorExplicit = false): CSSProperties {
     const colors = Array.isArray(hexColors) ? hexColors : (hexColors ? [hexColors] : ['#eab308']);
     const safeColors = colors.length > 0 ? colors : ['#eab308'];
     const firstColor = safeColors[0] || '#eab308';
@@ -500,3 +488,51 @@ export function formatCompactDuration(createdAt?: string | number, completedAt?:
     return {formatted, fullText, isCompleted: completedState};
 }
 
+/**
+ * Normalizes markdown text by collapsing consecutive empty lines between list items into single newlines,
+ * preventing severed list blocks and excessive spacing.
+ */
+export function normalizeListNewlines(content: string): string {
+    if (!content) return '';
+    let prev = '';
+    let current = content;
+    while (prev !== current) {
+        prev = current;
+        current = current
+            .replace(/(^|\n)(\s*[-*+]\s+[^\n]+)\n[ \t]*\n+(\s*[-*+]\s+)/g, '$1$2\n$3')
+            .replace(/(^|\n)(\s*\d+\.\s+[^\n]+)\n[ \t]*\n+(\s*\d+\.\s+)/g, '$1$2\n$3');
+    }
+    return current;
+}
+
+
+export const calcDurationMinutes = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const [h1 = 0, m1 = 0] = start.split(':').map(Number);
+    const [h2 = 0, m2 = 0] = end.split(':').map(Number);
+    if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+    let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+    if (diff < 0) diff += 24 * 60;
+    return diff;
+};
+
+export const formatDuration = (mins: number) => {
+    if (mins <= 0) return '0m';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+};
+
+export const formatTime12h = (time24: string) => {
+    if (!time24) return '';
+    const [hStr = '0', mStr = '00'] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr || '00';
+    if (isNaN(h)) return time24;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m} ${ampm}`;
+};

@@ -25,7 +25,8 @@ function safeLazy<T extends React.ComponentType<any>>(factory: () => Promise<{ d
     });
 }
 
-export class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, {
+
+class TabErrorBoundary extends React.Component<{ tabName: string; children: React.ReactNode }, {
     hasError: boolean; error: Error | null
 }> {
     constructor(props: any) {
@@ -68,21 +69,21 @@ export class TabErrorBoundary extends React.Component<{ tabName: string; childre
     }
 }
 
-export const RoutineGoalPane = safeLazy(() => import('./components/RoutineGoalPane'));
+const RoutineGoalPane = safeLazy(() => import('./components/RoutineGoalPane'));
 
-export const PlansPane = safeLazy(() => import('./components/PlansPane'));
-export const CoinsPane = safeLazy(() => import('./components/CoinsPane'));
-export const CalendarPane = safeLazy(() => import('./components/CalendarPane'));
-export const TasksPane = safeLazy(() => import('./components/TasksPane'));
+const PlansPane = safeLazy(() => import('./components/PlansPane'));
+const CoinsPane = safeLazy(() => import('./components/CoinsPane'));
+const CalendarPane = safeLazy(() => import('./components/CalendarPane'));
+const TasksPane = safeLazy(() => import('./components/TasksPane'));
 
-export const LifePane = safeLazy(() => import('./components/LifePane'));
-export const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
-export const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
-export const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
+const LifePane = safeLazy(() => import('./components/LifePane'));
+const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
+const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
+const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
 
-export const WalletModal = safeLazy(() => import('./components/WalletModal'));
-export const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
-export const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
+const WalletModal = safeLazy(() => import('./components/WalletModal'));
+const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
+const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
@@ -341,35 +342,49 @@ export default function App() {
         moneyGoals
     });
 
+    const stateRef = useRef({
+        activeRoutine, routines, lifeGoals, moneyGoals, activeCenterTab, activeLeftTab
+    });
+    useEffect(() => {
+        stateRef.current = { activeRoutine, routines, lifeGoals, moneyGoals, activeCenterTab, activeLeftTab };
+    }, [activeRoutine, routines, lifeGoals, moneyGoals, activeCenterTab, activeLeftTab]);
+
+    const executeToolRef = useRef(executeTool);
+    useEffect(() => { executeToolRef.current = executeTool; }, [executeTool]);
+
     useEffect(() => {
         const channel = new BroadcastChannel('whatchadoin_ai_channel');
 
-        const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
-        const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
-        const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
-
-        const appState = {
-            activeRoutine,
-            routines,
-            lifeGoals,
-            moneyGoals,
-            quickTasks,
-            coins: {entries: coinsEntries, targets: coinsTargets},
-            activeCenterTab,
-            activeLeftTab
+        const broadcastState = () => {
+            const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+            const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+            const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+            const s = stateRef.current;
+            const appState = {
+                activeRoutine: s.activeRoutine,
+                routines: s.routines,
+                lifeGoals: s.lifeGoals,
+                moneyGoals: s.moneyGoals,
+                quickTasks,
+                coins: {entries: coinsEntries, targets: coinsTargets},
+                activeCenterTab: s.activeCenterTab,
+                activeLeftTab: s.activeLeftTab
+            };
+            channel.postMessage({type: 'STATE_UPDATE', payload: appState});
         };
-        channel.postMessage({type: 'STATE_UPDATE', payload: appState});
+
+        broadcastState();
 
         channel.onmessage = async (event) => {
             const data = event.data;
             if (data.type === 'PING') {
-                channel.postMessage({type: 'STATE_UPDATE', payload: appState});
+                broadcastState();
             } else if (data.type === 'DOCK_COMMAND') {
                 setAiDockState(data.payload);
             } else if (data.type === 'TOOL_EXECUTION') {
                 const {tool, args, callId} = data;
                 try {
-                    const result = await executeTool(tool, args || {});
+                    const result = await executeToolRef.current(tool, args || {});
                     channel.postMessage({
                         type: 'TOOL_RESULT', callId, status: 'success', result, message: (result as any)?.message
                     });
@@ -380,7 +395,7 @@ export default function App() {
         };
 
         return () => channel.close();
-    }, [routines, activeRoutineId, activeRoutine, lifeGoals, moneyGoals, activeCenterTab, activeLeftTab, updateActiveRoutine, executeTool]);
+    }, []); // Run only once on mount
     const setRoutineGoals = (goals: any[]) => updateActiveRoutine({routineGoals: goals});
     const setHabits = (goals: any[]) => updateActiveRoutine({habits: goals});
     const setTemplates = (templates: any[]) => updateActiveRoutine({templates: templates});

@@ -500,26 +500,7 @@ export const initSync = (onRemoteUpdate?: () => void) => {
         logSync('error', `Error during startup sync: ${err}`, e);
     });
 
-    // 2. Override setItem to detect changes
-    const originalSetItem = localStorage.setItem;
-    localStorage.setItem = function (key: string, _value: string) {
-        originalSetItem.apply(this, [key, _value] as any);
-
-        if (isImporting) return;
-        if (!key.startsWith('whatchadoin_')) return;
-        if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename' || key === 'whatchadoin_force_sync_push' || key === 'whatchadoin_last_synced_at' || key === 'whatchadoin_last_sync_error') return;
-
-        // Debounce push
-        clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            pushToGist().catch(console.error);
-        }, 5000); // 5 seconds after last change
-    };
-
-    const originalRemoveItem = localStorage.removeItem;
-    localStorage.removeItem = function (key: string) {
-        originalRemoveItem.apply(this, [key] as any);
-
+    const handleStorageChange = (key: string) => {
         if (isImporting) return;
         if (!key.startsWith('whatchadoin_')) return;
         if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename' || key === 'whatchadoin_force_sync_push' || key === 'whatchadoin_last_synced_at' || key === 'whatchadoin_last_sync_error') return;
@@ -529,6 +510,19 @@ export const initSync = (onRemoteUpdate?: () => void) => {
         syncTimeout = setTimeout(() => {
             pushToGist().catch(console.error);
         }, 5000);
+    };
+
+    // 2. Override setItem to detect changes
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function (key: string, _value: string) {
+        originalSetItem.apply(this, [key, _value] as any);
+        handleStorageChange(key);
+    };
+
+    const originalRemoveItem = localStorage.removeItem;
+    localStorage.removeItem = function (key: string) {
+        originalRemoveItem.apply(this, [key] as any);
+        handleStorageChange(key);
     };
 
     // 3. Ensure sync happens if user closes tab before debounce fires

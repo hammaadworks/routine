@@ -11,9 +11,3 @@ export interface ConfirmConfig {
     onConfirm: () => void;
 }
 
-export interface Quote {
-    id: string;
-    text: string;
-    author?: string;
-    [key: string]: unknown;
-}

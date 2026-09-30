@@ -2,40 +2,43 @@ import * as React from 'react';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Activity,
-    Calendar,
+    
     CheckCircle2,
     ChevronDown,
     Clock,
-    Copy,
+    
     Globe,
-    GripVertical,
+    
     ListTodo,
     Palette,
-    Pencil,
+    
     Plus,
     Target,
-    Trash2,
+    
     X
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
-import SearchSortBar from './SearchSortBar';
 import {
     getAllGoalsForMention,
-    getCardBgStyle,
     getGoalColor,
     getScheduledGoalsForDate,
     parseDuration,
     sortHabits
 } from '../utils';
-import type {CalendarSubTab} from '../types/ui';
+import HabitList from './habits/HabitList';
+import MilestonesView from './habits/MilestonesView';
+import TimelogView from './habits/TimelogView';
+
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
 
+import type {CalendarSubTab} from '../types/ui';
 interface HabitsPaneProps {
+    isCalendarTab?: boolean;
+    setCalendarSubTab?: (tab: CalendarSubTab) => void;
     isPublicView?: boolean;
     habits: any[];
     setHabits: (h: any[]) => void;
@@ -53,11 +56,10 @@ interface HabitsPaneProps {
     dailyLogs: any;
     toggleDailyGoal: (date: string, id: string) => void;
     dayMapping: any;
-    isCalendarTab: boolean;
-    activeRoutine: any;
+        activeRoutine: any;
     updateActiveRoutine?: (updates: any) => void;
     calendarSubTab?: CalendarSubTab;
-    setCalendarSubTab?: (tab: CalendarSubTab) => void;
+    setSubTab?: (tab: CalendarSubTab) => void;
     isRoutineDrawerOpen?: boolean;
     setIsRoutineDrawerOpen?: (open: boolean) => void;
     moneyGoals?: any[];
@@ -84,18 +86,18 @@ export default function HabitsPane({
                                        dailyLogs,
                                        toggleDailyGoal,
                                        dayMapping,
-                                       isCalendarTab,
-                                       activeRoutine,
+                                                                              activeRoutine,
                                        updateActiveRoutine,
+                                       isCalendarTab,
                                        calendarSubTab = 'mark_goals',
-                                       setCalendarSubTab,
+                                       
+                                       setSubTab,
                                        isRoutineDrawerOpen,
                                        setIsRoutineDrawerOpen,
                                        milestones: passedMilestones,
                                        setMilestones
                                    }: HabitsPaneProps) {
-    const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
-    const [showAllMilestones, setShowAllMilestones] = useState(false);
+        const [showAllMilestones, setShowAllMilestones] = useState(false);
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
@@ -118,19 +120,14 @@ export default function HabitsPane({
         isPublic: false
     });
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortByName, setSortByName] = useState(false);
+    const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
+        const [sortByName, setSortByName] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
     const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', name: '', desc: '', done: false});
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
-    const [timeLogForm, setTimeLogForm] = useState<{
-        startTime: string; endTime: string; tagGoalId: string; desc: string;
-    }>({
-        startTime: '', endTime: '', tagGoalId: '', desc: ''
-    });
-    const [editingTimeLogId, setEditingTimeLogId] = useState<string | null>(null);
-
+    
 
     const [showMentionMenu, setShowMentionMenu] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
@@ -326,7 +323,7 @@ export default function HabitsPane({
         setShowMilestoneModal(false);
         setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
         setEditingMilestoneIdx(null);
-        if (setCalendarSubTab) setCalendarSubTab('milestones');
+        if (setSubTab) setSubTab('milestones');
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
     };
     const modalInputRefs = useRef<any>({});
@@ -338,14 +335,27 @@ export default function HabitsPane({
         }
     }, [calendarSubTab]);
 
-    const quickTasks: any[] = (() => {
+    const [quickTasks, setQuickTasks] = useState<any[]>(() => {
         try {
             const parsed = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
             return Array.isArray(parsed) ? parsed : [];
         } catch {
             return [];
         }
-    })();
+    });
+
+    useEffect(() => {
+        const handleUpdate = () => {
+            try {
+                const parsed = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+                setQuickTasks(Array.isArray(parsed) ? parsed : []);
+            } catch {
+                setQuickTasks([]);
+            }
+        };
+        window.addEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
+        return () => window.removeEventListener('whatchadoin_quick_tasks_updated', handleUpdate);
+    }, []);
 
     const publicFilter = (item: any) => !isPublicView || item.isPublic || (item.name || '').includes('[public]');
     const {
@@ -356,7 +366,7 @@ export default function HabitsPane({
     // Removed inline editing handlers
 
 
-    const openAddHabit = () => {
+    const openAddHabit = useCallback(() => {
         setEditingHabitId(null);
         setHabitForm({
             name: '',
@@ -369,7 +379,7 @@ export default function HabitsPane({
             color: ''
         });
         setShowHabitModal(true);
-    };
+    }, []);
 
     useEffect(() => {
         const handleFab = () => {
@@ -383,7 +393,7 @@ export default function HabitsPane({
         };
         window.addEventListener('fab:add-habits', handleFab);
         return () => window.removeEventListener('fab:add-habits', handleFab);
-    }, [calendarSubTab]);
+    }, [calendarSubTab, openAddHabit]);
 
 
     const openEditHabit = (goal: any) => {
@@ -566,141 +576,12 @@ export default function HabitsPane({
         return `${m}m`;
     };
 
-    const formatTime12h = (time24: string) => {
-        if (!time24) return '';
-        const [hStr = '0', mStr = '00'] = time24.split(':');
-        let h = parseInt(hStr, 10);
-        const m = mStr || '00';
-        if (isNaN(h)) return time24;
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        h = h % 12;
-        if (h === 0) h = 12;
-        return `${h}:${m} ${ampm}`;
-    };
-
-    const handlePreFillNow = () => {
-        const now = new Date();
-        const curH = String(now.getHours()).padStart(2, '0');
-        const curM = String(now.getMinutes()).padStart(2, '0');
-        const nowStr = `${curH}:${curM}`;
-
-        let newStart = timeLogForm.startTime;
-        if (!newStart) {
-            if (dayTimeLogs.length > 0) {
-                const sortedLogs = [...dayTimeLogs].sort((a, b) => a.startTime.localeCompare(b.startTime));
-                const lastLog = sortedLogs[sortedLogs.length - 1];
-                if (lastLog && lastLog.endTime) {
-                    newStart = lastLog.endTime;
-                }
-            }
-            if (!newStart) {
-                const prev = new Date(now.getTime() - 60 * 60 * 1000);
-                newStart = `${String(prev.getHours()).padStart(2, '0')}:${String(prev.getMinutes()).padStart(2, '0')}`;
-            }
-        }
-        setTimeLogForm(prev => ({
-            ...prev, startTime: newStart, endTime: nowStr
-        }));
-    };
-
-    const handleSaveTimeLog = (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (!timeLogForm.startTime || !timeLogForm.endTime) return;
-
-        let selectedGoal = null;
-        if (timeLogForm.tagGoalId) {
-            selectedGoal = allGoals.find(g => String(g.id) === String(timeLogForm.tagGoalId) || g.name === timeLogForm.tagGoalId);
-        }
-
-        const tagData = selectedGoal ? {
-            tagGoalId: selectedGoal.id,
-            tagName: selectedGoal.name,
-            tagColor: selectedGoal.color || 'var(--accent)',
-            tagType: selectedGoal.type
-        } : {};
-
-        let updatedDay: any[];
-        if (editingTimeLogId) {
-            updatedDay = dayTimeLogs.map(entry => {
-                if (entry.id === editingTimeLogId) {
-                    return {
-                        ...entry,
-                        startTime: timeLogForm.startTime,
-                        endTime: timeLogForm.endTime,
-                        desc: timeLogForm.desc.trim(), ...tagData,
-                        tagGoalId: selectedGoal ? selectedGoal.id : undefined,
-                        tagName: selectedGoal ? selectedGoal.name : undefined,
-                        tagColor: selectedGoal ? (selectedGoal.color || 'var(--accent)') : undefined,
-                        tagType: selectedGoal ? selectedGoal.type : undefined
-                    };
-                }
-                return entry;
-            });
-        } else {
-            const newLog = {
-                id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                startTime: timeLogForm.startTime,
-                endTime: timeLogForm.endTime,
-                desc: timeLogForm.desc.trim(), ...tagData,
-                createdAt: Date.now()
-            };
-            updatedDay = [...dayTimeLogs, newLog];
-        }
-
-        updatedDay.sort((a, b) => a.startTime.localeCompare(b.startTime));
-        const updatedTimeLogs = {
-            ...currentTimeLogs, [timelogDate]: updatedDay
-        };
-
-        if (updateActiveRoutine) {
-            updateActiveRoutine({timeLogs: updatedTimeLogs});
-        }
-
-        setTimeLogForm({
-            startTime: timeLogForm.endTime, endTime: '', tagGoalId: '', desc: ''
-        });
-        setEditingTimeLogId(null);
-    };
-
-    const handleEditTimeLog = (log: any) => {
-        setEditingTimeLogId(log.id);
-        setTimeLogForm({
-            startTime: log.startTime || '',
-            endTime: log.endTime || '',
-            tagGoalId: log.tagGoalId || log.tagName || '',
-            desc: log.desc || ''
-        });
-    };
-
-    const handleCancelEdit = () => {
-        setEditingTimeLogId(null);
-        setTimeLogForm({
-            startTime: '', endTime: '', tagGoalId: '', desc: ''
-        });
-    };
-
-    const handleDeleteTimeLog = (id: string) => {
-        setConfirmConfig({
-            title: 'Delete Time Log',
-            message: 'Are you sure you want to delete this time log entry?',
-            isDanger: true,
-            onConfirm: () => {
-                const updatedDay = dayTimeLogs.filter(entry => entry.id !== id);
-                const updatedTimeLogs = {
-                    ...currentTimeLogs, [timelogDate]: updatedDay
-                };
-                if (updateActiveRoutine) {
-                    updateActiveRoutine({timeLogs: updatedTimeLogs});
-                }
-                if (editingTimeLogId === id) {
-                    handleCancelEdit();
-                }
-                setConfirmConfig(null);
-            },
-            onCancel: () => setConfirmConfig(null)
-        });
-    };
-
+    
+    
+    
+    
+    
+    
     let currentTemplateId = null;
     if (effectiveDate) {
         const [y, m, d] = (effectiveDate || '').split('-');
@@ -821,33 +702,7 @@ export default function HabitsPane({
     }, [effectiveDate, isCalendarTab, calendarSubTab]);
 
     // Parse markdown to render colored tags
-    const customMarkdownComponents = React.useMemo(() => ({
-        strong: ({children, ...props}: any) => {
-            const text = String(children).trim();
-            if (text.startsWith('@')) {
-                const goalName = text.slice(1);
-                const goal = allGoals.find(g => (g.name || '').toLowerCase() === goalName.toLowerCase());
-                if (goal && goal.color) {
-                    return (<strong {...props} style={{
-                        color: goal.color, background: `${goal.color}20`, padding: '0 4px', borderRadius: '4px'
-                    }}>
-                        {children}
-                    </strong>);
-                } else if (goal) {
-                    return (<strong {...props} style={{
-                        color: 'var(--accent)',
-                        background: 'rgba(234, 179, 8, 0.1)',
-                        padding: '0 4px',
-                        borderRadius: '4px'
-                    }}>
-                        {children}
-                    </strong>);
-                }
-            }
-            return <strong {...props}>{children}</strong>;
-        }
-    }), [allGoals]);
-
+    
     return (<aside
         className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
         style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
@@ -895,792 +750,88 @@ export default function HabitsPane({
             }}>
                 <button
                     className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab?.('mark_goals')}
+                    onClick={() => setSubTab?.('mark_goals')}
                 >
                     {isCalendarTab ? 'Mark Habits' : 'Habits'}
                 </button>
                 <button
                     className={`tab ${calendarSubTab === 'timelog' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab?.('timelog')}
+                    onClick={() => setSubTab?.('timelog')}
                 >
                     Timelog
                 </button>
                 <button
                     className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`}
-                    onClick={() => setCalendarSubTab?.('milestones')}
+                    onClick={() => setSubTab?.('milestones')}
                 >
                     Milestones
                 </button>
             </div>
 
-            {calendarSubTab === 'mark_goals' && (<>
-                <button
-                    onClick={openAddHabit} className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
-                    style={{
-                        width: '100%',
-                        flexShrink: 0,
-                        marginBottom: '16px',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '12px',
-                        borderStyle: 'dashed'
-                    }}
-                >
-                    <Plus size={16}/> Add Habit
-                </button>
+            {calendarSubTab === 'mark_goals' && (
+    <HabitList
+        openAddHabit={openAddHabit}
+        isCalendarTab={isCalendarTab || false}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        sortByName={sortByName}
+        setSortByName={setSortByName}
+        habitFilterRoutineGoalId={habitFilterRoutineGoalId}
+        setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
+        habitFilterLifeGoalId={habitFilterLifeGoalId}
+        setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
+        effectiveDate={effectiveDate}
+        dailyLogs={dailyLogs}
+        displayedRoutineGoals={displayedRoutineGoals}
+        checkRoutineAddressed={checkRoutineAddressed}
+        routineGoals={routineGoals}
+        lifeGoals={lifeGoals}
+        moneyGoals={moneyGoals || []}
+        currentTemplate={currentTemplate}
+        goalCounts={goalCounts}
+        isRoutineDrawerOpen={isRoutineDrawerOpen}
+        handleDragStart={handleDragStart}
+        toggleDailyGoal={toggleDailyGoal}
+        duplicateHabit={duplicateHabit}
+        openEditHabit={openEditHabit}
+        setConfirmConfig={setConfirmConfig}
+        habits={habits}
+        setHabits={setHabits}
+    />
+)}
+{calendarSubTab === 'milestones' && (
+    <MilestonesView
+        effectiveDate={effectiveDate}
+        isCalendarTab={isCalendarTab || false}
+        allGoals={allGoals}
+        currentMilestones={currentMilestones}
+        milestoneDates={milestoneDates}
+        isPublicView={isPublicView}
+        isMilestoneBlockPublic={isMilestoneBlockPublic}
+        milestoneSearchQuery={milestoneSearchQuery}
+        setMilestoneSearchQuery={setMilestoneSearchQuery}
+        setSelectedDate={setSelectedTargetDate}
+        openEditMilestone={openEditMilestone}
+        setEditingMilestoneIdx={setEditingMilestoneIdx}
+        setMilestoneForm={setMilestoneForm}
+        setShowMilestoneModal={setShowMilestoneModal}
+        showAllMilestones={showAllMilestones}
+        setShowAllMilestones={setShowAllMilestones}
+    />
+)}
+{calendarSubTab === 'timelog' && (
+    <TimelogView
+        isCalendarTab={isCalendarTab || false}
+        timelogDate={timelogDate}
+        dayTimeLogs={dayTimeLogs}
+        allGoals={allGoals}
+        currentTimeLogs={currentTimeLogs}
+        updateActiveRoutine={updateActiveRoutine}
+        formatHeaderDate={formatHeaderDate}
+        setConfirmConfig={setConfirmConfig}
+    />
+)}
 
-                <SearchSortBar
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    sortByName={sortByName}
-                    setSortByName={setSortByName}
-                    isFilterActive={!!habitFilterRoutineGoalId || !!habitFilterLifeGoalId}
-                    onFilterClear={() => {
-                        if (setHabitFilterRoutineGoalId) setHabitFilterRoutineGoalId(null);
-                        if (setHabitFilterLifeGoalId) setHabitFilterLifeGoalId(null);
-                    }}
-                />
-
-                <div
-                    className="habits-list-scroll-container"
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                        overflowY: 'auto',
-                        flex: 1,
-                        paddingRight: '4px'
-                    }}>
-
-                    {(() => {
-                        const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
-                        const activeGoals = displayedRoutineGoals.filter(g => !getIsCompleted(g));
-                        const completedGoals = displayedRoutineGoals.filter(g => getIsCompleted(g));
-
-                        const renderGoal = (goal: any) => {
-                            const isAddressed = checkRoutineAddressed(goal);
-                            const hexes = getGoalColor(goal, routineGoals, lifeGoals, moneyGoals);
-                            const hasColor = !!goal.color;
-                            const bgStyle = getCardBgStyle(hexes, hasColor);
-
-                            const baseMins = typeof goal.duration === 'number' && goal.duration > 0 ? goal.duration : (goal.time ? parseDuration(goal.time) : 0);
-                            let scheduledMins = 0;
-                            if (currentTemplate) {
-                                currentTemplate.blocks.forEach((b: any) => {
-                                    if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
-                                });
-                            }
-                            const count = goalCounts[goal.id] || 0;
-                            const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
-
-                            const isCompletedForView = getIsCompleted(goal);
-                            return (<div
-                                key={goal.id}
-                                className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
-                                draggable={!effectiveDate && !isRoutineDrawerOpen}
-                                onDragStart={!effectiveDate && !isRoutineDrawerOpen ? (e) => handleDragStart(e, goal) : undefined}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    minHeight: '52px',
-                                    padding: '8px 12px',
-                                    touchAction: (!effectiveDate && !isRoutineDrawerOpen) ? 'none' : 'auto', ...bgStyle
-                                }}
-                                title={goal.desc ? `${goal.name}\n\n${goal.desc}` : goal.name}
-                            >
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    width: '100%'
-                                }}>
-                                    <div style={{
-                                        display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
-                                    }}>
-                                        {!effectiveDate && !isRoutineDrawerOpen && (
-                                            <GripVertical size={16} color="var(--text-secondary)"
-                                                          style={{
-                                                              cursor: 'grab', flexShrink: 0, opacity: 0.5
-                                                          }}/>)}
-                                        {effectiveDate ? (<input name="auto_field_28"
-                                                                 type="checkbox"
-                                                                 className="checkbox-square"
-                                                                 style={{
-                                                                     flexShrink: 0, '--accent': hexes[0] || '#ffffff'
-                                                                 } as React.CSSProperties}
-                                                                 checked={isCompletedForView}
-                                                                 onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
-                                        />) : (<div style={{width: '16px', flexShrink: 0}}/>)}
-                                        <div style={{
-                                            flex: 1,
-                                            minWidth: 0,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: '2px',
-                                            justifyContent: 'center'
-                                        }}>
-                                            <div style={{display: 'flex', alignItems: 'flex-start', gap: '6px'}}>
-                          <span className="item-title" style={{
-                              wordBreak: 'break-word',
-                              whiteSpace: 'pre-wrap',
-                              lineHeight: 1.4,
-                              color: '#fff',
-                              fontSize: '13px',
-                              fontWeight: '600'
-                          }}>
-                            {goal.name}
-                          </span>
-                                                {isAddressed && (<CheckCircle2 size={12} color={hexes[0] || '#ffffff'}
-                                                                               style={{
-                                                                                   flexShrink: 0, marginTop: '2px'
-                                                                               }}/>)}
-                                            </div>
-
-                                            <div style={{
-                                                display: 'flex',
-                                                flexWrap: 'nowrap',
-                                                gap: '6px',
-                                                alignItems: 'center',
-                                                overflow: 'hidden'
-                                            }}>
-                                                {(goal.time || goal.duration) && (<div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '3px',
-                                                    color: 'var(--text-secondary)',
-                                                    fontSize: '11px',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    <Clock
-                                                        size={10}/> {goal.time || (typeof goal.duration === 'number' ? `${goal.duration}m` : goal.duration)}
-                                                </div>)}
-                                                {(goalCounts[goal.id] || 0) > 1 && (<div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    padding: '2px 6px',
-                                                    background: 'rgba(255,255,255,0.1)',
-                                                    borderRadius: '4px',
-                                                    color: 'var(--text-secondary)',
-                                                    fontSize: '10px',
-                                                    fontWeight: 'bold'
-                                                }}>
-                                                    x{goalCounts[goal.id] || 0}
-                                                </div>)}
-                                                {timeDiff !== 0 && (<div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    padding: '2px 6px',
-                                                    background: timeDiff > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                    borderRadius: '4px',
-                                                    color: timeDiff > 0 ? '#4ade80' : '#f87171',
-                                                    fontSize: '10px',
-                                                    fontWeight: 'bold'
-                                                }}>
-                                                    {timeDiff > 0 ? '+' : ''}{timeDiff}m
-                                                </div>)}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{
-                                        display: 'flex',
-                                        gap: '6px',
-                                        flexShrink: 0,
-                                        marginLeft: '6px',
-                                        alignItems: 'center'
-                                    }}>
-                                        {!effectiveDate && (<>
-                                            <button className="icon-btn" onClick={(e) => {
-                                                e.stopPropagation();
-                                                duplicateHabit(goal);
-                                            }} style={{padding: '6px', cursor: 'pointer'}}>
-                                                <Copy size={14}/>
-                                            </button>
-                                            <button className="icon-btn"
-                                                    onClick={() => openEditHabit(goal)}
-                                                    style={{padding: '6px', cursor: 'pointer'}}>
-                                                <Pencil size={14}/>
-                                            </button>
-                                        </>)}
-                                    </div>
-                                </div>
-                            </div>);
-                        };
-
-                        return (<>
-                            {activeGoals.map(renderGoal)}
-                            {completedGoals.length > 0 && (<div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                margin: '16px 0 8px 0',
-                                justifyContent: 'space-between'
-                            }}>
-                                      <span style={{
-                                          padding: '0 12px 0 0',
-                                          fontSize: '12px',
-                                          color: 'var(--text-secondary)',
-                                          fontWeight: 500
-                                      }}>
-                                        Completed
-                                      </span>
-                                <div style={{flex: 1, height: '1px', background: 'var(--panel-border)'}}></div>
-                                {!effectiveDate && (<button
-                                    onClick={() => {
-                                        setConfirmConfig({
-                                            title: 'Delete All Completed',
-                                            message: 'Are you sure you want to delete all completed habits? This cannot be undone.',
-                                            isDanger: true,
-                                            onConfirm: () => {
-                                                setHabits(habits.filter((g: any) => !g.completed));
-                                                setConfirmConfig(null);
-                                            },
-                                            onCancel: () => setConfirmConfig(null)
-                                        });
-                                    }}
-                                    className="icon-btn"
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--danger)',
-                                        fontSize: '12px',
-                                        cursor: 'pointer',
-                                        padding: '4px 8px',
-                                        fontWeight: 500,
-                                        opacity: 0.8
-                                    }}>
-                                    Delete all
-                                </button>)}
-                            </div>)}
-                            {completedGoals.map(renderGoal)}
-                        </>);
-                    })()}
-                    {displayedRoutineGoals.length === 0 && (<div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '40px 20px',
-                        color: 'var(--text-secondary)',
-                        textAlign: 'center',
-                        border: '1px dashed var(--panel-border)',
-                        borderRadius: '12px',
-                        marginTop: '8px'
-                    }}>
-                        <ListTodo size={32}
-                                  style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
-                        <div style={{fontSize: '14px', fontWeight: '500', color: '#fff'}}>
-                            {effectiveDate ? 'No habits scheduled for this day' : 'No goals yet'}
-                        </div>
-                        <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>
-                            {effectiveDate ? 'Assign a template with habits to this day in My Day.' : 'Start adding goals and drag them to schedule.'}
-                        </div>
-                    </div>)}
-                </div>
-            </>)}
-
-            {calendarSubTab === 'milestones' && (<>
-                <button
-                    onClick={() => {
-                        setEditingMilestoneIdx(null);
-                        setMilestoneForm({
-                            date: effectiveDate || new Date().toISOString().split('T')[0] || '',
-                            tag: '',
-                            name: '',
-                            desc: '',
-                            done: false
-                        });
-                        setShowMilestoneModal(true);
-                    }}
-                    className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
-                    style={{
-                        width: '100%',
-                        flexShrink: 0,
-                        marginBottom: '16px',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '12px',
-                        borderStyle: 'dashed'
-                    }}
-                >
-                    <Plus size={16}/> Add Milestone
-                </button>
-
-                <SearchSortBar
-                    searchQuery={milestoneSearchQuery}
-                    setSearchQuery={setMilestoneSearchQuery}
-                    placeholder="Search milestones..."
-                    customButton={(<button
-                            className={`secondary ${showAllMilestones ? 'sort-active-glow' : ''}`}
-                            onClick={() => setShowAllMilestones(!showAllMilestones)}
-                            style={{
-                                padding: '8px 12px',
-                                background: showAllMilestones ? 'var(--accent)' : '',
-                                boxShadow: showAllMilestones ? '0 0 12px var(--accent)' : 'none',
-                                color: showAllMilestones ? '#000' : 'currentColor',
-                                borderColor: showAllMilestones ? 'var(--accent)' : '',
-                                height: '37px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0
-                            }}
-                            title={showAllMilestones ? "Showing All Milestones (Click for Routine)" : "Showing Routine Milestones (Click for All)"}
-                        >
-                            {showAllMilestones ? <Globe size={14}/> : <Calendar size={14}/>}
-                        </button>)}
-                />
-
-                <div
-                    className="milestones-list-scroll-container"
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        position: 'relative',
-                        overflowY: 'auto',
-                        paddingRight: '4px',
-                        minHeight: 0
-                    }}
-                >
-
-                    {milestoneDates.length === 0 ? (
-                        <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
-                            {milestoneSearchQuery.trim() ? "No milestones match your search." : (showAllMilestones ? "No milestones found. Click 'Add Milestone' to create one." : "No routine milestones found. Switch to 'All' or click 'Add Milestone'.")}
-                        </div>) : (<div style={{
-                        maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px'
-                    }}>
-                        <div style={{
-                            borderLeft: '2px solid var(--panel-border)', marginLeft: '12px', paddingBottom: '24px'
-                        }}>
-                            {milestoneDates.map((dateStr) => {
-                                const contentStr = currentMilestones[dateStr] || '';
-                                const blocks = (contentStr || '').split('\n\n');
-                                const isActiveDate = effectiveDate === dateStr;
-
-                                const todayDate = new Date();
-                                todayDate.setHours(0, 0, 0, 0);
-                                const blockDate = new Date(dateStr);
-                                blockDate.setHours(0, 0, 0, 0);
-                                const isPast = blockDate < todayDate;
-
-                                const diffTime = blockDate.getTime() - todayDate.getTime();
-                                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                                const diffStr = diffDays > 0 ? `+${diffDays} days` : `${diffDays} days`;
-
-                                const validBlocks = blocks.filter((b: string) => b.trim());
-                                const isAllDone = validBlocks.length > 0 && validBlocks.every((b: string) => {
-                                    const titleMatchWithTag = b.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
-                                    const titleMatchWithoutTag = b.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
-                                    const title = titleMatchWithTag ? (titleMatchWithTag[2] || '') : (titleMatchWithoutTag ? (titleMatchWithoutTag[1] || '') : b);
-                                    return title.startsWith('[x] ');
-                                });
-
-                                let nodeColor = isPast ? '#a855f7' : 'var(--accent)';
-                                let multiColors: string[] = [];
-                                const tagsMatch = contentStr.match(/@([^\s*]+)/g);
-                                if (tagsMatch) {
-                                    const uniqueTags: string[] = Array.from(new Set(tagsMatch.map((t: string) => t.slice(1).toLowerCase())));
-                                    uniqueTags.forEach((tag: string) => {
-                                        const goal = allGoals.find(g => (g.name || '').toLowerCase() === tag);
-                                        if (goal && goal.color) {
-                                            multiColors.push(String(goal.color));
-                                        }
-                                    });
-                                }
-
-                                let backgroundStyle = nodeColor;
-                                if (multiColors.length > 1) {
-                                    const sliceSize = 100 / multiColors.length;
-                                    let gradientStops: string[] = [];
-                                    multiColors.forEach((color, i) => {
-                                        gradientStops.push(`${color} ${i * sliceSize}% ${(i + 1) * sliceSize}%`);
-                                    });
-                                    backgroundStyle = `conic-gradient(${gradientStops.join(', ')})`;
-                                } else if (multiColors.length === 1) {
-                                    backgroundStyle = multiColors[0] || '';
-                                    nodeColor = multiColors[0] || '';
-                                }
-
-                                return (<div key={dateStr} id={`milestone-block-${dateStr}`} style={{
-                                    position: 'relative', marginBottom: '40px', paddingLeft: '24px'
-                                }}>
-                                    <div style={{
-                                        position: 'absolute',
-                                        left: '-7px',
-                                        top: '4px',
-                                        width: '12px',
-                                        height: '12px',
-                                        borderRadius: '50%',
-                                        background: backgroundStyle,
-                                        border: '2px solid var(--panel-bg)',
-                                        boxShadow: isActiveDate ? `0 0 10px ${nodeColor}80` : 'none',
-                                        opacity: isActiveDate ? 1 : 0.6
-                                    }}/>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        marginBottom: '16px'
-                                    }}>
-                                        <div
-                                            onClick={() => {
-                                                if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
-                                            }}
-                                            style={{
-                                                fontSize: '16px',
-                                                fontWeight: 'bold',
-                                                color: isActiveDate ? '#fff' : 'var(--text-secondary)',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px'
-                                            }}
-                                        >
-                                        <span>
-                                            {new Date(dateStr).toLocaleDateString('en-US', {
-                                                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
-                                            })}
-                                        </span>
-                                            {isAllDone ? (<CheckCircle2 size={16} color="var(--success, #22c55e)"/>) : (
-                                                <span style={{
-                                                    fontSize: '12px',
-                                                    color: diffDays < 0 ? '#ef4444' : 'var(--accent)',
-                                                    fontWeight: 'normal'
-                                                }}>
-                                                {diffStr}
-                                            </span>)}
-                                        </div>
-                                        <button
-                                            className="icon-btn"
-                                            onClick={() => openEditMilestone(dateStr, 0, blocks[0])}
-                                            style={{padding: '4px', display: 'flex', alignItems: 'center'}}
-                                        >
-                                            <Pencil size={14} color="var(--text-secondary)"/>
-                                        </button>
-                                    </div>
-
-                                    {blocks.map((block: string, idx: number) => {
-                                        if (!block.trim()) return null;
-                                        if (isPublicView && !isMilestoneBlockPublic(block)) return null;
-                                        return (<div
-                                            key={idx}
-                                            style={{
-                                                padding: '2px 0', marginBottom: '8px'
-                                            }}
-                                        >
-                                            <div className="markdown-preview">
-                                                <ReactMarkdown
-                                                    components={customMarkdownComponents as any}>
-                                                    {block === '' ? '\u00A0' : block.trim()}
-                                                </ReactMarkdown>
-                                            </div>
-                                        </div>);
-                                    })}
-                                </div>);
-                            })}
-                        </div>
-
-                        <div style={{height: '20vh'}}/>
-                    </div>)}
-                </div>
-            </>)}
-
-            {calendarSubTab === 'timelog' && (<div className="timelog-tab-container" style={{
-                flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
-            }}>
-                {/* Inline Quick Form */}
-                <form
-                    onSubmit={handleSaveTimeLog}
-                    className="timelog-inline-form"
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid var(--panel-border)',
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        flexShrink: 0
-                    }}
-                >
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <span style={{
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                color: 'var(--accent)',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}>
-                                {editingTimeLogId ? 'Edit Time Log' : 'Quick Log Time'}
-                            </span>
-                        <span style={{fontSize: '11px', color: 'var(--text-secondary)'}}>
-                                {isCalendarTab ? formatHeaderDate(timelogDate) : `Today (${formatHeaderDate(timelogDate)})`}
-                            </span>
-                    </div>
-
-                    {/* Row 1: Start Time, End Time, Now Button */}
-                    <div style={{display: 'flex', alignItems: 'flex-end', gap: '8px'}}>
-                        <div style={{flex: 1, minWidth: 0}}>
-                            <label htmlFor="timelog-start-time" style={{
-                                fontSize: '10px',
-                                fontWeight: '600',
-                                color: 'var(--text-secondary)',
-                                textTransform: 'uppercase',
-                                marginBottom: '4px',
-                                display: 'block'
-                            }}>
-                                Start
-                            </label>
-                            <input
-                                id="timelog-start-time"
-                                type="time"
-                                value={timeLogForm.startTime}
-                                onChange={e => setTimeLogForm(prev => ({...prev, startTime: e.target.value}))}
-                                style={{width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px'}}
-                                required
-                            />
-                        </div>
-                        <div style={{flex: 1, minWidth: 0}}>
-                            <label htmlFor="timelog-end-time" style={{
-                                fontSize: '10px',
-                                fontWeight: '600',
-                                color: 'var(--text-secondary)',
-                                textTransform: 'uppercase',
-                                marginBottom: '4px',
-                                display: 'block'
-                            }}>
-                                End
-                            </label>
-                            <input
-                                id="timelog-end-time"
-                                type="time"
-                                value={timeLogForm.endTime}
-                                onChange={e => setTimeLogForm(prev => ({...prev, endTime: e.target.value}))}
-                                style={{width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px'}}
-                                required
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            className="secondary"
-                            onClick={handlePreFillNow}
-                            style={{
-                                padding: '7px 10px',
-                                fontSize: '12px',
-                                fontWeight: '600',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                whiteSpace: 'nowrap',
-                                height: '34px',
-                                flexShrink: 0
-                            }}
-                            title="Fill with current time"
-                        >
-                            <Clock size={12}/> Now
-                        </button>
-                    </div>
-
-                    {/* Row 2: Tag selector */}
-                    <div>
-                        <label htmlFor="timelog-tag-goal" style={{
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            color: 'var(--text-secondary)',
-                            textTransform: 'uppercase',
-                            marginBottom: '4px',
-                            display: 'block'
-                        }}>
-                            Tag Goal / Habit (Optional)
-                        </label>
-                        <select
-                            id="timelog-tag-goal"
-                            value={timeLogForm.tagGoalId}
-                            onChange={e => setTimeLogForm(prev => ({...prev, tagGoalId: e.target.value}))}
-                            style={{
-                                width: '100%',
-                                padding: '8px 10px',
-                                fontSize: '13px',
-                                borderRadius: '6px',
-                                background: 'rgba(0, 0, 0, 0.4)',
-                                border: '1px solid var(--panel-border)',
-                                color: '#fff',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <option value="">No Tag (General)</option>
-                            {allGoals.map(g => (<option key={String(g.id || g.name)} value={String(g.id || '')}>
-                                [{g.type}] {g.name}
-                            </option>))}
-                        </select>
-                    </div>
-
-                    {/* Row 3: Description input & Submit button */}
-                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                        <input
-                            id="timelog-desc"
-                            type="text"
-                            aria-label="Time log activity description"
-                            placeholder="What did you do? (e.g. read 20 pages)"
-                            value={timeLogForm.desc}
-                            onChange={e => setTimeLogForm(prev => ({...prev, desc: e.target.value}))}
-                            style={{
-                                flex: 1, minWidth: 0, padding: '8px 10px', fontSize: '13px', borderRadius: '6px'
-                            }}
-                        />
-                        <button
-                            type="submit"
-                            className="primary"
-                            disabled={!timeLogForm.startTime || !timeLogForm.endTime}
-                            style={{
-                                padding: '8px 14px',
-                                fontSize: '13px',
-                                fontWeight: '600',
-                                whiteSpace: 'nowrap',
-                                opacity: (!timeLogForm.startTime || !timeLogForm.endTime) ? 0.5 : 1,
-                                cursor: (!timeLogForm.startTime || !timeLogForm.endTime) ? 'not-allowed' : 'pointer',
-                                flexShrink: 0
-                            }}
-                        >
-                            {editingTimeLogId ? 'Update' : '+ Log'}
-                        </button>
-                        {editingTimeLogId && (<button
-                            type="button"
-                            className="secondary"
-                            onClick={handleCancelEdit}
-                            style={{padding: '8px 10px', fontSize: '12px', flexShrink: 0}}
-                        >
-                            Cancel
-                        </button>)}
-                    </div>
-                </form>
-
-                {/* Scrollable Logs List */}
-                <div
-                    className="timelog-list-scroll-container"
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        overflowY: 'auto',
-                        paddingRight: '4px',
-                        minHeight: 0
-                    }}
-                >
-                    {dayTimeLogs.length === 0 ? (<div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '36px 16px',
-                        color: 'var(--text-secondary)',
-                        textAlign: 'center',
-                        border: '1px dashed var(--panel-border)',
-                        borderRadius: '12px',
-                        marginTop: '8px'
-                    }}>
-                        <Clock size={28} style={{marginBottom: '8px', opacity: 0.5, color: 'var(--accent)'}}/>
-                        <div style={{fontSize: '13px', fontWeight: '500', color: '#fff'}}>No time logs for this
-                            date
-                        </div>
-                        <div style={{fontSize: '11px', marginTop: '4px', opacity: 0.7}}>Fill out the quick form
-                            above to log your time.
-                        </div>
-                    </div>) : (dayTimeLogs.map(log => {
-                        const durationMins = calcDurationMinutes(log.startTime, log.endTime);
-                        return (<div
-                            key={log.id}
-                            className="item-card"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '10px 12px',
-                                gap: '10px',
-                                borderRadius: '8px',
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                border: '1px solid var(--panel-border)',
-                                borderLeft: log.tagColor ? `4px solid ${log.tagColor}` : '4px solid var(--accent)'
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0
-                            }}>
-                                <div style={{
-                                    display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'
-                                }}>
-                                                <span style={{
-                                                    fontSize: '12px',
-                                                    fontWeight: 'bold',
-                                                    color: '#fff',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {formatTime12h(log.startTime)} – {formatTime12h(log.endTime)}
-                                                </span>
-                                    <span style={{
-                                        fontSize: '10px',
-                                        fontWeight: 'bold',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        background: 'rgba(255, 255, 255, 0.08)',
-                                        color: 'var(--text-secondary)',
-                                        whiteSpace: 'nowrap'
-                                    }}>
-                                                    {formatDuration(durationMins)}
-                                                </span>
-                                    {log.tagName && (<span style={{
-                                        fontSize: '11px',
-                                        fontWeight: '600',
-                                        padding: '2px 8px',
-                                        borderRadius: '6px',
-                                        background: `${log.tagColor || 'var(--accent)'}22`,
-                                        color: log.tagColor || 'var(--accent)',
-                                        border: `1px solid ${log.tagColor || 'var(--accent)'}44`,
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        maxWidth: '160px'
-                                    }}>
-                                                        {log.tagName}
-                                                    </span>)}
-                                </div>
-                                {log.desc && (<div style={{
-                                    fontSize: '13px',
-                                    color: '#fff',
-                                    wordBreak: 'break-word',
-                                    opacity: 0.9,
-                                    lineHeight: 1.4
-                                }}>
-                                    {log.desc}
-                                </div>)}
-                            </div>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0}}>
-                                <button
-                                    type="button"
-                                    className="icon-btn"
-                                    onClick={() => handleEditTimeLog(log)}
-                                    style={{padding: '6px', cursor: 'pointer'}}
-                                    title="Edit Log"
-                                >
-                                    <Pencil size={13}/>
-                                </button>
-                                <button
-                                    type="button"
-                                    className="icon-btn"
-                                    onClick={() => handleDeleteTimeLog(log.id)}
-                                    style={{padding: '6px', cursor: 'pointer', color: 'var(--danger)'}}
-                                    title="Delete Log"
-                                >
-                                    <Trash2 size={13}/>
-                                </button>
-                            </div>
-                        </div>);
-                    }))}
-                    <div style={{height: '16px'}}/>
-                </div>
-            </div>)}
         </div>
 
         {/* BOTTOM METRICS: Habit Insights */}

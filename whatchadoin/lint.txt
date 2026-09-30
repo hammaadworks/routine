@@ -1,0 +1,446 @@
+
+> whatchadoin@0.0.0 lint
+> oxlint
+
+
+  x Unexpected token
+    ,-[src/utils.ts:49:1]
+ 48 |     return {isValid: true, error: ''};
+ 49 | }
+    : ^
+ 50 | 
+    `----
+
+  ! react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'isDrawerActive'
+    ,-[src/components/BaseModal.tsx:50:8]
+ 31 |         // Only run viewport listener on mobile/tablet drawer mode; never on PC desktop
+ 32 |         if (!isOpen || !isDrawerActive()) return;
+    :                         ^^^^^^^|^^^^^^
+    :                                `-- useEffect uses `isDrawerActive` here
+ 33 | 
+ 34 |         const vv = window.visualViewport;
+ 35 |         if (!vv) return;
+ 36 | 
+ 37 |         const handleViewportChange = () => {
+ 38 |             const heightDiff = window.innerHeight - vv.height;
+ 39 |             setIsKeyboardOpen(heightDiff > 120);
+ 40 |         };
+ 41 | 
+ 42 |         vv.addEventListener('resize', handleViewportChange);
+ 43 |         vv.addEventListener('scroll', handleViewportChange);
+ 44 | 
+ 45 |         return () => {
+ 46 |             vv.removeEventListener('resize', handleViewportChange);
+ 47 |             vv.removeEventListener('scroll', handleViewportChange);
+ 48 |             setIsKeyboardOpen(false);
+ 49 |         };
+ 50 |     }, [isOpen]);
+    :        ^^^^^^^^
+ 51 | 
+    `----
+  help: Either include it or remove the dependency array.
+
+  x Expected corresponding JSX closing tag for 'aside'.
+     ,-[src/components/HabitsPane.tsx:989:27]
+ 841 |     
+ 842 |     return (<aside
+     :              ^^|^^
+     :                `-- Opened here
+ 843 |         className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
+ 844 |         style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
+ 845 |         <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{
+ 846 |             display: 'flex',
+ 847 |             justifyContent: 'space-between',
+ 848 |             alignItems: 'center',
+ 849 |             padding: '16px 24px',
+ 850 |             cursor: 'pointer',
+ 851 |             borderBottom: '1px solid var(--panel-border)'
+ 852 |         }}>
+ 853 |             <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
+ 854 |                 {effectiveDate ? (<>
+ 855 |                     <CheckCircle2 size={18} color="var(--accent)"/> Check {formatHeaderDate(effectiveDate)}
+ 856 |                 </>) : (<>
+ 857 |                     <ListTodo size={18} color="var(--accent)"/> Routine
+ 858 |                 </>)}
+ 859 |             </h2>
+ 860 |             <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
+ 861 |                 <ChevronDown size={16} style={{
+ 862 |                     transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s'
+ 863 |                 }}/>
+ 864 |             </button>
+ 865 |         </div>
+ 866 |         <div ref={routinePaneContentRef} className="routine-pane-content" style={{
+ 867 |             display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0
+ 868 |         }}>
+ 869 |             {isRoutineDrawerOpen && (<div style={{
+ 870 |                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px',
+ 871 |             }}>
+ 872 |                 <h2 style={{margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+ 873 |                     <ListTodo size={20} color="var(--accent)"/>
+ 874 |                     Habits
+ 875 |                 </h2>
+ 876 |                 <button
+ 877 |                     className="icon-btn"
+ 878 |                     onClick={() => setIsRoutineDrawerOpen && setIsRoutineDrawerOpen(false)}
+ 879 |                     style={{padding: '8px', background: 'var(--panel-border)', borderRadius: '50%'}}
+ 880 |                 >
+ 881 |                     <X size={18}/>
+ 882 |                 </button>
+ 883 |             </div>)}
+ 884 |             <div className="tabs" style={{
+ 885 |                 marginBottom: '16px', borderBottom: '1px solid var(--panel-border)', background: 'transparent'
+ 886 |             }}>
+ 887 |                 <button
+ 888 |                     className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`}
+ 889 |                     onClick={() => setCalendarSubTab?.('mark_goals')}
+ 890 |                 >
+ 891 |                     {isCalendarTab ? 'Mark Habits' : 'Habits'}
+ 892 |                 </button>
+ 893 |                 <button
+ 894 |                     className={`tab ${calendarSubTab === 'timelog' ? 'active' : ''}`}
+ 895 |                     onClick={() => setCalendarSubTab?.('timelog')}
+ 896 |                 >
+ 897 |                     Timelog
+ 898 |                 </button>
+ 899 |                 <button
+ 900 |                     className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`}
+ 901 |                     onClick={() => setCalendarSubTab?.('milestones')}
+ 902 |                 >
+ 903 |                     Milestones
+ 904 |                 </button>
+ 905 |             </div>
+ 906 | 
+ 907 |             {calendarSubTab === 'mark_goals' && (
+ 908 |     <HabitList
+ 909 |         openAddHabit={openAddHabit}
+ 910 |         isCalendarTab={isCalendarTab}
+ 911 |         searchQuery={searchQuery}
+ 912 |         setSearchQuery={setSearchQuery}
+ 913 |         sortByName={sortByName}
+ 914 |         setSortByName={setSortByName}
+ 915 |         habitFilterRoutineGoalId={habitFilterRoutineGoalId}
+ 916 |         setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
+ 917 |         habitFilterLifeGoalId={habitFilterLifeGoalId}
+ 918 |         setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
+ 919 |         effectiveDate={effectiveDate}
+ 920 |         dailyLogs={dailyLogs}
+ 921 |         displayedRoutineGoals={displayedRoutineGoals}
+ 922 |         checkRoutineAddressed={checkRoutineAddressed}
+ 923 |         routineGoals={routineGoals}
+ 924 |         lifeGoals={lifeGoals}
+ 925 |         moneyGoals={moneyGoals}
+ 926 |         currentTemplate={currentTemplate}
+ 927 |         goalCounts={goalCounts}
+ 928 |         isRoutineDrawerOpen={isRoutineDrawerOpen}
+ 929 |         handleDragStart={handleDragStart}
+ 930 |         toggleDailyGoal={toggleDailyGoal}
+ 931 |         duplicateHabit={duplicateHabit}
+ 932 |         openEditHabit={openEditHabit}
+ 933 |         setConfirmConfig={setConfirmConfig}
+ 934 |         habits={habits}
+ 935 |         setHabits={setHabits}
+ 936 |     />
+ 937 | )}
+ 938 | {calendarSubTab === 'milestones' && (
+ 939 |     <MilestonesView
+ 940 |         effectiveDate={effectiveDate}
+ 941 |         isCalendarTab={isCalendarTab}
+ 942 |         allGoals={allGoals}
+ 943 |         currentMilestones={currentMilestones}
+ 944 |         milestoneDates={milestoneDates}
+ 945 |         isPublicView={isPublicView}
+ 946 |         isMilestoneBlockPublic={isMilestoneBlockPublic}
+ 947 |         setSelectedTargetDate={setSelectedTargetDate}
+ 948 |         openEditMilestone={openEditMilestone}
+ 949 |         setEditingMilestoneIdx={setEditingMilestoneIdx}
+ 950 |         setMilestoneForm={setMilestoneForm}
+ 951 |         setShowMilestoneModal={setShowMilestoneModal}
+ 952 |         showAllMilestones={showAllMilestones}
+ 953 |         setShowAllMilestones={setShowAllMilestones}
+ 954 |     />
+ 955 | )}
+ 956 | {calendarSubTab === 'timelog' && (
+ 957 |     <TimelogView
+ 958 |         isCalendarTab={isCalendarTab}
+ 959 |         timelogDate={timelogDate}
+ 960 |         dayTimeLogs={dayTimeLogs}
+ 961 |         allGoals={allGoals}
+ 962 |         currentTimeLogs={currentTimeLogs}
+ 963 |         updateActiveRoutine={updateActiveRoutine}
+ 964 |         formatHeaderDate={formatHeaderDate}
+ 965 |         setConfirmConfig={setConfirmConfig}
+ 966 |     />
+ 967 | )}
+ 968 |                             </div>
+ 969 |                             <div style={{display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0}}>
+ 970 |                                 <button
+ 971 |                                     type="button"
+ 972 |                                     className="icon-btn"
+ 973 |                                     onClick={() => handleEditTimeLog(log)}
+ 974 |                                     style={{padding: '6px', cursor: 'pointer'}}
+ 975 |                                     title="Edit Log"
+ 976 |                                 >
+ 977 |                                     <Pencil size={13}/>
+ 978 |                                 </button>
+ 979 |                                 <button
+ 980 |                                     type="button"
+ 981 |                                     className="icon-btn"
+ 982 |                                     onClick={() => handleDeleteTimeLog(log.id)}
+ 983 |                                     style={{padding: '6px', cursor: 'pointer', color: 'var(--danger)'}}
+ 984 |                                     title="Delete Log"
+ 985 |                                 >
+ 986 |                                     <Trash2 size={13}/>
+ 987 |                                 </button>
+ 988 |                             </div>
+ 989 |                         </div>);
+     :                           ^|^
+     :                            `-- Expected `</aside>`
+ 990 |                     }))}
+     `----
+
+  x Unexpected token
+     ,-[src/components/HabitsPane.tsx:990:22]
+ 989 |                         </div>);
+ 990 |                     }))}
+     :                      ^
+ 991 |                     <div style={{height: '16px'}}/>
+     `----
+
+  ! eslint(no-unused-vars): Variable 'execute' is declared but never used. Unused variables should start with a '_'.
+     ,-[src/utils/webmcpPolyfill.ts:120:15]
+ 119 |     for (const { tool } of this.tools.values()) {
+ 120 |       const { execute, ...info } = tool;
+     :               ^^^|^^^
+     :                  `-- 'execute' is declared here
+ 121 |       yield info;
+     `----
+  help: Consider removing this declaration.
+
+  ! eslint(no-unused-vars): Identifier 'Target' is imported but never used.
+   ,-[src/components/habits/MilestonesView.tsx:3:55]
+ 2 | import { useMemo, useState } from 'react';
+ 3 | import { Calendar, CheckCircle2, Globe, Pencil, Plus, Target } from 'lucide-react';
+   :                                                       ^^^|^^
+   :                                                          `-- 'Target' is imported here
+ 4 | import ReactMarkdown from 'react-markdown';
+   `----
+  help: Consider removing this import.
+
+  ! react-hooks(exhaustive-deps): React Hook useMemo has missing dependencies: 'dynamicTimeline', and 'dynamicTimeline.length'
+      ,-[src/components/CoinsPane.tsx:1068:8]
+  911 |         } else {
+  912 |             const latestItem = dynamicTimeline[dynamicTimeline.length - 1];
+      :                                ^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^
+  913 |             const latestMonthKey = latestItem ? monthKey(latestItem.year, latestItem.month) : "";
+  914 |             const isLatestZero = stats.zeroMonthSet.has(latestMonthKey);
+  915 |             list.push({
+  916 |                 icon: <Activity size={15} color="#F59E0B"/>,
+  917 |                 tag: "STREAK RESET",
+  918 |                 title: isLatestZero ? "Documented Zero-Income Month" : "No Active Positive Earning Streak",
+  919 |                 desc: isLatestZero ? `Latest period had documented ₹0 earnings. Your honesty preserves full ledger integrity at ${stats.coveragePct}% career coverage. Best all-time positive streak was ${stats.longestPositiveStreak} consecutive months.` : `The latest period had ₹0 or unlogged earnings. Your best all-time positive earning streak was ${stats.longestPositiveStreak} consecutive months.`,
+  920 |                 color: "#F59E0B"
+  921 |             });
+  922 |         }
+  923 | 
+  924 |         // Data Integrity & Honest Tracking Signal
+  925 |         if (stats.zeroMonthsLogged > 0) {
+  926 |             list.push({
+  927 |                 icon: <ShieldCheck size={15} color="#8AA9C9"/>,
+  928 |                 tag: "DATA INTEGRITY",
+  929 |                 title: `${stats.zeroMonthsLogged} Documented Zero-Income Month${stats.zeroMonthsLogged === 1 ? "" : "s"}`,
+  930 |                 desc: `You have honestly recorded ${stats.zeroMonthsLogged} month${stats.zeroMonthsLogged === 1 ? "" : "s"} with ₹0 earnings. True missing data is only ${stats.unloggedMonthsCount} months, giving you an authentic ${stats.coveragePct}% career coverage.`,
+  931 |                 color: "#8AA9C9"
+  932 |             });
+  933 |         }
+  934 | 
+  935 |         // 2. 3-Month Momentum vs 12-Month Trailing Velocity
+  936 |         if (stats.momentum3MoAvg > 0 && stats.momentum12MoAvg > 0) {
+  937 |             const diffPct = Math.round((stats.momentumRatio - 1) * 100);
+  938 |             if (diffPct >= 10) {
+  939 |                 list.push({
+  940 |                     icon: <TrendingUp size={15} color="#C9A227"/>,
+  941 |                     tag: "ACCELERATING",
+  942 |                     title: `Recent Velocity: +${diffPct}% Above 12-Mo Baseline`,
+  943 |                     desc: `Recent 3 months averaged ${formatCurrency(stats.momentum3MoAvg)}/mo, outpacing your 12-month trailing baseline of ${formatCurrency(stats.momentum12MoAvg)}/mo. Earning power is expanding.`,
+  944 |                     color: "#C9A227"
+  945 |                 });
+  946 |             } else if (diffPct <= -10) {
+  947 |                 list.push({
+  948 |                     icon: <TrendingDown size={15} color="#F59E0B"/>,
+  949 |                     tag: "DECELERATING",
+  950 |                     title: `Recent Velocity: ${diffPct}% Below 12-Mo Baseline`,
+  951 |                     desc: `Recent 3 months averaged ${formatCurrency(stats.momentum3MoAvg)}/mo vs your 12-month trailing baseline of ${formatCurrency(stats.momentum12MoAvg)}/mo. Cash generation has softened.`,
+  952 |                     color: "#F59E0B"
+  953 |                 });
+  954 |             } else {
+  955 |                 list.push({
+  956 |                     icon: <Activity size={15} color="#8AA9C9"/>,
+  957 |                     tag: "STABLE VELOCITY",
+  958 |                     title: `Steady Cash Generation (${formatCurrency(stats.momentum3MoAvg)}/mo)`,
+  959 |                     desc: `Your 3-month velocity matches your 12-month baseline within ±10%, indicating predictable and consistent revenue generation.`,
+  960 |                     color: "#8AA9C9"
+  961 |                 });
+  962 |             }
+  963 |         }
+  964 | 
+  965 |         // 3. Predictability & Volatility Index (Coefficient of Variation)
+  966 |         if (stats.volatilityCV > 0) {
+  967 |             if (stats.volatilityCV <= 15) {
+  968 |                 list.push({
+  969 |                     icon: <ShieldCheck size={15} color="#7FA87A"/>,
+  970 |                     tag: "HIGH PREDICTABILITY",
+  971 |                     title: `Low Volatility (CV: ${stats.volatilityCV}%)`,
+  972 |                     desc: `Monthly earnings exhibit tight consistency (±${formatCurrency(stats.trailing12StdDev)}), making cash flow highly dependable for long-term planning.`,
+  973 |                     color: "#7FA87A"
+  974 |                 });
+  975 |             } else if (stats.volatilityCV <= 35) {
+  976 |                 list.push({
+  977 |                     icon: <Activity size={15} color="#8AA9C9"/>,
+  978 |                     tag: "MODERATE VARIANCE",
+  979 |                     title: `Balanced Income Variance (CV: ${stats.volatilityCV}%)`,
+  980 |                     desc: `Monthly revenue fluctuates ±${formatCurrency(stats.trailing12StdDev)} around your ${formatCurrency(stats.trailing12Mean)}/mo mean, standard for dynamic earnings.`,
+  981 |                     color: "#8AA9C9"
+  982 |                 });
+  983 |             } else {
+  984 |                 list.push({
+  985 |                     icon: <ShieldAlert size={15} color="#F59E0B"/>,
+  986 |                     tag: "HIGH CYCLICALITY",
+  987 |                     title: `Lumpy / Cyclical Cash Flow (CV: ${stats.volatilityCV}%)`,
+  988 |                     desc: `Earnings swing widely (±${formatCurrency(stats.trailing12StdDev)}) between peak (${formatCurrency(stats.highest.total)}) and baseline months. Keep a robust buffer.`,
+  989 |                     color: "#F59E0B"
+  990 |                 });
+  991 |             }
+  992 |         }
+  993 | 
+  994 |         // 4. Target Reality & Run-Rate
+  995 |         const currentYearEntries = visibleEntries.filter(e => e.year === CURRENT_YEAR);
+  996 |         const currentYearTotal = currentYearEntries.reduce((s, e) => s + e.amount, 0);
+  997 |         const currentTargetMo = Number(coinsTargets[String(CURRENT_YEAR)] || 0);
+  998 |         if (currentTargetMo > 0) {
+  999 |             const annualTarget = currentTargetMo * 12;
+ 1000 |             const remainingMonths = Math.max(1, 12 - CURRENT_MONTH);
+ 1001 |             const neededTotal = Math.max(0, annualTarget - currentYearTotal);
+ 1002 |             const neededPerMo = Math.round(neededTotal / remainingMonths);
+ 1003 |             const pctMet = (currentYearTotal / annualTarget) * 100;
+ 1004 | 
+ 1005 |             if (currentYearTotal >= annualTarget) {
+ 1006 |                 list.push({
+ 1007 |                     icon: <CheckCircle2 size={15} color="#7FA87A"/>,
+ 1008 |                     tag: "TARGET HIT",
+ 1009 |                     title: `${CURRENT_YEAR} Annual Target Achieved!`,
+ 1010 |                     desc: `Reached ${formatCurrency(annualTarget)} (${pctMet.toFixed(0)}% funded) with ${remainingMonths} month${remainingMonths === 1 ? "" : "s"} remaining!`,
+ 1011 |                     color: "#7FA87A"
+ 1012 |                 });
+ 1013 |             } else if (neededPerMo <= stats.momentum3MoAvg) {
+ 1014 |                 list.push({
+ 1015 |                     icon: <Target size={15} color="#7FA87A"/>,
+ 1016 |                     tag: "ON TRACK",
+ 1017 |                     title: `Target Pacing: ${formatCurrency(neededPerMo)}/mo Needed`,
+ 1018 |                     desc: `Your current velocity (${formatCurrency(stats.momentum3MoAvg)}/mo) comfortably covers the ${formatCurrency(neededPerMo)}/mo required to reach ${formatCurrency(annualTarget)}.`,
+ 1019 |                     color: "#7FA87A"
+ 1020 |                 });
+ 1021 |             } else {
+ 1022 |                 const boost = Math.round(((neededPerMo - stats.momentum3MoAvg) / Math.max(1, stats.momentum3MoAvg)) * 100);
+ 1023 |                 list.push({
+ 1024 |                     icon: <Target size={15} color="#F59E0B"/>,
+ 1025 |                     tag: "STRETCH TARGET",
+ 1026 |                     title: `Requires +${boost}% Boost to ${formatCurrency(neededPerMo)}/mo`,
+ 1027 |                     desc: `Need ${formatCurrency(neededPerMo)}/mo over the next ${remainingMonths} months to reach your ${formatCurrency(annualTarget)} annual goal (${formatCurrency(currentYearTotal)} earned so far).`,
+ 1028 |                     color: "#F59E0B"
+ 1029 |                 });
+ 1030 |             }
+ 1031 |         }
+ 1032 | 
+ 1033 |         // 5. Revenue Concentration & Single Point of Failure (SPOF)
+ 1034 |         if (stats.topSource) {
+ 1035 |             const topPct = stats.topSource.pct;
+ 1036 |             const secondary = stats.sourceBreakdown[1];
+ 1037 |             if (topPct >= 70) {
+ 1038 |                 list.push({
+ 1039 |                     icon: <AlertCircle size={15} color="#F59E0B"/>,
+ 1040 |                     tag: "CONCENTRATION RISK",
+ 1041 |                     title: `${topPct.toFixed(0)}% Dependent on ${stats.topSource.name}`,
+ 1042 |                     desc: `${formatCurrency(stats.topSource.value)} of ${formatCurrency(stats.total)} comes from a single source. Developing secondary streams like Freelance, Consulting, or Dividends mitigates downside risk.`,
+ 1043 |                     color: "#F59E0B"
+ 1044 |                 });
+ 1045 |             } else {
+ 1046 |                 list.push({
+ 1047 |                     icon: <Layers size={15} color="#8AA9C9"/>,
+ 1048 |                     tag: "DIVERSIFIED",
+ 1049 |                     title: "Balanced Revenue Architecture",
+ 1050 |                     desc: `Top stream (${stats.topSource.name}) accounts for ${topPct.toFixed(0)}%, supplemented by ${secondary ? `${secondary.name} (${secondary.pct.toFixed(0)}%)` : "multiple streams"}.`,
+ 1051 |                     color: "#8AA9C9"
+ 1052 |                 });
+ 1053 |             }
+ 1054 |         }
+ 1055 | 
+ 1056 |         // 6. Earning Floor Power
+ 1057 |         if (stats.lowestNonZero.total > 0 && stats.trailing12Mean > 0) {
+ 1058 |             list.push({
+ 1059 |                 icon: <Award size={15} color="#C9A227"/>,
+ 1060 |                 tag: "EARNING FLOOR",
+ 1061 |                 title: `Solid Baseline: ${formatCurrency(stats.lowestNonZero.total)} Minimum`,
+ 1062 |                 desc: `Your non-zero monthly earnings have never dipped below ${formatCurrency(stats.lowestNonZero.total)}, establishing a dependable lower bound. Peak was ${formatCurrency(stats.highest.total)}.`,
+ 1063 |                 color: "#C9A227"
+ 1064 |             });
+ 1065 |         }
+ 1066 | 
+ 1067 |         return list;
+ 1068 |     }, [stats, visibleEntries, coinsTargets, formatCurrency]);
+      :        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ 1069 | 
+      `----
+  help: Either include it or remove the dependency array.
+
+  ! eslint(no-unused-vars): Catch parameter 'e' is caught but never used.
+    ,-[docs/earnings_ledger.tsx:89:16]
+ 88 |         if (res && res.value) setEntries(JSON.parse(res.value));
+ 89 |       } catch (e) {
+    :                |
+    :                `-- 'e' is declared here
+ 90 |         // no data yet — fresh ledger
+    `----
+  help: Consider handling this error.
+
+  ! eslint(no-unused-vars): Catch parameter 'e' is caught but never used.
+    ,-[docs/earnings_ledger.tsx:95:16]
+ 94 |         if (res2 && res2.value) setTargets(JSON.parse(res2.value));
+ 95 |       } catch (e) {
+    :                |
+    :                `-- 'e' is declared here
+ 96 |         // no targets set yet
+    `----
+  help: Consider handling this error.
+
+  ! eslint(no-unused-vars): Catch parameter 'e' is caught but never used.
+     ,-[docs/earnings_ledger.tsx:107:14]
+ 106 |       await window.storage.set("targets", JSON.stringify(next), false);
+ 107 |     } catch (e) {
+     :              |
+     :              `-- 'e' is declared here
+ 108 |       // targets are a nice-to-have; a failed save here doesn't affect entries
+     `----
+  help: Consider handling this error.
+
+  ! eslint(no-unused-vars): Catch parameter 'e' is caught but never used.
+     ,-[docs/earnings_ledger.tsx:118:14]
+ 117 |       setSaveState(res ? "saved" : "error");
+ 118 |     } catch (e) {
+     :              |
+     :              `-- 'e' is declared here
+ 119 |       setSaveState("error");
+     `----
+  help: Consider handling this error.
+
+  ! eslint(no-unused-vars): Catch parameter 'err' is caught but never used.
+     ,-[docs/earnings_ledger.tsx:186:16]
+ 185 |         setImportMsg(`Imported ${added} ${added === 1 ? "entry" : "entries"}${skipped ? `, skipped ${skipped} already on file` : ""}.`);
+ 186 |       } catch (err) {
+     :                ^|^
+     :                 `-- 'err' is declared here
+ 187 |         setImportMsg("Couldn't read that file — expecting a JSON backup exported from this ledger.");
+     `----
+  help: Consider handling this error.
+
+Found 9 warnings and 3 errors.
+Finished in 11ms on 56 files with 92 rules using 8 threads.

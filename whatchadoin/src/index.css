@@ -334,8 +334,7 @@ body {
         display: contents !important;
     }
 
-    .header-mode-btn {
-        grid-column: 2 !important;
+    .header-mode-btn, .header-ai-btn, .header-settings-btn {
         grid-row: 1 !important;
         justify-self: center !important;
         padding: 8px !important;
@@ -347,6 +346,9 @@ body {
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
     }
+    .header-mode-btn { grid-column: 2 !important; }
+    .header-ai-btn { grid-column: 4 !important; }
+    .header-settings-btn { grid-column: 5 !important; }
 
     .header-wallet-btn {
         grid-column: 3 !important;
@@ -364,34 +366,6 @@ body {
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
-        flex-shrink: 0 !important;
-    }
-
-    .header-ai-btn {
-        grid-column: 4 !important;
-        grid-row: 1 !important;
-        justify-self: center !important;
-        padding: 8px !important;
-        width: 36px !important;
-        height: 36px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-sizing: border-box !important;
-        flex-shrink: 0 !important;
-    }
-
-    .header-settings-btn {
-        grid-column: 5 !important;
-        grid-row: 1 !important;
-        justify-self: center !important;
-        padding: 8px !important;
-        width: 36px !important;
-        height: 36px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-sizing: border-box !important;
         flex-shrink: 0 !important;
     }
 
@@ -1130,6 +1104,177 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 
 .markdown-preview p {
     margin: 0;
+    line-height: 1.65;
+}
+
+/* Lists */
+.markdown-preview ul,
+.markdown-preview ol {
+    margin: 4px 0;
+    padding-left: 24px;
+    white-space: normal;
+}
+
+.markdown-preview ul {
+    list-style-type: disc;
+}
+
+.markdown-preview ul > li::marker {
+    color: var(--accent, #EAB308);
+    font-size: 0.85em;
+}
+
+.markdown-preview ol {
+    list-style-type: decimal;
+}
+
+.markdown-preview ol > li::marker {
+    color: var(--accent, #EAB308);
+    font-weight: 600;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9em;
+}
+
+.markdown-preview li {
+    margin: 3px 0;
+    white-space: normal;
+    line-height: 1.65;
+}
+
+.markdown-preview li > p {
+    margin: 0;
+    display: inline;
+}
+
+/* Indent guides for nested lists */
+.markdown-preview ul ul,
+.markdown-preview ol ol,
+.markdown-preview ul ol,
+.markdown-preview ol ul {
+    margin: 3px 0;
+    padding-left: 20px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    margin-left: 4px;
+}
+
+.markdown-preview ul ul {
+    list-style-type: circle;
+}
+
+.markdown-preview ul ul > li::marker {
+    color: rgba(234, 179, 8, 0.7);
+}
+
+.markdown-preview ul ul ul {
+    list-style-type: square;
+}
+
+.markdown-preview ul ul ul > li::marker {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.markdown-preview ol ol {
+    list-style-type: lower-alpha;
+}
+
+.markdown-preview ol ol ol {
+    list-style-type: lower-roman;
+}
+
+/* Headings */
+.markdown-preview h1 {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin: 16px 0 8px 0;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 6px;
+}
+
+.markdown-preview h2 {
+    font-size: 1.35rem;
+    font-weight: 650;
+    color: #F3F4F6;
+    margin: 14px 0 6px 0;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 4px;
+}
+
+.markdown-preview h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #E5E7EB;
+    margin: 12px 0 4px 0;
+    line-height: 1.35;
+}
+
+.markdown-preview h4 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--accent, #EAB308);
+    margin: 10px 0 4px 0;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.markdown-preview h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #D1D5DB;
+    margin: 8px 0 2px 0;
+}
+
+.markdown-preview h6 {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    margin: 8px 0 2px 0;
+    text-transform: uppercase;
+}
+
+/* Obsidian Tables */
+.obsidian-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin: 8px 0;
+}
+
+.obsidian-table th {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 8px 12px;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    color: #FFFFFF;
+}
+
+.obsidian-table td {
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.obsidian-table tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.obsidian-table tr:hover td {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Obsidian Task Items */
+.obsidian-task-item {
+    transition: background-color 0.15s ease;
+}
+
+.obsidian-wikilink:hover {
+    background: rgba(234, 179, 8, 0.2) !important;
 }
 
 @media (max-width: 768px) {

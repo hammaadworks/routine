@@ -450,9 +450,9 @@ export default function CoinsPane({
                     });
                     added++;
                 });
-                if (toAdd.length > 0) persist([...coinsEntries, ...toAdd]);
+                if (toAdd.length > 0) void persist([...coinsEntries, ...toAdd]);
                 if (parsed.coinsTargets && typeof parsed.coinsTargets === "object") {
-                    persistTargets({...coinsTargets, ...parsed.coinsTargets});
+                    void persistTargets({...coinsTargets, ...parsed.coinsTargets});
                 }
                 setImportMsg(`Imported ${added} entries successfully.`);
                 setTimeout(() => setImportMsg(""), 3500);
@@ -491,7 +491,7 @@ export default function CoinsPane({
         }));
 
         const totalAdded = newEntries.reduce((s, en) => s + en.amount, 0);
-        persist([...coinsEntries, ...newEntries]);
+        void persist([...coinsEntries, ...newEntries]);
         setExpandedYear(entryYear);
         if (totalAdded === 0) {
             setSuccessMsg(`Documented zero income (${formatCurrency(0)}) for ${MONTHS[entryMonth - 1]} ${entryYear}. Recorded as an honest, completed month!`);
@@ -515,7 +515,7 @@ export default function CoinsPane({
             return;
         }
         const updated = coinsEntries.map(en => en.id === editingEntry.id ? editingEntry : en);
-        persist(updated);
+        void persist(updated);
         setExpandedYear(editingEntry.year);
         setSuccessMsg(`Updated ${MONTHS[editingEntry.month - 1]} ${editingEntry.year} (${editingEntry.source}).`);
         setEditingEntry(null);
@@ -574,7 +574,7 @@ export default function CoinsPane({
             source: rangeDraft.source,
             notes: rangeDraft.notes
         }));
-        persist([...coinsEntries, ...newEntries]);
+        void persist([...coinsEntries, ...newEntries]);
         setExpandedYear(rangeDraft.endYear);
         if (amt === 0) {
             setSuccessMsg(`Logged ${months.length} monthly entries of ₹0.00 each (${months.length} months documented as zero income).`);
@@ -598,7 +598,7 @@ export default function CoinsPane({
     }
 
     function removeEntry(id: string) {
-        persist(coinsEntries.filter(en => en.id !== id));
+        void persist(coinsEntries.filter(en => en.id !== id));
         if (editingEntry?.id === id) setEditingEntry(null);
     }
 
@@ -1267,29 +1267,194 @@ export default function CoinsPane({
                 .coins-pane input, .coins-pane select, .coins-pane textarea { width: 100%; box-sizing: border-box; min-width: 0; }
 
                 .page-header { padding: 24px 16px 20px; }
-                .page-body { padding: 20px 16px 40px; }
-                .page-title { font-size: 26px; }
+                .page-body { padding: 18px 12px 40px; box-sizing: border-box; width: 100%; }
+                .page-title { font-size: clamp(22px, 4vw, 32px); }
                 .header-row { display: flex; flex-direction: column; gap: 16px; }
                 .header-actions { width: 100%; align-items: flex-start; }
-                .toolbar-btns { flex-wrap: wrap; }
+                .toolbar-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 
-                .form-header-row { flex-wrap: wrap; gap: 10px; }
-                .range-endpoints { display: grid; grid-template-columns: 1fr; gap: 12px; }
-                .range-endpoint-inner { display: flex; gap: 6px; }
+                .form-header-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+                
+                /* Edit single entry form grid */
+                .edit-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; width: 100%; box-sizing: border-box; }
+                .edit-entry-field-notes { grid-column: 1 / -1; }
+                @media (min-width: 720px) {
+                    .edit-entry-grid { grid-template-columns: 100px 110px 140px 160px 1fr; align-items: end; }
+                    .edit-entry-field-notes { grid-column: auto; }
+                }
 
-                .metrics-4-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-                .target-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-                .charts-grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
-                .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                /* Month Picker Banner */
+                .month-picker-banner {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                    align-items: center;
+                    padding: 12px 14px;
+                    background: #1A1F25;
+                    border: 1px solid #2A3038;
+                    border-radius: 4px;
+                    margin-bottom: 16px;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .month-picker-total {
+                    grid-column: 1 / -1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-top: 8px;
+                    border-top: 1px solid #242A32;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                }
+                @media (min-width: 640px) {
+                    .month-picker-banner {
+                        grid-template-columns: 140px 140px 1fr;
+                    }
+                    .month-picker-total {
+                        grid-column: auto;
+                        justify-content: flex-end;
+                        padding-top: 0;
+                        border-top: none;
+                        text-align: right;
+                    }
+                }
+
+                /* Stream Row Cards */
+                .stream-row-card {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr auto;
+                    gap: 10px;
+                    align-items: end;
+                    background: #14181C;
+                    border: 1px solid #2A3038;
+                    padding: 10px 12px;
+                    border-radius: 4px;
+                    box-sizing: border-box;
+                    width: 100%;
+                }
+                .stream-row-notes-col {
+                    grid-column: 1 / -1;
+                }
+                .stream-row-delete-col {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                @media (max-width: 719px) {
+                    .stream-row-card {
+                        grid-template-columns: 1fr 1fr auto;
+                    }
+                    .stream-row-delete-col {
+                        grid-column: 3;
+                        grid-row: 1;
+                        align-self: end;
+                        height: 38px;
+                    }
+                    .stream-row-notes-col {
+                        grid-column: 1 / -1;
+                        grid-row: 2;
+                    }
+                }
+                @media (min-width: 720px) {
+                    .stream-row-card {
+                        grid-template-columns: 140px 160px 1fr 36px;
+                        align-items: center;
+                        padding: 8px 12px;
+                    }
+                    .stream-row-notes-col {
+                        grid-column: auto;
+                        grid-row: auto;
+                    }
+                    .stream-row-delete-col {
+                        grid-column: auto;
+                        grid-row: auto;
+                        height: auto;
+                    }
+                }
+
+                /* Range Endpoints Form */
+                .range-endpoints {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .range-field-endpoint {
+                    grid-column: 1 / -1;
+                }
+                .range-endpoints-field-full {
+                    grid-column: 1 / -1;
+                }
+                .range-endpoint-inner {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    width: 100%;
+                }
+                @media (min-width: 860px) {
+                    .range-endpoints {
+                        grid-template-columns: 1.25fr 1.25fr 1fr 1fr;
+                        gap: 12px;
+                    }
+                    .range-field-endpoint {
+                        grid-column: auto;
+                    }
+                    .range-endpoint-inner {
+                        display: flex;
+                        gap: 6px;
+                    }
+                }
+
+                /* Tabs scrollable on mobile */
+                .command-tabs-bar {
+                    display: flex;
+                    border-bottom: 1px solid #2A3038;
+                    margin-bottom: 16px;
+                    gap: 4px;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    padding-bottom: 2px;
+                }
+                .command-tabs-bar .nav-pill {
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                }
+
+                .accordion-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 12px 14px;
+                    background: #1A1F25;
+                    cursor: pointer;
+                    user-select: none;
+                    transition: background 0.15s ease;
+                }
+
+                .metrics-4-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px; width: 100%; box-sizing: border-box; }
+                .metrics-4-tile { background: #1A1F25; border: 1px solid #2A3038; padding: 14px 16px; border-radius: 4px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; }
+                .metrics-4-tile .tile-title { font-size: 10.5px; color: #8A8F98; letter-spacing: 0.05em; line-height: 1.25; min-width: 0; }
+                .target-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; box-sizing: border-box; }
+                .target-kpi-grid > div { min-width: 0; overflow: hidden; }
+                .charts-grid-2 { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
+                .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 100%; box-sizing: border-box; }
+                .accordion-body-content { box-sizing: border-box; width: 100%; }
+
+                @media (max-width: 480px) {
+                    .metrics-4-grid { gap: 8px !important; }
+                    .metrics-4-tile { padding: 10px 10px; }
+                    .metrics-4-tile .tile-title { font-size: 9.5px; }
+                    .accordion-body-content { padding: 14px 10px !important; }
+                }
 
                 @media (min-width: 640px) {
+                    .accordion-header { padding: 13px 18px; }
                     .page-header { padding: 36px 28px 28px; }
                     .page-body { padding: 28px; }
-                    .page-title { font-size: 32px; }
                     .header-row { flex-direction: row; justify-content: space-between; align-items: flex-start; }
                     .header-actions { width: auto; align-items: flex-end; }
-                    .range-endpoints { grid-template-columns: 1fr 1fr 1fr 1fr; }
-                    .metrics-4-grid { grid-template-columns: repeat(4, 1fr); }
                     .target-kpi-grid { grid-template-columns: repeat(4, 1fr); }
                     .charts-grid-2 { grid-template-columns: 1fr 1fr; }
                 }
@@ -1470,14 +1635,12 @@ export default function CoinsPane({
                             {editingEntry ? "Editing Entry" : (mode === "monthly" ? "Monthly Income" : "Date Range")}
                         </span>}
                 >
-                    <div className="form-header-row" style={{
-                        display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14
-                    }}>
+                    <div className="form-header-row">
                         <div className="mono"
                              style={{fontSize: 11.5, letterSpacing: "0.05em", color: "#8A8F98", fontWeight: 600}}>
                             {editingEntry ? "EDITING ENTRY" : "LOG MONTHLY EARNINGS"}
                         </div>
-                        <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                        <div style={{display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap"}}>
                             {!editingEntry && (<div style={{
                                     display: "flex",
                                     background: "#14181C",
@@ -1533,12 +1696,7 @@ export default function CoinsPane({
 
                     {/* EDIT SINGLE ENTRY */}
                     {editingEntry && (<form onSubmit={submitEdit}>
-                            <div style={{
-                                display: "grid",
-                                gridTemplateColumns: "110px 110px 160px 160px 1fr",
-                                gap: 10,
-                                marginBottom: 14
-                            }}>
+                            <div className="edit-entry-grid">
                                 <div>
                                     <Label>Year</Label>
                                     <select value={editingEntry.year} onChange={e => setEditingEntry({
@@ -1582,7 +1740,7 @@ export default function CoinsPane({
                                         {SOURCE_PRESETS.map(s => <option key={s} value={s}/>)}
                                     </datalist>
                                 </div>
-                                <div>
+                                <div className="edit-entry-field-notes">
                                     <Label>Notes</Label>
                                     <input
                                         value={editingEntry.notes}
@@ -1590,11 +1748,12 @@ export default function CoinsPane({
                                     />
                                 </div>
                             </div>
-                            <div style={{display: "flex", gap: 10}}>
+                            <div style={{display: "flex", gap: 10, flexWrap: "wrap"}}>
                                 <button
                                     type="submit"
                                     style={{
                                         flex: 1,
+                                        minWidth: 140,
                                         background: "#C9A227",
                                         color: "#14181C",
                                         border: "none",
@@ -1627,56 +1786,35 @@ export default function CoinsPane({
 
                     {/* UNIFIED MONTHLY INCOME FORM (Supports 1 or more streams naturally!) */}
                     {mode === "monthly" && !editingEntry && (<form onSubmit={submitMonthlyStreams}>
-                            <div style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 14,
-                                padding: "12px 14px",
-                                background: "#1A1F25",
-                                border: "1px solid #2A3038",
-                                borderRadius: 4,
-                                marginBottom: 16
-                            }}>
-                                <div style={{flex: 1, maxWidth: 160}}>
+                            <div className="month-picker-banner">
+                                <div>
                                     <Label>Target Year</Label>
                                     <select value={entryYear} onChange={e => setEntryYear(Number(e.target.value))}>
                                         {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                                     </select>
                                 </div>
-                                <div style={{flex: 1, maxWidth: 160}}>
+                                <div>
                                     <Label>Target Month</Label>
                                     <select value={entryMonth} onChange={e => setEntryMonth(Number(e.target.value))}>
                                         {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                                     </select>
                                 </div>
-                                <div style={{
-                                    flex: 2,
-                                    display: "flex",
-                                    alignItems: "flex-end",
-                                    justifyContent: "flex-end"
-                                }}>
-                                    <div className="mono" style={{fontSize: 12, color: "#8A8F98", textAlign: "right"}}>
+                                <div className="month-picker-total">
+                                    <span className="mono" style={{fontSize: 12, color: "#8A8F98"}}>
                                         Month Total:{" "}
                                         <strong style={{color: "#C9A227", fontSize: 14}}>
                                             {formatCurrency(streamRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0))}
-                                        </strong>{" "}
+                                        </strong>
+                                    </span>
+                                    <span className="mono" style={{fontSize: 11, color: "#8A8F98"}}>
                                         across {streamRows.filter(s => parseFloat(s.amount) > 0).length} active
                                         stream{streamRows.filter(s => parseFloat(s.amount) > 0).length === 1 ? "" : "s"}
-                                    </div>
+                                    </span>
                                 </div>
                             </div>
 
                             <div style={{display: "flex", flexDirection: "column", gap: 10, marginBottom: 14}}>
-                                {streamRows.map((stream, idx) => (<div key={stream.id} style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "150px 180px 1fr 36px",
-                                        gap: 10,
-                                        alignItems: "center",
-                                        background: "#14181C",
-                                        border: "1px solid #2A3038",
-                                        padding: "8px 12px",
-                                        borderRadius: 4
-                                    }}>
+                                {streamRows.map((stream, idx) => (<div key={stream.id} className="stream-row-card">
                                         <div>
                                             <Label>Source {streamRows.length > 1 ? `#${idx + 1}` : ""}</Label>
                                             <input
@@ -1698,7 +1836,7 @@ export default function CoinsPane({
                                                 onChange={e => updateStreamRow(stream.id, "amount", e.target.value)}
                                             />
                                         </div>
-                                        <div>
+                                        <div className="stream-row-notes-col">
                                             <Label>Notes (Optional)</Label>
                                             <input
                                                 placeholder="e.g. Q3 dividend, contract retainer, bonus…"
@@ -1706,12 +1844,7 @@ export default function CoinsPane({
                                                 onChange={e => updateStreamRow(stream.id, "notes", e.target.value)}
                                             />
                                         </div>
-                                        <div style={{
-                                            display: "flex",
-                                            alignItems: "flex-end",
-                                            height: "100%",
-                                            paddingBottom: 2
-                                        }}>
+                                        <div className="stream-row-delete-col">
                                             <button
                                                 type="button"
                                                 onClick={() => removeStreamRow(stream.id)}
@@ -1836,7 +1969,7 @@ export default function CoinsPane({
                     {/* DATE RANGE ENTRY */}
                     {mode === "range" && !editingEntry && (<form onSubmit={submitRange}>
                             <div className="range-endpoints" style={{marginBottom: 10}}>
-                                <div>
+                                <div className="range-field-endpoint">
                                     <Label>Start</Label>
                                     <div className="range-endpoint-inner">
                                         <select value={rangeDraft.startMonth} onChange={e => setRangeDraft({
@@ -1853,7 +1986,7 @@ export default function CoinsPane({
                                         </select>
                                     </div>
                                 </div>
-                                <div>
+                                <div className="range-field-endpoint">
                                     <Label>End</Label>
                                     <div className="range-endpoint-inner">
                                         <select value={rangeDraft.endMonth} onChange={e => setRangeDraft({
@@ -1942,115 +2075,105 @@ export default function CoinsPane({
                 >
                     {/* The 4 Core Metric Tiles */}
                     <div className="metrics-4-grid" style={{marginBottom: 20}}>
-                        <div style={{
-                            background: "#1A1F25",
-                            border: "1px solid #2A3038",
-                            padding: "14px 16px",
-                            borderRadius: 4
-                        }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 6
-                            }}>
-                                <span className="mono"
-                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
-                                    TOTAL EARNED
-                                </span>
-                                <Wallet size={14} color="#C9A227"/>
+                        <div className="metrics-4-tile">
+                            <div>
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 6,
+                                    gap: 6
+                                }}>
+                                    <span className="mono tile-title">
+                                        TOTAL EARNED
+                                    </span>
+                                    <Wallet size={14} color="#C9A227" style={{flexShrink: 0}}/>
+                                </div>
+                                <div className="mono" style={{fontSize: "clamp(17px, 2.2vw, 22px)", fontWeight: 700, color: "#EDE7D9", overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.2}}>
+                                    {formatCurrency(stats?.total || 0)}
+                                </div>
                             </div>
-                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
-                                {formatCurrency(stats?.total || 0)}
-                            </div>
-                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 6, overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
                                 {stats?.positiveMonthsLogged || 0} active earning months
                                 {stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.zeroMonthsLogged} broke / ₹0` : ""}
                             </div>
                         </div>
 
-                        <div style={{
-                            background: "#1A1F25",
-                            border: "1px solid #2A3038",
-                            padding: "14px 16px",
-                            borderRadius: 4
-                        }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 6
-                            }}>
-                                <span className="mono"
-                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
-                                    AVG / MO (ALL CAREER)
-                                </span>
-                                <TrendingUp size={14} color="#7FA87A"/>
+                        <div className="metrics-4-tile">
+                            <div>
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 6,
+                                    gap: 6
+                                }}>
+                                    <span className="mono tile-title">
+                                        AVG / MO (CAREER)
+                                    </span>
+                                    <TrendingUp size={14} color="#7FA87A" style={{flexShrink: 0}}/>
+                                </div>
+                                <div className="mono" style={{fontSize: "clamp(17px, 2.2vw, 22px)", fontWeight: 700, color: "#7FA87A", overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.2}}>
+                                    {formatCurrency(stats?.avgPerCareerMonth || 0)}<span
+                                    style={{fontSize: 12, fontWeight: 400}}>/mo</span>
+                                </div>
                             </div>
-                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#7FA87A"}}>
-                                {formatCurrency(stats?.avgPerCareerMonth || 0)}<span
-                                style={{fontSize: 12, fontWeight: 400}}>/mo</span>
-                            </div>
-                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 6, overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
                                 across all {stats?.careerMonths || 0} career mos (unlogged & ₹0 count as $0)
                             </div>
                         </div>
 
-                        <div style={{
-                            background: "#1A1F25",
-                            border: "1px solid #2A3038",
-                            padding: "14px 16px",
-                            borderRadius: 4
-                        }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 6
-                            }}>
-                                <span className="mono"
-                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
-                                    BEST MONTH
-                                </span>
-                                <Award size={14} color="#8AA9C9"/>
+                        <div className="metrics-4-tile">
+                            <div>
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 6,
+                                    gap: 6
+                                }}>
+                                    <span className="mono tile-title">
+                                        BEST MONTH
+                                    </span>
+                                    <Award size={14} color="#8AA9C9" style={{flexShrink: 0}}/>
+                                </div>
+                                <div className="mono" style={{fontSize: "clamp(17px, 2.2vw, 22px)", fontWeight: 700, color: "#EDE7D9", overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.2}}>
+                                    {formatCurrency(stats?.highest.total || 0)}
+                                </div>
                             </div>
-                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
-                                {formatCurrency(stats?.highest.total || 0)}
-                            </div>
-                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 4}}>
+                            <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 6, overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
                                 {stats && stats.highest.total > 0 ? `${MONTHS[stats.highest.month - 1]} ${stats.highest.year} (peak record)` : "—"}
                             </div>
                         </div>
 
-                        <div style={{
-                            background: "#1A1F25",
-                            border: "1px solid #2A3038",
-                            padding: "14px 16px",
-                            borderRadius: 4
-                        }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 6
-                            }}>
-                                <span className="mono"
-                                      style={{fontSize: 10.5, color: "#8A8F98", letterSpacing: "0.06em"}}>
-                                    MISSING MONTHS
-                                </span>
-                                <Calendar size={14} color="#C99A5B"/>
-                            </div>
-                            <div className="mono" style={{fontSize: 22, fontWeight: 700, color: "#EDE7D9"}}>
-                                {missingMonthsCount} <span style={{fontSize: 12, fontWeight: 400, color: "#8A8F98"}}>mos unlogged</span>
+                        <div className="metrics-4-tile">
+                            <div>
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: 6,
+                                    gap: 6
+                                }}>
+                                    <span className="mono tile-title">
+                                        MISSING MONTHS
+                                    </span>
+                                    <Calendar size={14} color="#C99A5B" style={{flexShrink: 0}}/>
+                                </div>
+                                <div className="mono" style={{fontSize: "clamp(17px, 2.2vw, 22px)", fontWeight: 700, color: "#EDE7D9", overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.2}}>
+                                    {missingMonthsCount} <span style={{fontSize: 12, fontWeight: 400, color: "#8A8F98"}}>mos unlogged</span>
+                                </div>
                             </div>
                             <div style={{
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
-                                marginTop: 4
+                                marginTop: 6,
+                                flexWrap: "wrap",
+                                gap: "4px 8px"
                             }}>
-                                <span className="mono" style={{fontSize: 11, color: "#5E6570"}}>
-                                    {stats?.coveragePct || 0}% career coverage ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} mos)
+                                <span className="mono" style={{fontSize: 11, color: "#5E6570", overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
+                                    {stats?.coveragePct || 0}% coverage ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} mos)
                                 </span>
                                 {missingMonthsCount > 0 && (<button
                                         onClick={() => {
@@ -2069,7 +2192,9 @@ export default function CoinsPane({
                                             color: "#C9A227",
                                             fontSize: 11,
                                             cursor: "pointer",
-                                            padding: 0
+                                            padding: 0,
+                                            whiteSpace: "nowrap",
+                                            textDecoration: "underline"
                                         }}
                                     >
                                         view gaps &rarr;
@@ -2095,7 +2220,7 @@ export default function CoinsPane({
                         {smartInsights.length === 0 ? (<div style={{color: "#5E6570", fontSize: 13, padding: "12px 0"}}>
                                 Log your monthly earnings above to generate automated financial insights.
                             </div>) : (<div style={{
-                                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 12
+                                display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 12
                             }}>
                                 {smartInsights.map((insight, idx) => (<div
                                         key={idx}
@@ -2133,7 +2258,9 @@ export default function CoinsPane({
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
-                                marginBottom: 16
+                                marginBottom: 16,
+                                flexWrap: "wrap",
+                                gap: 8
                             }}>
                                 <div style={{display: "flex", alignItems: "center", gap: 8}}>
                                     <PieIcon size={15} color="#C9A227"/>
@@ -2284,9 +2411,7 @@ export default function CoinsPane({
                         </span>}
                 >
                     {/* Command Tabs */}
-                    <div style={{
-                        display: "flex", borderBottom: "1px solid #2A3038", marginBottom: 16, gap: 2
-                    }}>
+                    <div className="command-tabs-bar">
                         <button
                             type="button"
                             onClick={() => setTargetActiveTab("yearly")}
@@ -2352,7 +2477,7 @@ export default function CoinsPane({
                                                 value={coinsTargets[String(CURRENT_YEAR)] ?? ""}
                                                 onChange={e => {
                                                     const val = e.target.value === "" ? 0 : Number(e.target.value);
-                                                    persistTargets({...coinsTargets, [String(CURRENT_YEAR)]: val});
+                                                    void persistTargets({...coinsTargets, [String(CURRENT_YEAR)]: val});
                                                 }}
                                                 style={{fontSize: 12.5, padding: "5px 8px"}}
                                             />
@@ -2503,7 +2628,7 @@ export default function CoinsPane({
                                                     value={coinsTargets[String(y)] ?? ""}
                                                     onChange={e => {
                                                         const val = e.target.value === "" ? 0 : Number(e.target.value);
-                                                        persistTargets({...coinsTargets, [String(y)]: val});
+                                                        void persistTargets({...coinsTargets, [String(y)]: val});
                                                     }}
                                                     style={{fontSize: 11.5, padding: "4px 8px", width: 95}}
                                                 />
@@ -2619,7 +2744,7 @@ export default function CoinsPane({
                             {/* Direct Target Amount & Direct Target Deadline Controls */}
                             <div style={{
                                 display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
                                 gap: 14,
                                 marginBottom: 16
                             }}>
@@ -2997,7 +3122,7 @@ export default function CoinsPane({
                                     CAREER TIMELINE & LOGGED MONTHS ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} logged{stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.positiveMonthsLogged} positive, ${stats.zeroMonthsLogged} broke/₹0` : ""})
                                 </span>
                             </div>
-                            <div style={{display: "flex", alignItems: "center", gap: 14, fontSize: 11}}
+                            <div style={{display: "flex", alignItems: "center", gap: "6px 14px", flexWrap: "wrap", fontSize: 11}}
                                  className="mono">
                                 <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
                                     <span style={{width: 9, height: 9, background: "#C9A227", borderRadius: 2}}></span> logged (&gt;₹0)
@@ -3024,7 +3149,7 @@ export default function CoinsPane({
                         </div>
 
                         {/* Heatmap Grid */}
-                        <div style={{overflowX: "auto", paddingBottom: 6}}>
+                        <div style={{overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 6}}>
                             <div style={{display: "flex", flexDirection: "column", gap: 4, minWidth: 320}}>
                                 {YEARS.filter(y => y <= (dynamicTimeline[dynamicTimeline.length - 1]?.year || CURRENT_YEAR)).map(y => (
                                     <div key={y} style={{display: "flex", alignItems: "center", gap: 6}}>
@@ -3091,7 +3216,8 @@ export default function CoinsPane({
                                                 display: "flex",
                                                 alignItems: "center",
                                                 gap: 8,
-                                                fontSize: 11
+                                                fontSize: 11,
+                                                flexWrap: "wrap"
                                             }}
                                             className="mono"
                                         >
@@ -3294,11 +3420,13 @@ export default function CoinsPane({
                                             display: "flex",
                                             justifyContent: "space-between",
                                             alignItems: "center",
+                                            flexWrap: "wrap",
+                                            gap: 8,
                                             color: "#EDE7D9",
                                             cursor: "pointer"
                                         }}
                                     >
-                                        <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                                        <div style={{display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0}}>
                                             <ChevronRight size={14} style={{
                                                 transform: isOpen ? "rotate(90deg)" : "none",
                                                 transition: "transform 0.15s ease",
@@ -3412,7 +3540,6 @@ export function AccordionSection({
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "13px 18px",
                     background: "#1A1F25",
                     cursor: "pointer",
                     userSelect: "none",
@@ -3444,7 +3571,7 @@ export function AccordionSection({
                 </div>
             </div>
 
-            {isOpen && (<div style={{padding: "18px 20px"}}>
+            {isOpen && (<div className="accordion-body-content" style={{padding: "18px 20px"}}>
                     {children}
                 </div>)}
         </div>);

@@ -59,7 +59,7 @@ function buildFullTimeline() {
 }
 const FULL_TIMELINE = buildFullTimeline();
 
-export default function EarningsLedger() {
+export function EarningsLedger() {
   const [entries, setEntries] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
@@ -169,7 +169,7 @@ export default function EarningsLedger() {
       try {
         const parsed = JSON.parse(reader.result);
         const incoming = Array.isArray(parsed) ? parsed : parsed.entries;
-        if (!Array.isArray(incoming)) throw new Error("bad shape");
+        if (!Array.isArray(incoming)) { setImportMsg("Couldn't read that file — expecting a JSON backup exported from this ledger."); return; }
         const existingKeys = new Set(entries.map(en => `${en.year}-${en.month}-${en.source}`));
         let added = 0, skipped = 0;
         const toAdd = [];
@@ -181,7 +181,7 @@ export default function EarningsLedger() {
           toAdd.push({ id: `${Date.now().toString(36)}-${added}`, year: en.year, month: en.month, amount: en.amount, source: en.source || "Other", notes: en.notes || "" });
           added++;
         });
-        if (toAdd.length > 0) persist([...entries, ...toAdd]);
+        if (toAdd.length > 0) void persist([...entries, ...toAdd]);
         setImportMsg(`Imported ${added} ${added === 1 ? "entry" : "entries"}${skipped ? `, skipped ${skipped} already on file` : ""}.`);
       } catch (err) {
         setImportMsg("Couldn't read that file — expecting a JSON backup exported from this ledger.");
@@ -211,7 +211,7 @@ export default function EarningsLedger() {
     } else {
       next = [...entries, { ...draft, amount: amt, id: Date.now().toString(36) }];
     }
-    persist(next);
+    void persist(next);
     setExpandedYear(draft.year);
     resetDraft();
   }
@@ -241,7 +241,7 @@ export default function EarningsLedger() {
       id: `${Date.now().toString(36)}-${i}`,
       year, month, amount: amt, source: rangeDraft.source, notes: rangeDraft.notes
     }));
-    persist([...entries, ...newEntries]);
+    void persist([...entries, ...newEntries]);
     setExpandedYear(rangeDraft.endYear);
     setRangeDraft(emptyRangeDraft());
   }
@@ -254,7 +254,7 @@ export default function EarningsLedger() {
   }
 
   function removeEntry(id) {
-    persist(entries.filter(en => en.id !== id));
+    void persist(entries.filter(en => en.id !== id));
     if (editingId === id) resetDraft();
   }
 
@@ -727,7 +727,7 @@ export default function EarningsLedger() {
                       const v = e.target.value;
                       const next = { ...targets };
                       if (v === "") delete next[y]; else next[y] = v;
-                      persistTargets(next);
+                      void persistTargets(next);
                     }} />
                 </div>
               ))}
@@ -1122,7 +1122,7 @@ export default function EarningsLedger() {
   );
 }
 
-function SummaryCell({ icon, label, value, sub }) {
+export function SummaryCell({ icon, label, value, sub }) {
   return (
     <div style={{ background: "#1A1F25", padding: "16px 18px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#8A8F98", marginBottom: 8 }}>
@@ -1135,7 +1135,7 @@ function SummaryCell({ icon, label, value, sub }) {
   );
 }
 
-function ChartCard({ title, children, style }) {
+export function ChartCard({ title, children, style }) {
   return (
     <div style={{ background: "#1A1F25", border: "1px solid #2A3038", borderRadius: 4, padding: "16px 18px", ...style }}>
       <div className="mono" style={{ fontSize: 11, letterSpacing: "0.05em", color: "#8A8F98", marginBottom: 10 }}>{title.toUpperCase()}</div>
@@ -1144,6 +1144,6 @@ function ChartCard({ title, children, style }) {
   );
 }
 
-function Label({ children }) {
+export function Label({ children }) {
   return <div className="mono" style={{ fontSize: 10.5, color: "#5E6570", marginBottom: 4 }}>{children}</div>;
 }
