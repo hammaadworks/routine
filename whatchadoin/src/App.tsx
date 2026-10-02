@@ -171,6 +171,25 @@ export default function App() {
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
     const [calendarSubTab, setCalendarSubTab] = useState<CalendarSubTab>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
+    const [isMobileCalendarOpen, setIsMobileCalendarOpen] = useState<boolean>(true);
+    const [isMobileHabitsOpen, setIsMobileHabitsOpen] = useState<boolean>(true);
+
+    const formatMobileCalendarDate = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        try {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            if (!y || !m || !d) return dateStr;
+            const date = new Date(y, m - 1, d);
+            return date.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        } catch {
+            return dateStr;
+        }
+    };
 
     useEffect(() => {
         if (activeCenterTab === 'tasks' || activeCenterTab === 'coins') {
@@ -624,7 +643,7 @@ export default function App() {
     const walletTotal = allWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
     const headerWalletTotal = visibleWalletGoals.filter(g => !g.completed).reduce((sum, g) => sum + (g.cost || 0), 0);
 
-    return (<div className={`layout dock-${aiDockState}`}>
+    return (<div className={`layout dock-${aiDockState} mobile-layout-${mobileTab}`}>
 
         {isWalletModalOpen && (<React.Suspense fallback={null}>
             <WalletModal
@@ -809,9 +828,46 @@ export default function App() {
                     </div>
                 </aside>
 
-                <div className={`myday-area timeline-area ${isMidPaneExpanded ? '' : 'mobile-collapsed'}`} style={{
+                <div className={`myday-area timeline-area ${mobileTab === 'calendar' ? (isMobileCalendarOpen ? 'mobile-calendar-open' : 'mobile-calendar-collapsed') : (isMidPaneExpanded ? '' : 'mobile-collapsed')}`} style={{
                     display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0, padding: 0
                 }}>
+                    {mobileTab === 'calendar' && (
+                        <div
+                            className="mobile-calendar-accordion-header"
+                            onClick={() => setIsMobileCalendarOpen(!isMobileCalendarOpen)}
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isMobileCalendarOpen}
+                        >
+                            <div style={{display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0}}>
+                                <Calendar size={18} color="var(--accent)" style={{flexShrink: 0}} />
+                                <span style={{fontWeight: 600, fontSize: '15px', color: '#fff'}}>Calendar</span>
+                                {selectedTargetDate && (
+                                    <span className="mobile-calendar-date-badge">
+                                        {formatMobileCalendarDate(selectedTargetDate)}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                className="mobile-accordion-toggle-btn accordion-icon"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsMobileCalendarOpen(!isMobileCalendarOpen);
+                                }}
+                                aria-label={isMobileCalendarOpen ? 'Collapse calendar' : 'Expand calendar'}
+                            >
+                                <ChevronDown
+                                    size={18}
+                                    color="var(--accent)"
+                                    style={{
+                                        transform: isMobileCalendarOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        transition: 'transform 0.25s ease'
+                                    }}
+                                />
+                            </button>
+                        </div>
+                    )}
                     <div className="tabs hide-on-mobile" onClick={() => setIsMidPaneExpanded(!isMidPaneExpanded)}
                          style={{
                              cursor: 'pointer',
@@ -931,6 +987,12 @@ export default function App() {
                                                                      templates={templates}
                                                                      dayMapping={dayMapping}
                                                                      milestones={milestones}
+                                                                     onDateSelect={(_dateStr) => {
+                                                                         if (mobileTab === 'calendar') {
+                                                                             setIsMobileCalendarOpen(false);
+                                                                             setIsMobileHabitsOpen(true);
+                                                                         }
+                                                                     }}
                             /></React.Suspense>)}
                         </TabErrorBoundary>
                     </div>
@@ -958,11 +1020,14 @@ export default function App() {
                                 activeRoutine={activeRoutine}
                                 calendarSubTab={calendarSubTab}
                                 setCalendarSubTab={setCalendarSubTab}
+                                setSubTab={setCalendarSubTab}
                                 updateActiveRoutine={updateActiveRoutine}
                                 isRoutineDrawerOpen={isRoutineDrawerOpen}
                                 setIsRoutineDrawerOpen={setIsRoutineDrawerOpen}
                                 milestones={milestones}
                                 setMilestones={setMilestones}
+                                isMobileAccordionOpen={mobileTab === 'calendar' ? isMobileHabitsOpen : undefined}
+                                onToggleMobileAccordion={mobileTab === 'calendar' ? () => setIsMobileHabitsOpen(!isMobileHabitsOpen) : undefined}
                     />
                 </React.Suspense>
             </main>

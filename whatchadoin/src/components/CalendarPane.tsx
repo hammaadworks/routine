@@ -17,6 +17,7 @@ interface CalendarPaneProps {
     setCalendarSubTab?: (tab: CalendarSubTab) => void;
     calendarSubTab?: CalendarSubTab;
     milestones?: Record<string, string>;
+    onDateSelect?: (dateStr: string) => void;
 }
 
 const CalendarPane: React.FC<CalendarPaneProps> = ({
@@ -31,6 +32,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        dayMapping,
                                                        setCalendarSubTab,
                                                        milestones: passedMilestones,
+                                                       onDateSelect,
                                                    }) => {
     const visibleHabits = useMemo(() => {
         return (habits || []).filter((h) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
@@ -278,9 +280,13 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                 id={`calendar-day-${dateStr}`}
                                 onClick={() => {
                                     if (inRange) {
-                                        setSelectedTargetDate(isSelected ? null : dateStr);
+                                        const nextDate = isSelected ? null : dateStr;
+                                        setSelectedTargetDate(nextDate);
                                         if (setCalendarSubTab) {
                                             setCalendarSubTab('mark_goals');
+                                        }
+                                        if (onDateSelect && nextDate) {
+                                            onDateSelect(nextDate);
                                         }
                                     }
                                 }}
@@ -311,7 +317,8 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                         e.stopPropagation();
                                         if (inRange) {
                                             setSelectedTargetDate(dateStr);
-                                            if (setCalendarSubTab) setCalendarSubTab('timelogs');
+                                            if (setCalendarSubTab) setCalendarSubTab('timelog');
+                                            if (onDateSelect) onDateSelect(dateStr);
                                         }
                                     }}
                                     style={{

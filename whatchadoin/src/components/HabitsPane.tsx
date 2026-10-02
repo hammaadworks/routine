@@ -25,9 +25,9 @@ import {
     getAllGoalsForMention,
     getGoalColor,
     getScheduledGoalsForDate,
-    parseDuration,
-    sortHabits
+    parseDuration
 } from '../utils';
+import { useDragReorder } from '../hooks/useDragReorder';
 import HabitList from './habits/HabitList';
 import MilestonesView from './habits/MilestonesView';
 import TimelogView from './habits/TimelogView';
@@ -65,6 +65,8 @@ interface HabitsPaneProps {
     moneyGoals?: any[];
     milestones?: Record<string, string>;
     setMilestones?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    isMobileAccordionOpen?: boolean;
+    onToggleMobileAccordion?: () => void;
 }
 
 export default function HabitsPane({
@@ -89,13 +91,15 @@ export default function HabitsPane({
                                                                               activeRoutine,
                                        updateActiveRoutine,
                                        isCalendarTab,
-                                       calendarSubTab = 'mark_goals',
-                                       
+                                       calendarSubTab: calendarSubTabProp,
+                                       setCalendarSubTab,
                                        setSubTab,
                                        isRoutineDrawerOpen,
                                        setIsRoutineDrawerOpen,
                                        milestones: passedMilestones,
-                                       setMilestones
+                                       setMilestones,
+                                       isMobileAccordionOpen,
+                                       onToggleMobileAccordion
                                    }: HabitsPaneProps) {
         const [showAllMilestones, setShowAllMilestones] = useState(false);
     const [showHabitModal, setShowHabitModal] = useState(false);
@@ -127,7 +131,34 @@ export default function HabitsPane({
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
     const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', name: '', desc: '', done: false});
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+    const isExpanded = isMobileAccordionOpen !== undefined ? isMobileAccordionOpen : isMobileExpanded;
+    const toggleExpanded = onToggleMobileAccordion || (() => setIsMobileExpanded(!isMobileExpanded));
+
+    const [localSubTab, setLocalSubTab] = useState<CalendarSubTab>(calendarSubTabProp || 'mark_goals');
+
+    useEffect(() => {
+        if (calendarSubTabProp) {
+            setLocalSubTab(calendarSubTabProp === 'timelogs' ? 'timelog' : calendarSubTabProp);
+        }
+    }, [calendarSubTabProp]);
+
+    const rawSubTab = calendarSubTabProp || localSubTab;
+    const calendarSubTab = rawSubTab === 'timelogs' ? 'timelog' : rawSubTab;
+
+    const handleTabChange = (tab: CalendarSubTab) => {
+        const normalized = tab === 'timelogs' ? 'timelog' : tab;
+        setLocalSubTab(normalized);
+        if (setCalendarSubTab) setCalendarSubTab(normalized);
+        if (setSubTab) setSubTab(normalized);
+    };
     
+    const {
+        handleDragStart: handleReorderDragStart,
+        handleDragEnter: handleReorderDragEnter,
+        handleDragEnd: handleReorderDragEnd,
+        dragItemIndex,
+        dragOverItemIndex
+    } = useDragReorder(habits || [], setHabits);
 
     const [showMentionMenu, setShowMentionMenu] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
@@ -323,7 +354,7 @@ export default function HabitsPane({
         setShowMilestoneModal(false);
         setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
         setEditingMilestoneIdx(null);
-        if (setSubTab) setSubTab('milestones');
+        handleTabChange('milestones');
         if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
     };
     const modalInputRefs = useRef<any>({});
@@ -635,16 +666,6 @@ export default function HabitsPane({
 
     if (sortByName) {
         displayedRoutineGoals.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-    } else if (!effectiveDate) {
-        displayedRoutineGoals.sort((a: any, b: any) => {
-            const addrA = checkRoutineAddressed(a);
-            const addrB = checkRoutineAddressed(b);
-            if (addrA !== addrB) {
-                return addrA ? 1 : -1;
-            }
-            return 0;
-        });
-        displayedRoutineGoals = sortHabits(displayedRoutineGoals);
     }
 
     const isMilestoneBlockPublic = useCallback((block: string) => {
@@ -704,27 +725,43 @@ export default function HabitsPane({
     // Parse markdown to render colored tags
     
     return (<aside
-        className={`panel pane right-pane ${isMobileExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
+        className={`panel pane right-pane ${isExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
         style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
-        <div className="panel-header" onClick={() => setIsMobileExpanded(!isMobileExpanded)} style={{
+        <div className="panel-header" onClick={toggleExpanded} style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '16px 24px',
+            padding: '12px 16px',
             cursor: 'pointer',
-            borderBottom: '1px solid var(--panel-border)'
+            borderBottom: isExpanded ? '1px solid var(--panel-border)' : 'none',
+            userSelect: 'none'
         }}>
-            <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
+            <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600, color: '#fff', flex: 1, minWidth: 0}}>
                 {effectiveDate ? (<>
-                    <CheckCircle2 size={18} color="var(--accent)"/> Check {formatHeaderDate(effectiveDate)}
+                    <CheckCircle2 size={18} color="var(--accent)" style={{flexShrink: 0}} />
+                    <span>{isCalendarTab ? `Habits for ${formatHeaderDate(effectiveDate)}` : `Check ${formatHeaderDate(effectiveDate)}`}</span>
                 </>) : (<>
-                    <ListTodo size={18} color="var(--accent)"/> Routine
+                    <ListTodo size={18} color="var(--accent)" style={{flexShrink: 0}} />
+                    <span>{isCalendarTab ? 'Habits' : 'Routine'}</span>
                 </>)}
             </h2>
-            <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
-                <ChevronDown size={16} style={{
-                    transform: isMobileExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s'
-                }}/>
+            <button
+                type="button"
+                className="mobile-accordion-toggle-btn accordion-icon"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    toggleExpanded();
+                }}
+                aria-label={isExpanded ? 'Collapse habits pane' : 'Expand habits pane'}
+            >
+                <ChevronDown
+                    size={18}
+                    color="var(--accent)"
+                    style={{
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.25s ease'
+                    }}
+                />
             </button>
         </div>
         <div ref={routinePaneContentRef} className="routine-pane-content" style={{
@@ -750,19 +787,19 @@ export default function HabitsPane({
             }}>
                 <button
                     className={`tab ${calendarSubTab === 'mark_goals' ? 'active' : ''}`}
-                    onClick={() => setSubTab?.('mark_goals')}
+                    onClick={() => handleTabChange('mark_goals')}
                 >
                     {isCalendarTab ? 'Mark Habits' : 'Habits'}
                 </button>
                 <button
                     className={`tab ${calendarSubTab === 'timelog' ? 'active' : ''}`}
-                    onClick={() => setSubTab?.('timelog')}
+                    onClick={() => handleTabChange('timelog')}
                 >
                     Timelog
                 </button>
                 <button
                     className={`tab ${calendarSubTab === 'milestones' ? 'active' : ''}`}
-                    onClick={() => setSubTab?.('milestones')}
+                    onClick={() => handleTabChange('milestones')}
                 >
                     Milestones
                 </button>
@@ -791,6 +828,11 @@ export default function HabitsPane({
         goalCounts={goalCounts}
         isRoutineDrawerOpen={isRoutineDrawerOpen}
         handleDragStart={handleDragStart}
+        handleReorderDragStart={handleReorderDragStart}
+        handleReorderDragEnter={handleReorderDragEnter}
+        handleReorderDragEnd={handleReorderDragEnd}
+        dragItemIndex={dragItemIndex}
+        dragOverItemIndex={dragOverItemIndex}
         toggleDailyGoal={toggleDailyGoal}
         duplicateHabit={duplicateHabit}
         openEditHabit={openEditHabit}

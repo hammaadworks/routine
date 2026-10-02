@@ -25,6 +25,11 @@ interface HabitListProps {
     goalCounts: Record<string, number>;
     isRoutineDrawerOpen?: boolean;
     handleDragStart: (e: any, goal: any) => void;
+    handleReorderDragStart?: (e: React.DragEvent, position: number) => void;
+    handleReorderDragEnter?: (e: React.DragEvent, position: number) => void;
+    handleReorderDragEnd?: () => void;
+    dragItemIndex?: number | null;
+    dragOverItemIndex?: number | null;
     toggleDailyGoal: (date: string, id: string) => void;
     duplicateHabit: (goal: any) => void;
     openEditHabit: (goal: any) => void;
@@ -53,8 +58,13 @@ export default function HabitList({
     moneyGoals,
     currentTemplate,
     goalCounts,
-    isRoutineDrawerOpen,
+    isRoutineDrawerOpen: _isRoutineDrawerOpen,
     handleDragStart,
+    handleReorderDragStart,
+    handleReorderDragEnter,
+    handleReorderDragEnd,
+    dragItemIndex,
+    dragOverItemIndex,
     toggleDailyGoal,
     duplicateHabit,
     openEditHabit,
@@ -83,17 +93,53 @@ export default function HabitList({
         const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
 
         const isCompletedForView = getIsCompleted(goal);
+        const isReorderable = !searchQuery && !sortByName && !effectiveDate;
+        const absoluteIndex = (habits || []).findIndex((h: any) => h.id === goal.id);
+        const isDragging = dragItemIndex === absoluteIndex;
+        const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
+        let dropDirection: 'up' | 'down' | undefined = undefined;
+        if (isDragOver && dragItemIndex !== null && dragItemIndex !== undefined) {
+            dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
+        }
+
         return (<div
             key={goal.id}
-            className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
-            draggable={!effectiveDate && !isRoutineDrawerOpen}
-            onDragStart={!effectiveDate && !isRoutineDrawerOpen ? (e) => handleDragStart(e, goal) : undefined}
+            className={`item-card ${isCompletedForView ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`}
+            draggable={!effectiveDate}
+            onDragStart={!effectiveDate ? (e) => handleDragStart(e, goal) : undefined}
+            onDragEnter={(e) => {
+                if (isReorderable && handleReorderDragEnter && dragItemIndex !== null && dragItemIndex !== undefined) {
+                    handleReorderDragEnter(e, absoluteIndex);
+                }
+            }}
+            onDragOver={(e) => {
+                if (dragItemIndex !== null && dragItemIndex !== undefined) {
+                    e.preventDefault();
+                }
+            }}
+            onDrop={(e) => {
+                if (dragItemIndex !== null && dragItemIndex !== undefined) {
+                    e.preventDefault();
+                    handleReorderDragEnd?.();
+                }
+            }}
+            onDragEnd={() => {
+                if (dragItemIndex !== null && dragItemIndex !== undefined) {
+                    handleReorderDragEnd?.();
+                }
+            }}
             style={{
+                position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
                 minHeight: '52px',
                 padding: '8px 12px',
-                touchAction: (!effectiveDate && !isRoutineDrawerOpen) ? 'none' : 'auto', ...bgStyle
+                opacity: isDragging ? 0.4 : 1,
+                borderTop: isDragOver && dropDirection === 'up' ? `2px solid ${hexes[0] || 'var(--accent)'}` : 'none',
+                borderBottom: isDragOver && dropDirection === 'down' ? `2px solid ${hexes[0] || 'var(--accent)'}` : 'none',
+                transform: isDragOver && dropDirection === 'up' ? 'translateY(2px)' : (isDragOver && dropDirection === 'down' ? 'translateY(-2px)' : 'none'),
+                transition: 'border 0.2s, transform 0.2s, opacity 0.2s',
+                ...bgStyle
             }}
             title={goal.desc ? `${goal.name}\n\n${goal.desc}` : goal.name}
         >
@@ -106,11 +152,36 @@ export default function HabitList({
                 <div style={{
                     display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0
                 }}>
-                    {!effectiveDate && !isRoutineDrawerOpen && (
-                        <GripVertical size={16} color="var(--text-secondary)"
-                                      style={{
-                                          cursor: 'grab', flexShrink: 0, opacity: 0.5
-                                      }}/>)}
+                    {!effectiveDate && (
+                        <div
+                            draggable={isReorderable}
+                            onDragStart={(e) => {
+                                e.stopPropagation();
+                                const parent = e.currentTarget.closest('.item-card') as HTMLDivElement;
+                                if (parent) e.dataTransfer.setDragImage(parent, 20, 20);
+                                if (handleReorderDragStart) {
+                                    handleReorderDragStart(e, absoluteIndex);
+                                }
+                            }}
+                            style={{
+                                cursor: isReorderable ? 'grab' : 'default',
+                                display: 'flex',
+                                alignItems: 'center',
+                                flexShrink: 0,
+                                touchAction: 'none'
+                            }}
+                            title={isReorderable ? 'Drag to reorder habit' : undefined}
+                        >
+                            <GripVertical
+                                size={16}
+                                color="var(--text-secondary)"
+                                style={{
+                                    flexShrink: 0,
+                                    opacity: isReorderable ? 0.6 : 0.2
+                                }}
+                            />
+                        </div>
+                    )}
                     {effectiveDate ? (<input name="auto_field_28"
                                              type="checkbox"
                                              className="checkbox-square"
@@ -119,7 +190,7 @@ export default function HabitList({
                                              } as React.CSSProperties}
                                              checked={isCompletedForView}
                                              onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
-                    />) : (<div style={{width: '16px', flexShrink: 0}}/>)}
+                    />) : null}
                     <div style={{
                         flex: 1,
                         minWidth: 0,

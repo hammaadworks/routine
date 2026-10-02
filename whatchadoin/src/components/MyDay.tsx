@@ -6,7 +6,7 @@ import BaseModal from './BaseModal';
 import MyDayMaker from './MyDayMaker';
 import type { TemplateBlock } from '../types/routine';
 
-import {getGoalColor, parseDuration, sortHabits} from '../utils';
+import {getGoalColor, parseDuration} from '../utils';
 
 const formatTime = (minutes: number) => {
     const h = Math.floor(minutes / 60);
@@ -855,7 +855,7 @@ export default function MyDay({
     };
 
     const visibleHabits = (habits || []).filter((h: any) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
-    const sortedMobileGoals = sortHabits(visibleHabits);
+    const sortedMobileGoals = visibleHabits;
 
 
     return (<div className="timeline-inner"
