@@ -1185,7 +1185,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .markdown-preview ol > li::marker {
     color: var(--accent, #EAB308);
     font-weight: 600;
-    font-family: var(--font-mono, monospace);
+    font-family: var(--font-mono, monospace), monospace;
     font-size: 0.9em;
 }
 

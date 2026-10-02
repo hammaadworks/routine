@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Plus, GripVertical, CheckCircle2, Clock, Copy, Pencil, ListTodo } from 'lucide-react';
 import SearchSortBar from '../SearchSortBar';
-import { getGoalColor, getCardBgStyle, parseDuration } from '../../utils';
+import { getGoalColor, getCardBgStyle, parseDuration } from '@/utils.ts';
 
 interface HabitListProps {
     openAddHabit: () => void;

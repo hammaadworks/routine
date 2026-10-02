@@ -4,7 +4,7 @@ import {Clock, Target, X, ZoomIn, ZoomOut} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import MyDayMaker from './MyDayMaker';
-import type { TemplateBlock } from '../types/routine';
+import type {TemplateBlock} from '../types/routine';
 
 import {getGoalColor, parseDuration} from '../utils';
 
@@ -854,8 +854,7 @@ export default function MyDay({
         }
     };
 
-    const visibleHabits = (habits || []).filter((h: any) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
-    const sortedMobileGoals = visibleHabits;
+    const sortedMobileGoals = (habits || []).filter((h: any) => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
 
 
     return (<div className="timeline-inner"
