@@ -58,23 +58,14 @@ export function getScheduledGoalsForDate(dateStr: string, habits: Habit[], dayMa
     const dateObj = new Date(parseInt(part0, 10), parseInt(part1, 10) - 1, parseInt(part2, 10));
     if (isNaN(dateObj.getTime())) return [];
     const dayName = dateObj.toLocaleDateString('en-US', {weekday: 'long'});
-    const templateId = dayMapping ? dayMapping[dayName] : null;
+    const defaultTemplateId = templates && templates[0]?.id;
+    const templateId = (dayMapping && dayName && dayMapping[dayName]) || defaultTemplateId;
 
-    if (templateId && templates && Array.isArray(templates)) {
-        const template = templates.find((t) => String(t.id) === String(templateId));
-        if (template && Array.isArray(template.blocks)) {
-            const blockGoalIds = new Set(template.blocks.map((b) => b.routineGoalId ? String(b.routineGoalId) : null).filter(Boolean));
-            const blockNames = new Set(template.blocks.map((b) => (b.name || '').toLowerCase().trim()).filter(Boolean));
-
-            return habits.filter((g) => {
-                if (g.id && blockGoalIds.has(String(g.id))) return true;
-                const gName = (g.name || '').toLowerCase().trim();
-                return !!(gName && blockNames.has(gName));
-
-            });
-        }
-    }
-    return [];
+    return habits.filter((h: any) => {
+        if (h.templateId === 'all') return true;
+        if (h.templateId) return templateId ? h.templateId === templateId : true;
+        return !templateId || templateId === defaultTemplateId;
+    });
 }
 
 export function getAllGoalsForMention(routineGoals: RoutineGoal[] | null | undefined, habits: Habit[] | null | undefined, lifeGoals: LifeGoal[] | null | undefined, mentionQuery: string | null | undefined, moneyGoals?: MoneyGoal[] | null | undefined, tasks?: QuickTask[] | null | undefined): {

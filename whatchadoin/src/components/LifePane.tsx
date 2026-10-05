@@ -6,7 +6,7 @@ import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
-import {useDragReorder} from '../hooks/useDragReorder';
+import {moveItemRelativeTo} from '../hooks/useDragReorder';
 import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 
@@ -75,14 +75,6 @@ export default function LifePane({
     const [colorError, setColorError] = useState('');
     const [drawerLifeGoalId, setDrawerLifeGoalId] = useState<string | null>(null);
     const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
-
-    const {
-        handleDragStart,
-        handleDragEnter,
-        handleDragEnd,
-        dragItemIndex,
-        dragOverItemIndex
-    } = useDragReorder(lifeGoals, setLifeGoals as any);
 
     useEffect(() => {
         const handleFab = () => openAddLifeGoal();
@@ -265,23 +257,20 @@ export default function LifePane({
                         const activeGoals = displayedGoals.filter(g => !g.completed);
                         const completedGoals = displayedGoals.filter(g => g.completed);
 
-                        const renderGoal = (goal: Goal) => {
+                        const isReorderDisabled = !!searchQuery || !!sortByName;
+
+                        const renderGoalItem = (goal: Goal, idx: number, list: Goal[]) => {
                             const absoluteIndex = lifeGoals.findIndex(g => g.id === goal.id);
-                            const isDragging = dragItemIndex === absoluteIndex;
-                            const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
-                            let dropDirection: 'up' | 'down' | undefined = undefined;
-                            if (isDragOver && dragItemIndex !== null) {
-                                dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
-                            }
                             return (<GoalCard
                                 key={goal.id}
                                 goal={goal}
                                 index={absoluteIndex}
                                 linkedCount={getLinkedCount(goal)}
-                                draggable={!searchQuery && !sortByName}
-                                onDragStart={handleDragStart}
-                                onDragEnter={handleDragEnter}
-                                onDragEnd={handleDragEnd}
+                                canMoveUp={idx > 0}
+                                canMoveDown={idx < list.length - 1}
+                                onMoveUp={() => setLifeGoals(prev => moveItemRelativeTo(prev, goal, list[idx - 1], 'before'))}
+                                onMoveDown={() => setLifeGoals(prev => moveItemRelativeTo(prev, goal, list[idx + 1], 'after'))}
+                                isReorderDisabled={isReorderDisabled}
                                 onToggle={toggleLife}
                                 onEdit={openEditLifeGoal}
                                 onCardClick={(g) => setInfoGoalId(g.id)}
@@ -292,14 +281,11 @@ export default function LifePane({
                                         setDrawerLifeGoalId(id);
                                     }
                                 }}
-                                isDragging={isDragging}
-                                isDragOver={isDragOver}
-                                dropDirection={dropDirection}
                             />);
                         };
 
                         return (<>
-                            {activeGoals.map(renderGoal)}
+                            {activeGoals.map((g, idx) => renderGoalItem(g, idx, activeGoals))}
                             {completedGoals.length > 0 && (<div style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -342,7 +328,7 @@ export default function LifePane({
                                     Delete all
                                 </button>
                             </div>)}
-                            {completedGoals.map(renderGoal)}
+                            {completedGoals.map((g, idx) => renderGoalItem(g, idx, completedGoals))}
                         </>);
                     })()}
                     {lifeGoals.length === 0 && (<div style={{

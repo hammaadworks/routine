@@ -1,5 +1,4 @@
 import React, {useEffect, useMemo} from 'react';
-import {getScheduledGoalsForDate} from '../utils';
 import type {DayMapping, Habit, Routine, RoutineGoal} from '../types/routine';
 import type {LifeGoal} from '../types/goals';
 import type {CalendarSubTab} from '../types/ui';
@@ -102,7 +101,24 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         return `${y}-${m}-${day}`;
     };
 
-    const getGoalsForDateStr = (dateStr: string) => getScheduledGoalsForDate(dateStr, visibleHabits, dayMapping as Record<string, string>, templates);
+    const getGoalsForDateStr = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return [];
+        const p0 = parts[0] || '0';
+        const p1 = parts[1] || '1';
+        const p2 = parts[2] || '1';
+        const dateObj = new Date(parseInt(p0, 10), parseInt(p1, 10) - 1, parseInt(p2, 10));
+        if (isNaN(dateObj.getTime())) return [];
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        const defaultTemplateId = activeRoutine?.activeTemplateId || (templates && templates[0]?.id);
+        const templateId = (dayMapping && dayName && (dayMapping as any)[dayName]) || defaultTemplateId;
+
+        return visibleHabits.filter((h: any) => {
+            if (h.templateId === 'all') return true;
+            if (h.templateId) return h.templateId === templateId;
+            return !templateId || templateId === defaultTemplateId;
+        });
+    };
 
     const isDateComplete = (dateStr: string) => {
         const goalsForDay = getGoalsForDateStr(dateStr);

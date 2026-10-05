@@ -5,7 +5,7 @@ import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
-import {useDragReorder} from '../hooks/useDragReorder';
+import {moveItemRelativeTo} from '../hooks/useDragReorder';
 import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 import type {Habit, RoutineGoal, Template, TemplateBlock} from '../types/routine';
@@ -60,10 +60,6 @@ export default function RoutineGoalPane({
     const [colorError, setColorError] = useState('');
     const [drawerRoutineGoalId, setDrawerRoutineGoalId] = useState<string | null>(null);
     const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
-
-    const {
-        handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex
-    } = useDragReorder(routineGoals, setRoutineGoals as unknown as React.Dispatch<React.SetStateAction<unknown[]>>);
 
     const openAddRoutineGoal = () => {
         setEditingRoutineGoalId(null);
@@ -260,24 +256,21 @@ export default function RoutineGoalPane({
                     {(() => {
                         const activeGoals = displayedGoals.filter((g) => !g.completed);
                         const completedGoals = displayedGoals.filter((g) => g.completed);
+                        const isReorderDisabled = !!searchQuery || !!sortByName;
 
-                        const renderGoal = (goal: RoutineGoal) => {
+                        const renderGoalItem = (goal: RoutineGoal, idx: number, list: RoutineGoal[]) => {
                             const absoluteIndex = routineGoals.findIndex((g) => g.id === goal.id);
-                            const isDragging = dragItemIndex === absoluteIndex;
-                            const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
-                            let dropDirection: 'up' | 'down' | undefined = undefined;
-                            if (isDragOver && dragItemIndex !== null) {
-                                dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
-                            }
-                            return (<GoalCard
+                            return (
+                                <GoalCard
                                     key={goal.id}
                                     goal={goal}
                                     index={absoluteIndex}
                                     linkedCount={getLinkedCount(goal)}
-                                    draggable={!searchQuery && !sortByName}
-                                    onDragStart={handleDragStart}
-                                    onDragEnter={handleDragEnter}
-                                    onDragEnd={handleDragEnd}
+                                    canMoveUp={idx > 0}
+                                    canMoveDown={idx < list.length - 1}
+                                    onMoveUp={() => setRoutineGoals(prev => moveItemRelativeTo(prev, goal, list[idx - 1], 'before'))}
+                                    onMoveDown={() => setRoutineGoals(prev => moveItemRelativeTo(prev, goal, list[idx + 1], 'after'))}
+                                    isReorderDisabled={isReorderDisabled}
                                     onToggle={toggleRoutineGoal}
                                     onEdit={openEditRoutineGoal}
                                     onCardClick={(g) => setInfoGoalId(g.id)}
@@ -288,14 +281,12 @@ export default function RoutineGoalPane({
                                             setDrawerRoutineGoalId(id);
                                         }
                                     }}
-                                    isDragging={isDragging}
-                                    isDragOver={isDragOver}
-                                    dropDirection={dropDirection}
-                                />);
+                                />
+                            );
                         };
 
                         return (<>
-                                {activeGoals.map(renderGoal)}
+                                {activeGoals.map((g, idx) => renderGoalItem(g, idx, activeGoals))}
                                 {completedGoals.length > 0 && (<div style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -338,7 +329,7 @@ export default function RoutineGoalPane({
                                             Delete all
                                         </button>
                                     </div>)}
-                                {completedGoals.map(renderGoal)}
+                                {completedGoals.map((g, idx) => renderGoalItem(g, idx, completedGoals))}
                             </>);
                     })()}
                     {routineGoals.length === 0 && (<div style={{

@@ -25,6 +25,7 @@ export interface Habit {
     isPublic?: boolean;
     timelogs?: Record<string, boolean | number>;
     linkedGoals?: string[];
+    templateId?: string;
     [key: string]: unknown;
 }
 

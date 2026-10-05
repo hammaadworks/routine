@@ -6,7 +6,7 @@ import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
-import {useDragReorder} from '../hooks/useDragReorder';
+import {moveItemRelativeTo} from '../hooks/useDragReorder';
 import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 
@@ -77,18 +77,6 @@ export default function MoneyPane({
     const [drawerMoneyGoalId, setDrawerMoneyGoalId] = useState<string | null>(null);
     const [infoGoalId, setInfoGoalId] = useState<string | null>(null);
     const [isWalletView, setIsWalletView] = useState(false);
-
-
-    const {
-        handleDragStart,
-        handleDragEnter,
-        handleDragEnd,
-        dragItemIndex,
-        dragOverItemIndex
-    } = useDragReorder(moneyGoals, (newList) => {
-        if (!isWalletView) setMoneyGoals(newList);
-    });
-
 
     useEffect(() => {
         const handleFab = () => openAddMoneyGoal();
@@ -309,35 +297,29 @@ export default function MoneyPane({
                             return count;
                         };
 
-                        const renderGoal = (goal: MoneyGoal) => {
+                        const isReorderDisabled = !!searchQuery || !!sortByName || isWalletView;
+
+                        const renderGoalItem = (goal: MoneyGoal, idx: number, list: MoneyGoal[]) => {
                             const absoluteIndex = moneyGoals.findIndex((g: MoneyGoal) => g.id === goal.id);
-                            const isDragging = dragItemIndex === absoluteIndex;
-                            const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
-                            let dropDirection: 'up' | 'down' | undefined = undefined;
-                            if (isDragOver && dragItemIndex !== null) {
-                                dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
-                            }
                             return (<GoalCard
                                 key={goal.id}
                                 goal={goal}
                                 index={absoluteIndex}
                                 linkedCount={getLinkedCount(goal)}
-                                draggable={!searchQuery && !sortByName && !isWalletView}
-                                onDragStart={handleDragStart}
-                                onDragEnter={handleDragEnter}
-                                onDragEnd={handleDragEnd}
+                                canMoveUp={idx > 0}
+                                canMoveDown={idx < list.length - 1}
+                                onMoveUp={() => setMoneyGoals(prev => moveItemRelativeTo(prev, goal, list[idx - 1], 'before'))}
+                                onMoveDown={() => setMoneyGoals(prev => moveItemRelativeTo(prev, goal, list[idx + 1], 'after'))}
+                                isReorderDisabled={isReorderDisabled}
                                 onToggle={() => toggleGoal(goal.id, goal.type)}
                                 onEdit={() => openEditMoneyGoal(goal)}
                                 onCardClick={(g) => setInfoGoalId(g.id)}
                                 onBadgeClick={(id) => setDrawerMoneyGoalId(drawerMoneyGoalId === id ? null : id)}
-                                isDragging={isDragging}
-                                isDragOver={isDragOver}
-                                dropDirection={dropDirection}
                             />);
                         };
 
                         return (<>
-                            {activeGoals.map(renderGoal)}
+                            {activeGoals.map((g, idx) => renderGoalItem(g, idx, activeGoals))}
                             {completedGoals.length > 0 && (<div style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -380,7 +362,7 @@ export default function MoneyPane({
                                     Delete all
                                 </button>
                             </div>)}
-                            {completedGoals.map(renderGoal)}
+                            {completedGoals.map((g, idx) => renderGoalItem(g, idx, completedGoals))}
                         </>);
                     })()}
                     {baseGoals.length === 0 && (<div style={{

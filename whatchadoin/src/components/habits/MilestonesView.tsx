@@ -101,23 +101,23 @@ export default function MilestonesView({
                 setSearchQuery={setMilestoneSearchQuery}
                 placeholder="Search milestones..."
                 customButton={(<button
-                        className={`secondary ${showAllMilestones ? 'sort-active-glow' : ''}`}
+                        className={`secondary ${!showAllMilestones ? 'sort-active-glow' : ''}`}
                         onClick={() => setShowAllMilestones(!showAllMilestones)}
                         style={{
                             padding: '8px 12px',
-                            background: showAllMilestones ? 'var(--accent)' : '',
-                            boxShadow: showAllMilestones ? '0 0 12px var(--accent)' : 'none',
-                            color: showAllMilestones ? '#000' : 'currentColor',
-                            borderColor: showAllMilestones ? 'var(--accent)' : '',
+                            background: !showAllMilestones ? 'var(--accent)' : '',
+                            boxShadow: !showAllMilestones ? '0 0 12px var(--accent)' : 'none',
+                            color: !showAllMilestones ? '#000' : 'currentColor',
+                            borderColor: !showAllMilestones ? 'var(--accent)' : '',
                             height: '37px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                         }}
-                        title={showAllMilestones ? "Showing All Milestones (Click for Routine)" : "Showing Routine Milestones (Click for All)"}
+                        title={showAllMilestones ? "Showing All Milestones (Click to filter by Routine)" : "Filtered to Routine Milestones (Click to show All)"}
                     >
-                        {showAllMilestones ? <Globe size={14}/> : <Calendar size={14}/>}
+                        {!showAllMilestones ? <Calendar size={14}/> : <Globe size={14}/>}
                     </button>)}
             />
 
@@ -135,7 +135,7 @@ export default function MilestonesView({
             >
                 {milestoneDates.length === 0 ? (
                     <div style={{padding: '20px', textAlign: 'center', color: 'var(--text-secondary)'}}>
-                        {milestoneSearchQuery.trim() ? "No milestones match your search." : (showAllMilestones ? "No milestones found. Click 'Add Milestone' to create one." : "No routine milestones found. Switch to 'All' or click 'Add Milestone'.")}
+                        {milestoneSearchQuery.trim() ? "No milestones match your search." : (showAllMilestones ? "No milestones found. Click 'Add Milestone' to create one." : "No routine milestones found in routine date range. Click the globe to show all.")}
                     </div>) : (<div style={{
                     maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative', padding: '0 24px'
                 }}>

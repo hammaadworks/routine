@@ -1,7 +1,8 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Trash2, GripVertical, X, Globe } from 'lucide-react';
-import { useDragReorder } from '../hooks/useDragReorder';
+import { Trash2, X, Globe } from 'lucide-react';
+import { moveItemRelativeTo } from '../hooks/useDragReorder';
+import OrderControls from './OrderControls';
 import ConfirmModal from './ConfirmModal';
 import { sanitizeEntities, formatCompactDuration } from '../utils';
 
@@ -22,8 +23,6 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
   const [newTaskPublic, setNewTaskPublic] = useState(true);
   const [confirmConfig, setConfirmConfig] = useState<any>(null);
   const taskInputRef = React.useRef<HTMLInputElement>(null);
-
-  const { handleDragStart, handleDragEnter, handleDragEnd, dragItemIndex, dragOverItemIndex } = useDragReorder(quickTasks, setQuickTasks as any);
 
   useEffect(() => {
     localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(quickTasks));
@@ -86,43 +85,30 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
     });
   };
 
-  const renderTask = (task: QuickTask) => {
-    const absoluteIndex = quickTasks.findIndex(t => t.id === task.id);
-    const isDragging = dragItemIndex === absoluteIndex;
-    const isDragOver = dragOverItemIndex === absoluteIndex && dragItemIndex !== absoluteIndex;
-    let dropDirection = 'none';
-    if (isDragOver && dragItemIndex !== null) {
-      dropDirection = dragItemIndex > absoluteIndex ? 'up' : 'down';
-    }
+  const renderTask = (task: QuickTask, idx: number, list: QuickTask[]) => {
     const timeInfo = formatCompactDuration(task.createdAt, task.completedAt, task.completed, task.id);
     
     return (
       <div 
         key={task.id} 
-        className={`item-card ${task.completed ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`} 
-        draggable
-        onDragStart={(e) => handleDragStart(e, absoluteIndex)}
-        onDragEnter={(e) => handleDragEnter(e, absoluteIndex)}
-        onDragEnd={handleDragEnd}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => e.preventDefault()}
+        className={`item-card ${task.completed ? 'scratched' : ''}`}
         style={{ 
-          display: 'flex', alignItems: 'flex-start', gap: '12px', 
-          padding: '16px', 
+          display: 'flex', alignItems: 'flex-start', gap: '8px', 
+          padding: '12px 14px', 
           background: 'var(--surface-light)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           transition: 'all 0.2s',
           minHeight: '52px',
-          cursor: 'grab',
           minWidth: 0,
-          opacity: isDragging ? 0.4 : 1,
-          borderTop: isDragOver && dropDirection === 'up' ? '2px solid var(--accent)' : '1px solid var(--border)',
-          borderBottom: isDragOver && dropDirection === 'down' ? '2px solid var(--accent)' : '1px solid var(--border)',
-          transform: isDragOver && dropDirection === 'up' ? 'translateY(2px)' : (isDragOver && dropDirection === 'down' ? 'translateY(-2px)' : 'none'),
         }}
       >
-        <GripVertical size={16} style={{ color: 'var(--text-secondary)', opacity: 0.5, marginTop: '2px', cursor: 'grab', flexShrink: 0 }} />
+        <OrderControls
+          canMoveUp={idx > 0}
+          canMoveDown={idx < list.length - 1}
+          onMoveUp={() => setQuickTasks(prev => moveItemRelativeTo(prev, task, list[idx - 1], 'before'))}
+          onMoveDown={() => setQuickTasks(prev => moveItemRelativeTo(prev, task, list[idx + 1], 'after'))}
+        />
         <input name="auto_field_40" 
           type="checkbox"
           className="checkbox-square"
@@ -246,7 +232,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
         {quickTasks.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
             <div className="tasks-grid">
-              {activeTasks.map(renderTask)}
+              {activeTasks.map((t, idx) => renderTask(t, idx, activeTasks))}
             </div>
             
             {completedTasks.length > 0 && (
@@ -270,7 +256,7 @@ export default function TasksPane({ isPublicView }: { isPublicView?: boolean }) 
             )}
             
             <div className="tasks-grid">
-              {completedTasks.map(renderTask)}
+              {completedTasks.map((t, idx) => renderTask(t, idx, completedTasks))}
             </div>
           </div>
         ) : (

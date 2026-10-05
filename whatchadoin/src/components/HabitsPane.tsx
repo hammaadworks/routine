@@ -2,19 +2,18 @@ import * as React from 'react';
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Activity,
-    
+    Calendar,
     CheckCircle2,
     ChevronDown,
     Clock,
-    
     Globe,
-    
+    Layers,
     ListTodo,
     Palette,
-    
+    Pencil,
     Plus,
+    Sparkles,
     Target,
-    
     X
 } from 'lucide-react';
 import getCaretCoordinates from 'textarea-caret';
@@ -24,10 +23,8 @@ import BaseModal from './BaseModal';
 import {
     getAllGoalsForMention,
     getGoalColor,
-    getScheduledGoalsForDate,
     parseDuration
 } from '../utils';
-import { useDragReorder } from '../hooks/useDragReorder';
 import HabitList from './habits/HabitList';
 import MilestonesView from './habits/MilestonesView';
 import TimelogView from './habits/TimelogView';
@@ -101,7 +98,7 @@ export default function HabitsPane({
                                        isMobileAccordionOpen,
                                        onToggleMobileAccordion
                                    }: HabitsPaneProps) {
-        const [showAllMilestones, setShowAllMilestones] = useState(false);
+        const [showAllMilestones, setShowAllMilestones] = useState(true);
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
@@ -113,6 +110,7 @@ export default function HabitsPane({
         moneyGoalIds: string[];
         color: string;
         isPublic?: boolean;
+        templateId?: string;
     }>({
         name: '',
         desc: '',
@@ -121,7 +119,8 @@ export default function HabitsPane({
         lifeGoalIds: [] as string[],
         moneyGoalIds: [] as string[],
         color: '',
-        isPublic: false
+        isPublic: false,
+        templateId: 'all'
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
@@ -152,13 +151,7 @@ export default function HabitsPane({
         if (setSubTab) setSubTab(normalized);
     };
     
-    const {
-        handleDragStart: handleReorderDragStart,
-        handleDragEnter: handleReorderDragEnter,
-        handleDragEnd: handleReorderDragEnd,
-        dragItemIndex,
-        dragOverItemIndex
-    } = useDragReorder(habits || [], setHabits);
+    const [infoHabitId, setInfoHabitId] = useState<string | null>(null);
 
     const [showMentionMenu, setShowMentionMenu] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
@@ -393,9 +386,153 @@ export default function HabitsPane({
         allGoals, filteredGoals
     } = getAllGoalsForMention((routineGoals || []).filter(publicFilter), (habits || []).filter(publicFilter), (lifeGoals || []).filter(publicFilter), mentionQuery, (moneyGoals || []).filter(publicFilter), (quickTasks || []).filter(publicFilter));
 
+    const tagOptions = useMemo(() => {
+        const list: Array<{ value: string; label: React.ReactNode; textSearch: string }> = [
+            { value: '', label: 'No Tag', textSearch: 'No Tag none clear' }
+        ];
 
-    // Removed inline editing handlers
+        allGoals.forEach((g: any) => {
+            if (!g.name) return;
+            const typeBadgeColor = 
+                g.type === 'Routine Goal' ? 'var(--accent)' :
+                g.type === 'Habit' ? '#60a5fa' :
+                g.type === 'Life Goal' ? '#c084fc' :
+                g.type === 'Money Goal' ? '#34d399' : '#94a3b8';
+                
+            const typeBadgeBg = 
+                g.type === 'Routine Goal' ? 'rgba(234, 179, 8, 0.15)' :
+                g.type === 'Habit' ? 'rgba(59, 130, 246, 0.15)' :
+                g.type === 'Life Goal' ? 'rgba(168, 85, 247, 0.15)' :
+                g.type === 'Money Goal' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)';
 
+            list.push({
+                value: g.name,
+                textSearch: `[${g.type}] ${g.name}`,
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, width: '100%' }}>
+                        <span style={{
+                            fontSize: '10px',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            background: typeBadgeBg,
+                            color: typeBadgeColor,
+                            letterSpacing: '0.3px',
+                            flexShrink: 0
+                        }}>
+                            {g.type}
+                        </span>
+                        <span style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: g.color || 'inherit'
+                        }}>
+                            {g.name}
+                        </span>
+                    </div>
+                )
+            });
+        });
+
+        if (milestoneForm.tag && !list.some(opt => opt.value === milestoneForm.tag)) {
+            list.splice(1, 0, {
+                value: milestoneForm.tag,
+                textSearch: `@${milestoneForm.tag}`,
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span style={{
+                            fontSize: '10px',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                            background: 'rgba(234, 179, 8, 0.15)',
+                            color: 'var(--accent)',
+                            letterSpacing: '0.3px',
+                            flexShrink: 0
+                        }}>
+                            Tag
+                        </span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {milestoneForm.tag}
+                        </span>
+                    </div>
+                )
+            });
+        }
+
+        return list;
+    }, [allGoals, milestoneForm.tag]);
+
+    const getTodayStr = useCallback(() => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }, []);
+
+    const formatHeaderDate = (dateString: string) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const day = date.getDate();
+        const month = date.toLocaleString('en-US', {month: 'long'});
+        const getOrdinalNum = (n: number) => n + (n > 0 ? (['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] || '') : '');
+        return `${getOrdinalNum(day)} ${month}`;
+    };
+
+    const effectiveDate = (isCalendarTab && !selectedTargetDate) ? getTodayStr() : selectedTargetDate;
+    const timelogDate = isCalendarTab ? (selectedTargetDate || getTodayStr()) : getTodayStr();
+    const currentTimeLogs: Record<string, any[]> = activeRoutine?.timeLogs || {};
+    const dayTimeLogs: any[] = currentTimeLogs[timelogDate] || [];
+
+    const calcDurationMinutes = (start: string, end: string) => {
+        if (!start || !end) return 0;
+        const [h1 = 0, m1 = 0] = start.split(':').map(Number);
+        const [h2 = 0, m2 = 0] = end.split(':').map(Number);
+        if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+        if (diff < 0) diff += 24 * 60;
+        return diff;
+    };
+
+    const formatDuration = (mins: number) => {
+        if (mins <= 0) return '0m';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        if (h > 0 && m > 0) return `${h}h ${m}m`;
+        if (h > 0) return `${h}h`;
+        return `${m}m`;
+    };
+
+    const currentTemplateId = useMemo(() => {
+        if (effectiveDate) {
+            const [y, m, d] = (effectiveDate || '').split('-');
+            const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+            if (!isNaN(dateObj.getTime())) {
+                const dayName = dateObj.toLocaleDateString('en-US', {weekday: 'long'});
+                if (dayMapping && dayName && dayMapping[dayName]) {
+                    return dayMapping[dayName];
+                }
+            }
+        }
+        return activeTemplateId || (templates && templates[0]?.id) || null;
+    }, [effectiveDate, dayMapping, activeTemplateId, templates]);
+
+    const templateDropdownOptions = useMemo(() => {
+        const opts: Array<{ value: string; label: React.ReactNode }> = [
+            { value: 'all', label: 'All Templates (Shared)' }
+        ];
+        (templates || []).forEach((t: any) => {
+            if (t && t.id) {
+                opts.push({
+                    value: t.id,
+                    label: t.name || 'Untitled Template'
+                });
+            }
+        });
+        return opts;
+    }, [templates]);
 
     const openAddHabit = useCallback(() => {
         setEditingHabitId(null);
@@ -407,10 +544,11 @@ export default function HabitsPane({
             routineGoalIds: [],
             lifeGoalIds: [],
             moneyGoalIds: [],
-            color: ''
+            color: '',
+            templateId: currentTemplateId || activeTemplateId || (templates && templates[0]?.id) || 'all'
         });
         setShowHabitModal(true);
-    }, []);
+    }, [currentTemplateId, activeTemplateId, templates]);
 
     useEffect(() => {
         const handleFab = () => {
@@ -442,7 +580,8 @@ export default function HabitsPane({
             lifeGoalIds: lIds,
             moneyGoalIds: mIds,
             color: goal.color || '',
-            isPublic: !!goal.isPublic
+            isPublic: !!goal.isPublic,
+            templateId: goal.templateId || currentTemplateId || activeTemplateId || (templates && templates[0]?.id) || 'all'
         });
         setShowHabitModal(true);
     };
@@ -450,7 +589,11 @@ export default function HabitsPane({
     const duplicateHabit = (goal: any) => {
         const goalName = goal.name || '';
         const newGoal = {
-            ...goal, name: '0_' + goalName, id: 'rg-' + Date.now(), completed: false
+            ...goal,
+            name: '0_' + goalName,
+            id: 'rg-' + Date.now(),
+            completed: false,
+            templateId: goal.templateId || currentTemplateId || 'all'
         };
         setHabits([...(habits || []), newGoal]);
     };
@@ -475,7 +618,8 @@ export default function HabitsPane({
             lifeGoalIds: habitForm.lifeGoalIds,
             moneyGoalIds: habitForm.moneyGoalIds,
             isPublic: !!habitForm.isPublic,
-            color: habitForm.color
+            color: habitForm.color,
+            templateId: habitForm.templateId || currentTemplateId || activeTemplateId || 'all'
         };
 
         if (editingHabitId) {
@@ -561,69 +705,6 @@ export default function HabitsPane({
         });
     };
 
-    const getScheduledGoalsForDateLocal = (dateStr: string) => {
-        const goals = getScheduledGoalsForDate(dateStr, habits, dayMapping, templates);
-        return goals.filter(g => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
-    };
-
-    const getTodayStr = () => {
-        const d = new Date();
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
-    const formatHeaderDate = (dateString: string) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        const day = date.getDate();
-        const month = date.toLocaleString('en-US', {month: 'long'});
-        const getOrdinalNum = (n: number) => n + (n > 0 ? (['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] || '') : '');
-        return `${getOrdinalNum(day)} ${month}`;
-    };
-
-    const effectiveDate = (isCalendarTab && !selectedTargetDate) ? getTodayStr() : selectedTargetDate;
-    const timelogDate = isCalendarTab ? (selectedTargetDate || getTodayStr()) : getTodayStr();
-    const currentTimeLogs: Record<string, any[]> = activeRoutine?.timeLogs || {};
-    const dayTimeLogs: any[] = currentTimeLogs[timelogDate] || [];
-
-    const calcDurationMinutes = (start: string, end: string) => {
-        if (!start || !end) return 0;
-        const [h1 = 0, m1 = 0] = start.split(':').map(Number);
-        const [h2 = 0, m2 = 0] = end.split(':').map(Number);
-        if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
-        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-        if (diff < 0) diff += 24 * 60;
-        return diff;
-    };
-
-    const formatDuration = (mins: number) => {
-        if (mins <= 0) return '0m';
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        if (h > 0 && m > 0) return `${h}h ${m}m`;
-        if (h > 0) return `${h}h`;
-        return `${m}m`;
-    };
-
-    
-    
-    
-    
-    
-    
-    let currentTemplateId = null;
-    if (effectiveDate) {
-        const [y, m, d] = (effectiveDate || '').split('-');
-        const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
-        if (!isNaN(dateObj.getTime())) {
-            const dayName = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('en-US', {weekday: 'long'}) : '';
-            currentTemplateId = dayMapping && dayName ? dayMapping[dayName] : null;
-        }
-    } else {
-        currentTemplateId = activeTemplateId;
-    }
 
     const currentTemplate = templates?.find(t => t.id === currentTemplateId);
     const goalCounts: Record<string, number> = {};
@@ -635,13 +716,14 @@ export default function HabitsPane({
         });
     }
 
-    let displayedRoutineGoals: any[];
-
-    if (effectiveDate) {
-        displayedRoutineGoals = getScheduledGoalsForDateLocal(effectiveDate);
-    } else {
-        displayedRoutineGoals = (habits || []).filter(g => (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
-    }
+    const allVisibleHabits = (habits || []).filter(g => (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
+    const templateFilteredHabits = allVisibleHabits.filter(g => {
+        if (g.templateId === 'all') return true;
+        if (g.templateId) return currentTemplateId ? g.templateId === currentTemplateId : true;
+        const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
+        return !currentTemplateId || currentTemplateId === defaultTemplateId;
+    });
+    let displayedRoutineGoals: any[] = templateFilteredHabits;
 
     if (searchQuery) {
         displayedRoutineGoals = displayedRoutineGoals.filter(g => (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
@@ -828,17 +910,13 @@ export default function HabitsPane({
         goalCounts={goalCounts}
         isRoutineDrawerOpen={isRoutineDrawerOpen}
         handleDragStart={handleDragStart}
-        handleReorderDragStart={handleReorderDragStart}
-        handleReorderDragEnter={handleReorderDragEnter}
-        handleReorderDragEnd={handleReorderDragEnd}
-        dragItemIndex={dragItemIndex}
-        dragOverItemIndex={dragOverItemIndex}
         toggleDailyGoal={toggleDailyGoal}
         duplicateHabit={duplicateHabit}
         openEditHabit={openEditHabit}
         setConfirmConfig={setConfirmConfig}
         habits={habits}
         setHabits={setHabits}
+        onCardClick={(habit) => setInfoHabitId(habit.id)}
     />
 )}
 {calendarSubTab === 'milestones' && (
@@ -908,13 +986,18 @@ export default function HabitsPane({
                     }
 
                     let allocatedCount = 0;
-                    const visibleHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                    const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]')).filter(g => {
+                        if (g.templateId === 'all') return true;
+                        if (g.templateId) return currentTemplateId ? g.templateId === currentTemplateId : true;
+                        const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
+                        return !currentTemplateId || currentTemplateId === defaultTemplateId;
+                    });
                     if (currentTemplate && currentTemplate.blocks) {
-                        allocatedCount = visibleHabits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
+                        allocatedCount = scopedHabits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
                     }
                     return (<>
                         <Activity size={14} color="var(--accent)"/>
-                        <span>Allocated Habits : {allocatedCount} / {visibleHabits.length}</span>
+                        <span>Allocated Habits : {allocatedCount} / {scopedHabits.length}</span>
                     </>);
                 })()}
             </div>
@@ -949,6 +1032,16 @@ export default function HabitsPane({
                                type="text" placeholder="e.g. Read 10 pages of Atomic Habits" value={habitForm.name}
                                onChange={(e) => setHabitForm({...habitForm, name: e.target.value})} required
                                style={{width: '100%'}}
+                        />
+                    </div>
+                    <div>
+                        <label style={{
+                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
+                        }}>Template</label>
+                        <Dropdown
+                            value={habitForm.templateId || 'all'}
+                            options={templateDropdownOptions}
+                            onChange={(val) => setHabitForm({ ...habitForm, templateId: String(val) })}
                         />
                     </div>
                     <div>
@@ -1294,11 +1387,8 @@ export default function HabitsPane({
                                 <Dropdown
                                     value={milestoneForm.tag}
                                     onChange={(val) => setMilestoneForm({...milestoneForm, tag: String(val)})}
-                                    options={[{
-                                        value: '', label: 'No Tag'
-                                    }, ...allGoals.map(g => ({
-                                        value: g.name, label: `[${g.type}] ${g.name}`
-                                    }))]}
+                                    options={tagOptions}
+                                    placeholder="No Tag"
                                 />
                             </div>
                         </div>
@@ -1479,6 +1569,197 @@ export default function HabitsPane({
                 </div>
             </form>
         </BaseModal>
+
+        {/* Habit Info Modal */}
+        {infoHabitId && (() => {
+            const habit = (habits || []).find((h: any) => h.id === infoHabitId);
+            if (!habit) return null;
+            const hexes = getGoalColor(habit, routineGoals, lifeGoals, moneyGoals);
+            const primaryColor = hexes[0] || habit.color || 'var(--accent)';
+            const timeStr = habit.time || (typeof habit.duration === 'number' && habit.duration > 0 ? `${habit.duration}m` : '');
+            const cadenceStr = habit.cadence === 'weekly' ? 'Weekly' : 'Daily';
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const targetDaysStr = Array.isArray(habit.targetDays) && habit.targetDays.length > 0
+                ? habit.targetDays.map((d: number) => dayNames[d] || d).join(', ')
+                : '';
+
+            const rIds: string[] = habit.routineGoalIds || (habit.routineGoalId ? [habit.routineGoalId] : []);
+            const lIds: string[] = habit.lifeGoalIds || (habit.lifeGoalId ? [habit.lifeGoalId] : []);
+            const mIds: string[] = habit.moneyGoalIds || (habit.moneyGoalId ? [habit.moneyGoalId] : []);
+
+            const linkedRoutineGoals = (routineGoals || []).filter((g: any) => rIds.includes(g.id));
+            const linkedLifeGoals = (lifeGoals || []).filter((g: any) => lIds.includes(g.id));
+            const linkedMoneyGoals = (moneyGoals || []).filter((g: any) => mIds.includes(g.id));
+
+            let scheduledMins = 0;
+            if (currentTemplate) {
+                currentTemplate.blocks?.forEach((b: any) => {
+                    if (String(b.routineGoalId) === String(habit.id)) scheduledMins += b.duration;
+                });
+            }
+            const count = goalCounts[habit.id] || 0;
+
+            const habitTemplateName = habit.templateId === 'all'
+                ? 'All Templates (Shared)'
+                : (templates || []).find((t: any) => t.id === habit.templateId)?.name || 'Default Template';
+
+            return (
+                <BaseModal
+                    isOpen={true}
+                    onClose={() => setInfoHabitId(null)}
+                    title={
+                        <span style={{display: 'flex', alignItems: 'center', gap: '8px', color: primaryColor}}>
+                            <Sparkles size={18} color={primaryColor} />
+                            {habit.name}
+                        </span>
+                    }
+                >
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                        <div style={{
+                            background: `${primaryColor}15`,
+                            border: `1px solid ${primaryColor}40`,
+                            padding: '12px',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            gap: '12px'
+                        }}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <Layers size={15} color={primaryColor} />
+                                <span style={{fontWeight: 600}}>{habitTemplateName}</span>
+                            </div>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                <Calendar size={15} color={primaryColor} />
+                                <span style={{fontWeight: 600}}>{cadenceStr}</span>
+                                {targetDaysStr && <span style={{color: 'var(--text-secondary)'}}>({targetDaysStr})</span>}
+                            </div>
+                            {timeStr && (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <Clock size={15} color={primaryColor} />
+                                    <span>{timeStr}</span>
+                                </div>
+                            )}
+                            {habit.isPublic && (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success)'}}>
+                                    <Globe size={13} />
+                                    <span style={{fontSize: '12px'}}>Public</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {!!(habit.desc || habit.notes) && (
+                            <div>
+                                <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px', fontWeight: 'bold'}}>
+                                    Description / Notes
+                                </div>
+                                <div style={{background: 'var(--surface-light)', padding: '12px', borderRadius: '8px', fontSize: '14px', whiteSpace: 'pre-wrap', lineHeight: 1.5}}>
+                                    {String(habit.desc || habit.notes)}
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold'}}>
+                                Schedule in Active Routine Template
+                            </div>
+                            <div style={{background: 'var(--surface-light)', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                <span>Occurrences in template:</span>
+                                <span style={{fontWeight: 'bold', color: count > 0 ? 'var(--accent)' : 'var(--text-secondary)'}}>
+                                    {count > 0 ? `${count} time${count > 1 ? 's' : ''} (${scheduledMins}m total)` : 'Not scheduled'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px', fontWeight: 'bold'}}>
+                                Linked Goals ({linkedRoutineGoals.length + linkedLifeGoals.length + linkedMoneyGoals.length})
+                            </div>
+                            {linkedRoutineGoals.length === 0 && linkedLifeGoals.length === 0 && linkedMoneyGoals.length === 0 ? (
+                                <div style={{fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic'}}>
+                                    No linked goals.
+                                </div>
+                            ) : (
+                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                    {linkedRoutineGoals.map((g: any) => (
+                                        <span key={g.id} style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '6px',
+                                            background: `${g.color || '#1982C4'}20`,
+                                            color: g.color || '#1982C4',
+                                            fontSize: '12px',
+                                            border: `1px solid ${g.color || '#1982C4'}40`,
+                                            fontWeight: 500
+                                        }}>
+                                            🎯 {g.name}
+                                        </span>
+                                    ))}
+                                    {linkedLifeGoals.map((g: any) => (
+                                        <span key={g.id} style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '6px',
+                                            background: `${g.color || '#FF595E'}20`,
+                                            color: g.color || '#FF595E',
+                                            fontSize: '12px',
+                                            border: `1px solid ${g.color || '#FF595E'}40`,
+                                            fontWeight: 500
+                                        }}>
+                                            ⭐ {g.name}
+                                        </span>
+                                    ))}
+                                    {linkedMoneyGoals.map((g: any) => (
+                                        <span key={g.id} style={{
+                                            padding: '4px 8px',
+                                            borderRadius: '6px',
+                                            background: `${g.color || '#00F5D4'}20`,
+                                            color: g.color || '#00F5D4',
+                                            fontSize: '12px',
+                                            border: `1px solid ${g.color || '#00F5D4'}40`,
+                                            fontWeight: 500
+                                        }}>
+                                            💰 {g.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                            <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => setInfoHabitId(null)}
+                                style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500'}}
+                            >
+                                Close
+                            </button>
+                            <button
+                                type="button"
+                                className="primary"
+                                onClick={() => {
+                                    setInfoHabitId(null);
+                                    openEditHabit(habit);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 0',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                <Pencil size={14} /> Edit Habit
+                            </button>
+                        </div>
+                    </div>
+                </BaseModal>
+            );
+        })()}
 
         {/* Confirm Modal */}
         {confirmConfig && (<ConfirmModal

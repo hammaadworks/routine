@@ -1,6 +1,7 @@
 import * as React from 'react';
-import {GripVertical, Pencil} from 'lucide-react';
-import {getCardBgStyle, formatCompactDuration} from '../utils';
+import { Pencil } from 'lucide-react';
+import { getCardBgStyle, formatCompactDuration } from '../utils';
+import OrderControls from './OrderControls';
 
 interface Goal {
     id: string;
@@ -19,45 +20,46 @@ interface GoalCardProps {
     goal: Goal;
     index: number;
     linkedCount: number;
-    draggable: boolean;
-    onDragStart: (e: React.DragEvent, index: number) => void;
-    onDragEnter: (e: React.DragEvent, index: number) => void;
-    onDragEnd: () => void;
     onToggle: (id: string) => void;
     onEdit: (goal: Goal) => void;
     onBadgeClick: (id: string) => void;
     onCardClick?: (goal: Goal) => void;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    isReorderDisabled?: boolean;
+    // Legacy props for compatibility
+    draggable?: boolean;
+    onDragStart?: (e: React.DragEvent, index: number) => void;
+    onDragEnter?: (e: React.DragEvent, index: number) => void;
+    onDragEnd?: () => void;
     isDragOver?: boolean;
     isDragging?: boolean;
     dropDirection?: 'up' | 'down';
 }
 
 export default function GoalCard({
-                                     goal,
-                                     index,
-                                     linkedCount,
-                                     draggable,
-                                     onDragStart,
-                                     onDragEnter,
-                                     onDragEnd,
-                                     onToggle,
-                                     onEdit,
-                                     onBadgeClick,
-                                     onCardClick,
-                                     isDragOver,
-                                     isDragging,
-                                     dropDirection
-                                 }: GoalCardProps) {
+    goal,
+    index: _index,
+    linkedCount,
+    onToggle,
+    onEdit,
+    onBadgeClick,
+    onCardClick,
+    canMoveUp = false,
+    canMoveDown = false,
+    onMoveUp,
+    onMoveDown,
+    isReorderDisabled = false
+}: GoalCardProps) {
     const hex = goal.color || '#eab308';
     const bgStyle = getCardBgStyle(hex);
     const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
 
-    return (<div
-            className={`item-card ${goal.completed ? 'scratched' : ''} ${isDragging ? 'dragging' : ''}`}
-            onDragEnter={(e) => onDragEnter(e, index)}
-            onDragEnd={onDragEnd}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => e.preventDefault()}
+    return (
+        <div
+            className={`item-card ${goal.completed ? 'scratched' : ''}`}
             style={{
                 position: 'relative',
                 overflow: 'visible',
@@ -65,29 +67,22 @@ export default function GoalCard({
                 padding: '10px 12px',
                 display: 'flex',
                 alignItems: 'center',
-                opacity: isDragging ? 0.4 : 1,
-                borderTop: isDragOver && dropDirection === 'up' ? `2px solid ${hex}` : 'none',
-                borderBottom: isDragOver && dropDirection === 'down' ? `2px solid ${hex}` : 'none',
-                transform: isDragOver && dropDirection === 'up' ? 'translateY(2px)' : (isDragOver && dropDirection === 'down' ? 'translateY(-2px)' : 'none'),
-                transition: 'border 0.2s, transform 0.2s, opacity 0.2s',
+                transition: 'background-color 0.2s, border-color 0.2s',
                 ...bgStyle
             }}
         >
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
-                <div style={{display: 'flex', gap: '10px', alignItems: 'center', flex: 1, minWidth: 0}}>
-                    <div
-                        draggable={draggable}
-                        onDragStart={(e) => {
-                            const parent = e.currentTarget.closest('.item-card') as HTMLDivElement;
-                            if (parent) e.dataTransfer.setDragImage(parent, 20, 20);
-                            onDragStart(e, index);
-                        }}
-                        style={{display: 'flex', cursor: draggable ? 'grab' : 'default', touchAction: 'none'}}
-                    >
-                        <GripVertical size={16} color="var(--text-secondary)"
-                                      style={{flexShrink: 0, opacity: 0.5}}/>
-                    </div>
-                    <input name="auto_field_9"
+                <div style={{display: 'flex', gap: '8px', alignItems: 'center', flex: 1, minWidth: 0}}>
+                    <OrderControls
+                        canMoveUp={canMoveUp}
+                        canMoveDown={canMoveDown}
+                        onMoveUp={onMoveUp || (() => {})}
+                        onMoveDown={onMoveDown || (() => {})}
+                        disabled={isReorderDisabled}
+                    />
+
+                    <input
+                        name="auto_field_9"
                         type="checkbox"
                         className="checkbox-square"
                         checked={goal.completed || false}
@@ -108,17 +103,18 @@ export default function GoalCard({
                             cursor: 'pointer'
                         }}
                     >
-            <span className="item-title" style={{
-                color: hex,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                fontSize: '13px',
-                fontWeight: '500'
-            }} title={goal.name}>
-              {goal.name}
-            </span>
-                        {goal.desc && (<span style={{
+                        <span className="item-title" style={{
+                            color: hex,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                        }} title={goal.name}>
+                            {goal.name}
+                        </span>
+                        {goal.desc && (
+                            <span style={{
                                 fontSize: '11px',
                                 color: 'var(--text-secondary)',
                                 whiteSpace: 'nowrap',
@@ -126,8 +122,9 @@ export default function GoalCard({
                                 textOverflow: 'ellipsis',
                                 marginTop: '2px'
                             }} title={goal.desc}>
-                {goal.desc}
-              </span>)}
+                                {goal.desc}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0, marginLeft: '8px'}}>
@@ -188,5 +185,6 @@ export default function GoalCard({
                 }}>
                 {linkedCount}
             </div>
-        </div>);
+        </div>
+    );
 }

@@ -2036,3 +2036,35 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         display: none !important;
     }
 }
+
+/* Order Controls (Up / Down arrows) */
+.order-controls {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.order-btn {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+}
+
+.order-btn:not(:disabled):hover {
+    color: var(--text-primary) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    opacity: 1 !important;
+}
+
+.order-btn:not(:disabled):active {
+    transform: scale(0.85);
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: var(--accent) !important;
+}
+
+@media (max-width: 768px) {
+    .order-btn {
+        min-width: 24px !important;
+        min-height: 18px !important;
+        padding: 3px 4px !important;
+    }
+}
+
