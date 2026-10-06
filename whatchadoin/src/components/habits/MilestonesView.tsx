@@ -73,12 +73,19 @@ export default function MilestonesView({
             <button
                 onClick={() => {
                     setEditingMilestoneIdx(null);
+                    const initialDate = effectiveDate || new Date().toISOString().split('T')[0] || '';
+                    const day = initialDate ? new Date(initialDate + 'T00:00:00').getDay() : 4;
                     setMilestoneForm({
-                        date: effectiveDate || new Date().toISOString().split('T')[0] || '',
+                        date: initialDate,
                         tag: '',
                         name: '',
                         desc: '',
-                        done: false
+                        done: false,
+                        isRepeating: false,
+                        repeatInterval: 1,
+                        repeatUnit: 'weeks',
+                        repeatDay: day,
+                        endDate: ''
                     });
                     setShowMilestoneModal(true);
                 }}
@@ -192,7 +199,7 @@ export default function MilestonesView({
                             }
 
                             return (<div key={dateStr} id={`milestone-block-${dateStr}`} style={{
-                                position: 'relative', marginBottom: '40px', paddingLeft: '24px'
+                                position: 'relative', marginBottom: '40px', paddingLeft: '24px', borderRadius: '12px', transition: 'all 0.3s ease'
                             }}>
                                 <div style={{
                                     position: 'absolute',

@@ -2068,3 +2068,42 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     }
 }
 
+/* Milestone Fly-To Glow Pulse Animation */
+@keyframes milestoneFlyGlow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.9);
+        background: rgba(234, 179, 8, 0.28);
+        border-color: var(--accent) !important;
+        transform: scale(1.03);
+    }
+    40% {
+        box-shadow: 0 0 30px 10px rgba(234, 179, 8, 0.6);
+        background: rgba(234, 179, 8, 0.35);
+        border-color: var(--accent) !important;
+        transform: scale(1.03);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+        background: transparent;
+        transform: scale(1);
+    }
+}
+
+.milestone-fly-highlight {
+    animation: milestoneFlyGlow 2.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important;
+    border-radius: 8px !important;
+    z-index: 50 !important;
+    position: relative !important;
+}
+
+.clickable-milestone-card:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.15);
+    border-color: var(--accent) !important;
+}
+
+.clickable-milestone-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: translateX(3px);
+}
+

@@ -9,6 +9,7 @@ import GoalForm from './GoalForm';
 import {moveItemRelativeTo} from '../hooks/useDragReorder';
 import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
+import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -38,6 +39,7 @@ interface LifePaneProps {
     headerTabs?: React.ReactNode;
     onLifeGoalBadgeClick?: (id: string) => void;
     setActiveLeftTab?: (tab: GoalCategory) => void;
+    milestones?: Record<string, string>;
 }
 
 interface ConfirmConfig {
@@ -59,7 +61,8 @@ export default function LifePane({
                                      setHabits,
                                      headerTabs,
                                      onLifeGoalBadgeClick,
-                                     setActiveLeftTab
+                                     setActiveLeftTab,
+                                     milestones,
                                  }: LifePaneProps) {
     const [showLifeGoalModal, setShowLifeGoalModal] = useState(false);
     const [editingLifeGoalId, setEditingLifeGoalId] = useState<string | null>(null);
@@ -539,6 +542,31 @@ export default function LifePane({
                                     </div>
                                 </div>)}
 
+                            {linkedRoutines.length > 0 && (
+                                <div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        marginBottom: '6px',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        Linked Routine Goals ({linkedRoutines.length})
+                                    </div>
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                        {linkedRoutines.map(r => (<span key={r.id} style={{
+                                                padding: '4px 8px',
+                                                borderRadius: '6px',
+                                                background: `${r.color || 'var(--accent)'}20`,
+                                                color: r.color || 'var(--accent)',
+                                                fontSize: '12px',
+                                                border: `1px solid ${r.color || 'var(--accent)'}40`
+                                            }}>
+                                                🎯 {r.name}
+                                            </span>))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <div style={{
                                     fontSize: '12px',
@@ -546,23 +574,14 @@ export default function LifePane({
                                     marginBottom: '6px',
                                     fontWeight: 'bold'
                                 }}>
-                                    Linked Habits & Routines ({linkedHabits.length + linkedRoutines.length})
+                                    Linked Habits ({linkedHabits.length})
                                 </div>
-                                {linkedHabits.length === 0 && linkedRoutines.length === 0 ? (<div style={{
+                                {linkedHabits.length === 0 ? (<div style={{
                                         fontSize: '13px',
                                         color: 'var(--text-secondary)',
                                         fontStyle: 'italic'
                                     }}>No linked habits yet.</div>) : (
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
-                                        {linkedRoutines.map(r => (<span key={r.id} style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                background: 'var(--surface-light)',
-                                                fontSize: '12px',
-                                                border: '1px solid var(--border)'
-                                            }}>
-                                                {r.name}
-                                            </span>))}
                                         {linkedHabits.map(h => (<span key={h.id} style={{
                                                 padding: '4px 8px',
                                                 borderRadius: '6px',
@@ -574,6 +593,13 @@ export default function LifePane({
                                             </span>))}
                                     </div>)}
                             </div>
+
+                            <LinkedMilestonesSection
+                                name={goal.name}
+                                milestones={milestones}
+                                primaryColor={hex}
+                                onCloseModal={() => setInfoGoalId(null)}
+                            />
 
                             <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                 <button

@@ -14,5 +14,6 @@ export type AppEventType =
     | 'fab:add-coins'
     | 'myday-add-habit-mobile'
     | 'open-settings'
-    | 'toggle-ai-dock';
+    | 'toggle-ai-dock'
+    | 'navigate-to-milestone';
 

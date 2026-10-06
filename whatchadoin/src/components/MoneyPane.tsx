@@ -9,7 +9,7 @@ import GoalForm from './GoalForm';
 import {moveItemRelativeTo} from '../hooks/useDragReorder';
 import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
-
+import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -39,6 +39,7 @@ interface MoneyPaneProps {
     setRoutineGoals?: React.Dispatch<React.SetStateAction<any[]>>;
     setActiveLeftTab?: (tab: GoalCategory) => void;
     onNavigateToCoins?: () => void;
+    milestones?: Record<string, string>;
 }
 
 interface ConfirmConfig {
@@ -59,7 +60,8 @@ export default function MoneyPane({
                                       setLifeGoals,
                                       setRoutineGoals,
                                       setActiveLeftTab,
-                                      onNavigateToCoins
+                                      onNavigateToCoins,
+                                      milestones
                                   }: MoneyPaneProps) {
     const [showMoneyGoalModal, setShowMoneyGoalModal] = useState(false);
     const [editingMoneyGoalId, setEditingMoneyGoalId] = useState<string | null>(null);
@@ -614,6 +616,13 @@ export default function MoneyPane({
                                             </span>))}
                                     </div>)}
                             </div>
+
+                            <LinkedMilestonesSection
+                                name={goal.name}
+                                milestones={milestones}
+                                primaryColor={hex}
+                                onCloseModal={() => setInfoGoalId(null)}
+                            />
 
                             <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                 <button

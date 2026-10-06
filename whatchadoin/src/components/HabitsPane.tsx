@@ -28,6 +28,8 @@ import {
 import HabitList from './habits/HabitList';
 import MilestonesView from './habits/MilestonesView';
 import TimelogView from './habits/TimelogView';
+import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
+import { addAppEventListener } from '../utils/events';
 
 
 const COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5', '#E07A5F'];
@@ -128,7 +130,19 @@ export default function HabitsPane({
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
-    const [milestoneForm, setMilestoneForm] = useState({date: '', tag: '', name: '', desc: '', done: false});
+    const [milestoneForm, setMilestoneForm] = useState({
+        date: '',
+        tag: '',
+        name: '',
+        desc: '',
+        done: false,
+        isRepeating: false,
+        repeatInterval: 1,
+        repeatUnit: 'weeks' as 'days' | 'weeks',
+        repeatDay: 4,
+        endDate: '',
+        applyToAllMatching: false
+    });
     const [isMobileExpanded, setIsMobileExpanded] = useState(false);
     const isExpanded = isMobileAccordionOpen !== undefined ? isMobileAccordionOpen : isMobileExpanded;
     const toggleExpanded = onToggleMobileAccordion || (() => setIsMobileExpanded(!isMobileExpanded));
@@ -174,10 +188,55 @@ export default function HabitsPane({
             ? rawName.substring(4)
             : (rawName.startsWith('[ ] ') ? rawName.substring(4) : rawName);
 
-        setEditingMilestoneIdx({dateStr, idx});
-        setMilestoneForm({date: dateStr, tag: tag || '', name: name || '', desc: desc || '', done});
+        const day = dateStr ? new Date(dateStr + 'T00:00:00').getDay() : 4;
+        setEditingMilestoneIdx({
+            dateStr,
+            idx,
+            originalName: name,
+            originalTag: tag
+        });
+        setMilestoneForm({
+            date: dateStr,
+            tag: tag || '',
+            name: name || '',
+            desc: desc || '',
+            done,
+            isRepeating: false,
+            repeatInterval: 1,
+            repeatUnit: 'weeks',
+            repeatDay: day,
+            endDate: '',
+            applyToAllMatching: false
+        });
         setShowMilestoneModal(true);
     };
+
+    const matchingOccurrences = useMemo(() => {
+        if (!editingMilestoneIdx) return [];
+        const targetName = (editingMilestoneIdx.originalName || milestoneForm.name || '').trim().toLowerCase();
+        if (!targetName) return [];
+        const targetTag = (editingMilestoneIdx.originalTag || milestoneForm.tag || '').trim().toLowerCase();
+        const sourceMilestones = passedMilestones || activeRoutine?.milestones || {};
+        const matches: Array<{ dateStr: string; blockIdx: number }> = [];
+
+        Object.entries(sourceMilestones).forEach(([dStr, content]) => {
+            if (!content || typeof content !== 'string') return;
+            const blocks = content.split('\n\n');
+            blocks.forEach((block, idx) => {
+                if (!block.trim()) return;
+                const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                const tag = matchWithTag ? (matchWithTag[1] || '').trim().toLowerCase() : '';
+                const rawName = matchWithTag ? (matchWithTag[2] || '') : (matchWithoutTag ? (matchWithoutTag[1] || '') : (block || ''));
+                const cleanName = rawName.replace(/^\[(x| )\]\s*/, '').trim().toLowerCase();
+
+                if (cleanName === targetName && (!targetTag || tag === targetTag)) {
+                    matches.push({ dateStr: dStr, blockIdx: idx });
+                }
+            });
+        });
+        return matches;
+    }, [editingMilestoneIdx, milestoneForm.name, milestoneForm.tag, passedMilestones, activeRoutine?.milestones]);
 
     const confirmDeleteMilestone = () => {
         if (!editingMilestoneIdx) return;
@@ -197,6 +256,62 @@ export default function HabitsPane({
                 if (!newMilestones[dateStr].trim()) {
                     delete newMilestones[dateStr];
                 }
+
+                if (setMilestones) {
+                    setMilestones(newMilestones);
+                }
+                if (updateActiveRoutine) {
+                    updateActiveRoutine({
+                        ...activeRoutine, milestones: newMilestones
+                    });
+                }
+
+                setShowMilestoneModal(false);
+                setConfirmConfig(null);
+                setEditingMilestoneIdx(null);
+            },
+            onCancel: () => setConfirmConfig(null)
+        });
+    };
+
+    const confirmDeleteAllMatching = () => {
+        if (!editingMilestoneIdx) return;
+        const targetName = (editingMilestoneIdx.originalName || milestoneForm.name).trim();
+        const targetTag = (editingMilestoneIdx.originalTag || milestoneForm.tag || '').trim().toLowerCase();
+
+        setConfirmConfig({
+            title: 'Delete All Matching Events',
+            message: `Are you sure you want to delete all ${matchingOccurrences.length} occurrences of "${targetName}"?`,
+            isDanger: true,
+            confirmText: `Delete All (${matchingOccurrences.length})`,
+            onConfirm: () => {
+                const normalizedTargetName = targetName.toLowerCase();
+                const sourceMilestones = passedMilestones || activeRoutine?.milestones || {};
+                const newMilestones = {...sourceMilestones};
+
+                Object.keys(newMilestones).forEach(dStr => {
+                    const content = newMilestones[dStr];
+                    if (!content || typeof content !== 'string') return;
+                    const blocks = content.split('\n\n');
+                    const filteredBlocks = blocks.filter(block => {
+                        if (!block.trim()) return false;
+                        const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                        const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                        const tag = matchWithTag ? (matchWithTag[1] || '').trim().toLowerCase() : '';
+                        const rawName = matchWithTag ? (matchWithTag[2] || '') : (matchWithoutTag ? (matchWithoutTag[1] || '') : (block || ''));
+                        const cleanName = rawName.replace(/^\[(x| )\]\s*/, '').trim().toLowerCase();
+
+                        const matchesName = cleanName === normalizedTargetName;
+                        const matchesTag = !targetTag || tag === targetTag;
+                        return !(matchesName && matchesTag);
+                    });
+
+                    if (filteredBlocks.length === 0) {
+                        delete newMilestones[dStr];
+                    } else {
+                        newMilestones[dStr] = filteredBlocks.join('\n\n');
+                    }
+                });
 
                 if (setMilestones) {
                     setMilestones(newMilestones);
@@ -288,9 +403,55 @@ export default function HabitsPane({
         }
     };
 
+    const repeatingDates = useMemo(() => {
+        if (!milestoneForm.isRepeating || !milestoneForm.date || !milestoneForm.endDate) return [];
+        if (milestoneForm.date > milestoneForm.endDate) return [];
+        const results: string[] = [];
+        const interval = Math.max(1, Number(milestoneForm.repeatInterval) || 1);
+        const unit = milestoneForm.repeatUnit || 'weeks';
+        const end = new Date(milestoneForm.endDate + 'T00:00:00');
+
+        if (unit === 'days') {
+            const cur = new Date(milestoneForm.date + 'T00:00:00');
+            while (cur <= end && results.length < 500) {
+                const yyyy = cur.getFullYear();
+                const mm = String(cur.getMonth() + 1).padStart(2, '0');
+                const dd = String(cur.getDate()).padStart(2, '0');
+                results.push(`${yyyy}-${mm}-${dd}`);
+                cur.setDate(cur.getDate() + interval);
+            }
+        } else {
+            const targetDay = Number(milestoneForm.repeatDay ?? 4);
+            const cur = new Date(milestoneForm.date + 'T00:00:00');
+            // Advance to first matching weekday on or after start date
+            while (cur.getDay() !== targetDay) {
+                cur.setDate(cur.getDate() + 1);
+            }
+            const stepDays = interval * 7;
+            while (cur <= end && results.length < 500) {
+                const yyyy = cur.getFullYear();
+                const mm = String(cur.getMonth() + 1).padStart(2, '0');
+                const dd = String(cur.getDate()).padStart(2, '0');
+                results.push(`${yyyy}-${mm}-${dd}`);
+                cur.setDate(cur.getDate() + stepDays);
+            }
+        }
+        return results;
+    }, [
+        milestoneForm.isRepeating,
+        milestoneForm.date,
+        milestoneForm.endDate,
+        milestoneForm.repeatInterval,
+        milestoneForm.repeatUnit,
+        milestoneForm.repeatDay
+    ]);
+
     const saveMilestone = (e: any) => {
         e.preventDefault();
         if (!milestoneForm.date || !milestoneForm.name) return;
+
+        const isRepeating = !editingMilestoneIdx && milestoneForm.isRepeating;
+        if (isRepeating && (!milestoneForm.endDate || repeatingDates.length === 0)) return;
 
         const dateStr = milestoneForm.date;
         const name = milestoneForm.name.trim();
@@ -310,13 +471,61 @@ export default function HabitsPane({
 
         if (editingMilestoneIdx) {
             const {dateStr: oldDate, idx} = editingMilestoneIdx;
+            const targetName = (editingMilestoneIdx.originalName || '').trim().toLowerCase();
+            const targetTag = (editingMilestoneIdx.originalTag || '').trim().toLowerCase();
 
-            const oldBlocks = (newMilestones[oldDate] || '').split('\n\n');
-            oldBlocks.splice(idx, 1);
-            newMilestones[oldDate] = oldBlocks.join('\n\n');
+            if (milestoneForm.applyToAllMatching) {
+                Object.keys(newMilestones).forEach(dStr => {
+                    const content = newMilestones[dStr];
+                    if (!content || typeof content !== 'string') return;
+                    const blocks = content.split('\n\n');
+                    const updatedBlocks = blocks.map(block => {
+                        if (!block.trim()) return block;
+                        const matchWithTag = block.match(/^\*\*@([^*]+)\*\*\s*-\s*\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                        const matchWithoutTag = block.match(/^\*\*([^*]+)\*\*(?:\s*\n([\s\S]*))?$/);
+                        const bTag = matchWithTag ? (matchWithTag[1] || '').trim().toLowerCase() : '';
+                        const rawName = matchWithTag ? (matchWithTag[2] || '') : (matchWithoutTag ? (matchWithoutTag[1] || '') : (block || ''));
+                        const isItemDone = rawName.startsWith('[x] ');
+                        const cleanName = rawName.replace(/^\[(x| )\]\s*/, '').trim().toLowerCase();
 
-            const currentNewDate = newMilestones[dateStr] || '';
-            newMilestones[dateStr] = currentNewDate ? currentNewDate + '\n\n' + newBlock : newBlock;
+                        if (cleanName === targetName && (!targetTag || bTag === targetTag)) {
+                            const itemName = isItemDone ? `[x] ${name}` : name;
+                            let b = '';
+                            if (tag) b += `**@${tag}** - `;
+                            b += `**${itemName}**`;
+                            if (desc) b += `  \n${desc}`;
+                            return b;
+                        }
+                        return block;
+                    });
+                    newMilestones[dStr] = updatedBlocks.join('\n\n');
+                });
+            } else {
+                const oldBlocks = (newMilestones[oldDate] || '').split('\n\n');
+                oldBlocks.splice(idx, 1);
+                newMilestones[oldDate] = oldBlocks.join('\n\n');
+
+                if (isRepeating) {
+                    for (const d of repeatingDates) {
+                        const current = newMilestones[d] || '';
+                        const existingBlocks = current.split('\n\n').filter(Boolean);
+                        if (!existingBlocks.includes(newBlock)) {
+                            newMilestones[d] = current ? current + '\n\n' + newBlock : newBlock;
+                        }
+                    }
+                } else {
+                    const currentNewDate = newMilestones[dateStr] || '';
+                    newMilestones[dateStr] = currentNewDate ? currentNewDate + '\n\n' + newBlock : newBlock;
+                }
+            }
+        } else if (isRepeating) {
+            for (const d of repeatingDates) {
+                const current = newMilestones[d] || '';
+                const existingBlocks = current.split('\n\n').filter(Boolean);
+                if (!existingBlocks.includes(newBlock)) {
+                    newMilestones[d] = current ? current + '\n\n' + newBlock : newBlock;
+                }
+            }
         } else {
             const current = newMilestones[dateStr] || '';
             newMilestones[dateStr] = current ? current + '\n\n' + newBlock : newBlock;
@@ -337,18 +546,33 @@ export default function HabitsPane({
             });
         }
 
+        const targetDates = isRepeating ? repeatingDates : [dateStr];
+
         // Auto-switch to "All" view if the milestone is outside the active routine range
         if (activeRoutine?.start && activeRoutine?.end) {
-            if (dateStr < activeRoutine.start || dateStr > activeRoutine.end) {
+            const isOutside = targetDates.some(d => d < activeRoutine.start || d > activeRoutine.end);
+            if (isOutside) {
                 setShowAllMilestones(true);
             }
         }
 
         setShowMilestoneModal(false);
-        setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
+        setMilestoneForm({
+            date: '',
+            tag: '',
+            name: '',
+            desc: '',
+            done: false,
+            isRepeating: false,
+            repeatInterval: 1,
+            repeatUnit: 'weeks',
+            repeatDay: 4,
+            endDate: '',
+            applyToAllMatching: false
+        });
         setEditingMilestoneIdx(null);
         handleTabChange('milestones');
-        if (setSelectedTargetDate) setSelectedTargetDate(dateStr);
+        if (setSelectedTargetDate) setSelectedTargetDate(targetDates[0] || dateStr);
     };
     const modalInputRefs = useRef<any>({});
     const routinePaneContentRef = useRef<HTMLDivElement>(null);
@@ -554,7 +778,21 @@ export default function HabitsPane({
         const handleFab = () => {
             if (calendarSubTab === 'milestones') {
                 setEditingMilestoneIdx(null);
-                setMilestoneForm({date: '', tag: '', name: '', desc: '', done: false});
+                const curDate = effectiveDate || new Date().toISOString().split('T')[0] || '';
+                const day = curDate ? new Date(curDate + 'T00:00:00').getDay() : 4;
+                setMilestoneForm({
+                    date: curDate,
+                    tag: '',
+                    name: '',
+                    desc: '',
+                    done: false,
+                    isRepeating: false,
+                    repeatInterval: 1,
+                    repeatUnit: 'weeks',
+                    repeatDay: day,
+                    endDate: '',
+                    applyToAllMatching: false
+                });
                 setShowMilestoneModal(true);
             } else {
                 openAddHabit();
@@ -803,6 +1041,18 @@ export default function HabitsPane({
             }, 100);
         }
     }, [effectiveDate, isCalendarTab, calendarSubTab]);
+
+    useEffect(() => {
+        const unsubscribe = addAppEventListener('navigate-to-milestone', () => {
+            setLocalSubTab('milestones');
+            if (setCalendarSubTab) setCalendarSubTab('milestones');
+            if (setSubTab) setSubTab('milestones');
+            setShowAllMilestones(true);
+            setMilestoneSearchQuery('');
+            setIsMobileExpanded(true);
+        });
+        return unsubscribe;
+    }, [setCalendarSubTab, setSubTab]);
 
     // Parse markdown to render colored tags
     
@@ -1348,6 +1598,40 @@ export default function HabitsPane({
                         borderRadius: '12px',
                         border: '1px solid var(--panel-border)'
                     }}>
+                        {editingMilestoneIdx && matchingOccurrences.length > 1 && (
+                            <div style={{
+                                padding: '10px 14px',
+                                background: 'rgba(234, 179, 8, 0.12)',
+                                border: '1px solid rgba(234, 179, 8, 0.3)',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '8px'
+                            }}>
+                                <span style={{fontSize: '12px', color: 'var(--accent)', fontWeight: 500}}>
+                                    🔁 Repeats across <strong>{matchingOccurrences.length}</strong> dates
+                                </span>
+                                <label style={{
+                                    fontSize: '12px',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    margin: 0,
+                                    userSelect: 'none'
+                                }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={!!milestoneForm.applyToAllMatching}
+                                        onChange={(e) => setMilestoneForm(prev => ({...prev, applyToAllMatching: e.target.checked}))}
+                                        style={{accentColor: 'var(--accent)', margin: 0, cursor: 'pointer', width: '14px', height: '14px'}}
+                                    />
+                                    Apply to all {matchingOccurrences.length}
+                                </label>
+                            </div>
+                        )}
                         <div className="form-row">
                             <div style={{flex: 1}}>
                                 <label style={{
@@ -1358,10 +1642,18 @@ export default function HabitsPane({
                                     marginBottom: '8px',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px'
-                                }}>Date</label>
+                                }}>{milestoneForm.isRepeating ? 'Start Date' : 'Date'}</label>
                                 <input name="auto_field_33"
                                        type="date" value={milestoneForm.date}
-                                       onChange={(e) => setMilestoneForm({...milestoneForm, date: e.target.value})}
+                                       onChange={(e) => {
+                                           const newDate = e.target.value;
+                                           const day = newDate ? new Date(newDate + 'T00:00:00').getDay() : 4;
+                                           setMilestoneForm(prev => ({
+                                               ...prev,
+                                               date: newDate,
+                                               repeatDay: prev.isRepeating ? prev.repeatDay : day
+                                           }));
+                                       }}
                                        required
                                        onKeyDown={(e) => e.preventDefault()}
                                        onClick={(e) => (e.target as HTMLInputElement).showPicker()}
@@ -1409,6 +1701,268 @@ export default function HabitsPane({
                                        }}>Mark
                                     as Done</label>
                             </div>)}
+                        <div style={{
+                            display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px',
+                                padding: '12px',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid var(--panel-border)',
+                                borderRadius: '8px'
+                            }}>
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                    <label htmlFor="milestone-repeat" style={{
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        color: 'var(--text-primary)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        margin: 0
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            id="milestone-repeat"
+                                            checked={!!milestoneForm.isRepeating}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                const dateDay = milestoneForm.date ? new Date(milestoneForm.date + 'T00:00:00').getDay() : 4;
+                                                setMilestoneForm(prev => ({
+                                                    ...prev,
+                                                    isRepeating: checked,
+                                                    repeatDay: prev.repeatDay ?? dateDay,
+                                                    endDate: checked && !prev.endDate ? (activeRoutine?.end || '') : prev.endDate
+                                                }));
+                                            }}
+                                            style={{
+                                                width: '16px',
+                                                height: '16px',
+                                                margin: 0,
+                                                cursor: 'pointer',
+                                                accentColor: 'var(--accent)'
+                                            }}
+                                        />
+                                        Repeat Event
+                                    </label>
+                                    {milestoneForm.isRepeating && activeRoutine?.end && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMilestoneForm(prev => ({...prev, endDate: activeRoutine.end || ''}))}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--accent)',
+                                                fontSize: '11px',
+                                                cursor: 'pointer',
+                                                padding: 0,
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            Until routine end ({activeRoutine.end})
+                                        </button>
+                                    )}
+                                </div>
+
+                                {milestoneForm.isRepeating && (
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px'}}>
+                                        {/* Presets and Every N Unit */}
+                                        <div>
+                                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
+                                                <label style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: 600,
+                                                    color: 'var(--text-secondary)',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px',
+                                                    margin: 0
+                                                }}>Frequency</label>
+                                                <div style={{display: 'flex', gap: '4px'}}>
+                                                    {[
+                                                        { label: 'Weekly', interval: 1, unit: 'weeks' as const },
+                                                        { label: 'Biweekly', interval: 2, unit: 'weeks' as const },
+                                                        { label: '10 Days', interval: 10, unit: 'days' as const }
+                                                    ].map((preset) => {
+                                                        const isActive = milestoneForm.repeatInterval === preset.interval && milestoneForm.repeatUnit === preset.unit;
+                                                        return (
+                                                            <button
+                                                                key={preset.label}
+                                                                type="button"
+                                                                onClick={() => setMilestoneForm(prev => ({
+                                                                    ...prev,
+                                                                    repeatInterval: preset.interval,
+                                                                    repeatUnit: preset.unit
+                                                                }))}
+                                                                style={{
+                                                                    padding: '3px 8px',
+                                                                    fontSize: '11px',
+                                                                    fontWeight: isActive ? 700 : 500,
+                                                                    borderRadius: '4px',
+                                                                    border: isActive ? '1px solid var(--accent)' : '1px solid var(--panel-border)',
+                                                                    background: isActive ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                                                                    color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                {preset.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                <span style={{fontSize: '13px', color: 'var(--text-secondary)'}}>Every</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="365"
+                                                    value={milestoneForm.repeatInterval || 1}
+                                                    onChange={(e) => setMilestoneForm(prev => ({
+                                                        ...prev,
+                                                        repeatInterval: Math.max(1, parseInt(e.target.value) || 1)
+                                                    }))}
+                                                    style={{
+                                                        width: '65px',
+                                                        padding: '8px 10px',
+                                                        fontSize: '14px',
+                                                        textAlign: 'center',
+                                                        colorScheme: 'dark'
+                                                    }}
+                                                />
+                                                <div style={{display: 'flex', gap: '4px'}}>
+                                                    {(['days', 'weeks'] as const).map((u) => {
+                                                        const isSelected = (milestoneForm.repeatUnit || 'weeks') === u;
+                                                        return (
+                                                            <button
+                                                                key={u}
+                                                                type="button"
+                                                                onClick={() => setMilestoneForm(prev => ({...prev, repeatUnit: u}))}
+                                                                style={{
+                                                                    padding: '8px 14px',
+                                                                    fontSize: '13px',
+                                                                    fontWeight: isSelected ? 700 : 500,
+                                                                    borderRadius: '6px',
+                                                                    border: isSelected ? '1px solid var(--accent)' : '1px solid var(--panel-border)',
+                                                                    background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.05)',
+                                                                    color: isSelected ? '#000' : 'var(--text-primary)',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                {u === 'days' ? 'Day(s)' : 'Week(s)'}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* If unit === 'weeks', show Day of Week Selector */}
+                                        {(milestoneForm.repeatUnit || 'weeks') === 'weeks' && (
+                                            <div>
+                                                <label style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: 600,
+                                                    color: 'var(--text-secondary)',
+                                                    display: 'block',
+                                                    marginBottom: '6px',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.5px'
+                                                }}>Repeat On Day</label>
+                                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px'}}>
+                                                    {[
+                                                        { day: 0, label: 'Sun' },
+                                                        { day: 1, label: 'Mon' },
+                                                        { day: 2, label: 'Tue' },
+                                                        { day: 3, label: 'Wed' },
+                                                        { day: 4, label: 'Thu' },
+                                                        { day: 5, label: 'Fri' },
+                                                        { day: 6, label: 'Sat' }
+                                                    ].map(({day, label}) => {
+                                                        const isSelected = (milestoneForm.repeatDay ?? 4) === day;
+                                                        return (
+                                                            <button
+                                                                key={day}
+                                                                type="button"
+                                                                onClick={() => setMilestoneForm(prev => ({...prev, repeatDay: day}))}
+                                                                style={{
+                                                                    padding: '6px 0',
+                                                                    fontSize: '12px',
+                                                                    fontWeight: isSelected ? 700 : 500,
+                                                                    borderRadius: '6px',
+                                                                    border: isSelected ? '1px solid var(--accent)' : '1px solid var(--panel-border)',
+                                                                    background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.05)',
+                                                                    color: isSelected ? '#000' : 'var(--text-primary)',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label style={{
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                color: 'var(--text-secondary)',
+                                                display: 'block',
+                                                marginBottom: '6px',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.5px'
+                                            }}>Repeat Until</label>
+                                            <input
+                                                type="date"
+                                                value={milestoneForm.endDate || ''}
+                                                min={milestoneForm.date || ''}
+                                                onChange={(e) => setMilestoneForm(prev => ({...prev, endDate: e.target.value}))}
+                                                required={milestoneForm.isRepeating}
+                                                onKeyDown={(e) => e.preventDefault()}
+                                                onClick={(e) => (e.target as HTMLInputElement).showPicker()}
+                                                style={{
+                                                    width: '100%',
+                                                    fontSize: '14px',
+                                                    padding: '10px 12px',
+                                                    colorScheme: 'dark',
+                                                    cursor: 'pointer'
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div style={{
+                                            fontSize: '12px',
+                                            color: repeatingDates.length > 0 ? 'var(--accent)' : '#ef4444',
+                                            padding: '8px 12px',
+                                            background: repeatingDates.length > 0 ? 'rgba(234, 179, 8, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            border: `1px solid ${repeatingDates.length > 0 ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+                                            borderRadius: '6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}>
+                                            <Calendar size={14} style={{flexShrink: 0}} />
+                                            {repeatingDates.length > 0 ? (
+                                                <span>
+                                                    Will add <strong>{repeatingDates.length}</strong> {repeatingDates.length === 1 ? 'milestone' : 'milestones'}: {
+                                                        repeatingDates.slice(0, 4).map(d => {
+                                                            const dt = new Date(d + 'T00:00:00');
+                                                            return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                                        }).join(', ')
+                                                    }{repeatingDates.length > 4 ? ` +${repeatingDates.length - 4} more` : ''}
+                                                </span>
+                                            ) : (
+                                                <span>
+                                                    {!milestoneForm.endDate ? 'Select an "Until" date to preview occurrences.' : 'No matching days found in the selected range.'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         <div style={{position: 'relative'}}>
                             <label style={{
                                 fontSize: '12px',
@@ -1540,32 +2094,70 @@ export default function HabitsPane({
                 </div>
 
                 <div className="modal-form-actions" style={{flexWrap: 'wrap'}}>
-                    {editingMilestoneIdx !== null && (<button type="button" onClick={confirmDeleteMilestone}
-                                                              style={{
-                                                                  flex: '1 1 calc(30% - 4px)',
-                                                                  padding: '10px 0',
-                                                                  background: '#ef4444',
-                                                                  color: 'white',
-                                                                  border: 'none',
-                                                                  borderRadius: '6px',
-                                                                  fontWeight: '500',
-                                                                  cursor: 'pointer'
-                                                              }}>Delete</button>)}
+                    {editingMilestoneIdx !== null && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={confirmDeleteMilestone}
+                                style={{
+                                    flex: '1 1 auto',
+                                    padding: '10px 12px',
+                                    background: matchingOccurrences.length > 1 ? 'rgba(239, 68, 68, 0.15)' : '#ef4444',
+                                    color: matchingOccurrences.length > 1 ? '#ef4444' : 'white',
+                                    border: matchingOccurrences.length > 1 ? '1px solid rgba(239, 68, 68, 0.3)' : 'none',
+                                    borderRadius: '6px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {matchingOccurrences.length > 1 ? 'Delete This' : 'Delete'}
+                            </button>
+                            {matchingOccurrences.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={confirmDeleteAllMatching}
+                                    style={{
+                                        flex: '1 1 auto',
+                                        padding: '10px 12px',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Delete All ({matchingOccurrences.length})
+                                </button>
+                            )}
+                        </>
+                    )}
                     <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary"
                             style={{
-                                flex: editingMilestoneIdx !== null ? '1 1 calc(30% - 4px)' : '1 1 80px',
-                                padding: '10px 0',
+                                flex: '1 1 auto',
+                                padding: '10px 12px',
                                 borderRadius: '6px',
                                 fontWeight: '500'
                             }}>Cancel
                     </button>
                     <button type="submit" className="primary"
+                            disabled={milestoneForm.isRepeating && (!milestoneForm.endDate || repeatingDates.length === 0)}
                             style={{
-                                flex: editingMilestoneIdx !== null ? '2 1 calc(40% - 4px)' : '2 1 120px',
-                                padding: '10px 0',
+                                flex: '2 1 auto',
+                                padding: '10px 14px',
                                 borderRadius: '6px',
                                 fontWeight: 'bold'
-                            }}>{editingMilestoneIdx !== null ? 'Update Milestone' : 'Save Milestone'}</button>
+                            }}>
+                        {editingMilestoneIdx !== null
+                            ? (milestoneForm.isRepeating && repeatingDates.length > 0
+                                ? `Update & Repeat (${repeatingDates.length})`
+                                : (milestoneForm.applyToAllMatching && matchingOccurrences.length > 1
+                                    ? `Update All (${matchingOccurrences.length})`
+                                    : 'Update Milestone'))
+                            : (milestoneForm.isRepeating && repeatingDates.length > 0
+                                ? `Add ${repeatingDates.length} Milestones`
+                                : 'Save Milestone')}
+                    </button>
                 </div>
             </form>
         </BaseModal>
@@ -1725,6 +2317,13 @@ export default function HabitsPane({
                                 </div>
                             )}
                         </div>
+
+                        <LinkedMilestonesSection
+                            name={habit.name}
+                            milestones={currentMilestones}
+                            primaryColor={primaryColor}
+                            onCloseModal={() => setInfoHabitId(null)}
+                        />
 
                         <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                             <button

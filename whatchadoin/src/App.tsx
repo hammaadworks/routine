@@ -12,6 +12,7 @@ import {loadActiveRoutineId, loadRoutines} from './utils/dataStore';
 import {sanitizeAllStorage} from './utils';
 import {useWebMCPIntegration} from './hooks/useWebMCPIntegration';
 import type {CalendarSubTab} from './types/ui';
+import {addAppEventListener} from './utils/events';
 
 function safeLazy<T extends React.ComponentType<any>>(factory: () => Promise<{ default: T }>) {
     return React.lazy(async () => {
@@ -191,7 +192,13 @@ export default function App() {
         }
     };
 
+    const skipDefaultSubTabRef = useRef(false);
+
     useEffect(() => {
+        if (skipDefaultSubTabRef.current) {
+            skipDefaultSubTabRef.current = false;
+            return;
+        }
         if (activeCenterTab === 'tasks' || activeCenterTab === 'coins') {
             setCalendarSubTab('timelog');
         } else if (activeCenterTab === 'plans') {
@@ -200,6 +207,47 @@ export default function App() {
             setCalendarSubTab('mark_goals');
         }
     }, [activeCenterTab]);
+
+    useEffect(() => {
+        const unsubscribe = addAppEventListener<{ date: string; name?: string }>('navigate-to-milestone', (e) => {
+            const date = e.detail?.date;
+            if (!date) return;
+
+            skipDefaultSubTabRef.current = true;
+            setActiveCenterTab('calendar');
+            setMobileTab('calendar');
+            setCalendarSubTab('milestones');
+            setSelectedTargetDate(date);
+            setIsMobileCalendarOpen(false);
+            setIsMobileHabitsOpen(true);
+
+            // Fly scroll & highlight animation with retries until element mounted
+            const targetIds = [`milestone-block-${date}`, `calendar-day-${date}`];
+            let attempts = 0;
+            const interval = setInterval(() => {
+                attempts++;
+                let foundAny = false;
+                targetIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        foundAny = true;
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.remove('milestone-fly-highlight');
+                        void el.offsetWidth;
+                        el.classList.add('milestone-fly-highlight');
+                        setTimeout(() => {
+                            el.classList.remove('milestone-fly-highlight');
+                        }, 3200);
+                    }
+                });
+                if (foundAny || attempts >= 8) {
+                    clearInterval(interval);
+                }
+            }, 120);
+        });
+
+        return unsubscribe;
+    }, []);
     const [habitFilterRoutineGoalId, setHabitFilterRoutineGoalId] = useState<string | null>(null);
     const [habitFilterLifeGoalId, setHabitFilterLifeGoalId] = useState<string | null>(null);
     const [showRoutineModal, setShowRoutineModal] = useState<boolean>(false);
@@ -787,6 +835,7 @@ export default function App() {
                                                      setMoneyGoals={setMoneyGoals as any}
                                                      setActiveLeftTab={setActiveLeftTab}
                                                      headerTabs={headerTabs}
+                                                     milestones={milestones}
                                     />
                                 </React.Suspense>);
                             }
@@ -804,6 +853,7 @@ export default function App() {
                                                setLifeGoals={setLifeGoals}
                                                setRoutineGoals={setRoutineGoals as any}
                                                setActiveLeftTab={setActiveLeftTab}
+                                               milestones={milestones}
                                                onNavigateToCoins={() => {
                                                    setActiveCenterTab('coins');
                                                    setMobileTab('coins');
@@ -822,6 +872,7 @@ export default function App() {
                                           onLifeGoalBadgeClick={(id) => setHabitFilterLifeGoalId(id)}
                                           setActiveLeftTab={setActiveLeftTab}
                                           headerTabs={headerTabs}
+                                          milestones={milestones}
                                 />
                             </React.Suspense>);
                         })()}

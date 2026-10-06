@@ -11,6 +11,7 @@ import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 import type {Habit, RoutineGoal, Template, TemplateBlock} from '../types/routine';
 import type {LifeGoal} from '../types/goals';
 import type {ConfirmConfig} from '../types/ui';
+import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
 
 interface RoutineGoalPaneProps {
     isPublicView?: boolean;
@@ -28,6 +29,7 @@ interface RoutineGoalPaneProps {
     moneyGoals?: any[];
     setMoneyGoals?: React.Dispatch<React.SetStateAction<any[]>>;
     setActiveLeftTab?: (tab: GoalCategory) => void;
+    milestones?: Record<string, string>;
 }
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
@@ -45,6 +47,7 @@ export default function RoutineGoalPane({
                                             setLifeGoals,
                                             setMoneyGoals,
                                             setActiveLeftTab,
+                                            milestones,
                                         }: RoutineGoalPaneProps) {
     const [showRoutineGoalModal, setShowRoutineGoalModal] = useState(false);
     const [editingRoutineGoalId, setEditingRoutineGoalId] = useState<string | null>(null);
@@ -543,6 +546,13 @@ export default function RoutineGoalPane({
                                             </span>))}
                                     </div>)}
                             </div>
+
+                            <LinkedMilestonesSection
+                                name={goal.name}
+                                milestones={milestones}
+                                primaryColor={hex}
+                                onCloseModal={() => setInfoGoalId(null)}
+                            />
 
                             <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                 <button
