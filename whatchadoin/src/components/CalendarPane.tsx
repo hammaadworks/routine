@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo} from 'react';
 import type {DayMapping, Habit, Routine, RoutineGoal} from '../types/routine';
-import type {LifeGoal} from '../types/goals';
+import type {LifeGoal, MoneyGoal} from '../types/goals';
 import type {CalendarSubTab} from '../types/ui';
 
 interface CalendarPaneProps {
@@ -8,6 +8,7 @@ interface CalendarPaneProps {
     activeRoutine: Routine;
     routineGoals: RoutineGoal[];
     lifeGoals: LifeGoal[];
+    moneyGoals?: MoneyGoal[];
     selectedTargetDate: string | null;
     setSelectedTargetDate: (date: string | null) => void;
     habits: Habit[];
@@ -24,6 +25,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                                                        activeRoutine,
                                                        routineGoals,
                                                        lifeGoals,
+                                                       moneyGoals = [],
                                                        selectedTargetDate,
                                                        setSelectedTargetDate,
                                                        habits,
@@ -44,6 +46,10 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
     const visibleLifeGoals = useMemo(() => {
         return (lifeGoals || []).filter((g) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
     }, [lifeGoals, isPublicView]);
+
+    const visibleMoneyGoals = useMemo(() => {
+        return (moneyGoals || []).filter((g) => !isPublicView || g.isPublic || (g.name || '').includes('[public]'));
+    }, [moneyGoals, isPublicView]);
 
     useEffect(() => {
         if (selectedTargetDate) {
@@ -246,9 +252,26 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
                             while ((match = tagRegex.exec(dayMilestonesText)) !== null) {
                                 if (match[1]) tags.push(match[1]);
                             }
+                            const mentionRegex = /@([a-zA-Z0-9_\-]+)/g;
+                            while ((match = mentionRegex.exec(dayMilestonesText)) !== null) {
+                                if (match[1]) tags.push(match[1]);
+                            }
                             const uniqueTags = [...new Set(tags)];
                             const tagColors = uniqueTags.map(tag => {
-                                const goal = visibleRoutineGoals?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase()) || visibleHabits?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase()) || visibleLifeGoals?.find((g) => (g.name || '').toLowerCase() === tag.toLowerCase());
+                                const cleanTag = tag.trim().toLowerCase();
+                                const tagNoHyphen = cleanTag.replace(/[-_]+/g, ' ');
+                                const matchGoal = (g: { name?: string; color?: string }) => {
+                                    const name = (g.name || '').trim().toLowerCase();
+                                    if (!name) return false;
+                                    const nameNoHyphen = name.replace(/[-_]+/g, ' ');
+                                    const slug = name.replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                                    return name === cleanTag || slug === cleanTag || nameNoHyphen === cleanTag || nameNoHyphen === tagNoHyphen;
+                                };
+
+                                const goal = visibleRoutineGoals?.find(matchGoal) ||
+                                             visibleHabits?.find(matchGoal) ||
+                                             visibleLifeGoals?.find(matchGoal) ||
+                                             visibleMoneyGoals?.find(matchGoal);
                                 return goal ? (goal.color || '#fff') : null;
                             }).filter(Boolean) as string[];
 

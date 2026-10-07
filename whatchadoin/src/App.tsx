@@ -716,6 +716,7 @@ export default function App() {
                 onWalletClick={() => {
                     setActiveLeftTab('money');
                     setMobileTab('goals');
+                    setIsLeftPaneExpanded(true);
                     setTimeout(() => {
                         window.dispatchEvent(new CustomEvent('open-wallet-view'));
                     }, 10);
@@ -1032,6 +1033,7 @@ export default function App() {
                                                                      setCalendarSubTab={setCalendarSubTab}
                                                                      routineGoals={routineGoals}
                                                                      lifeGoals={lifeGoals}
+                                                                     moneyGoals={moneyGoals}
                                                                      selectedTargetDate={selectedTargetDate}
                                                                      setSelectedTargetDate={setSelectedTargetDate}
                                                                      habits={habits}
