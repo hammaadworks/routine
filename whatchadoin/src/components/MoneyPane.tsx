@@ -1,15 +1,14 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {ArrowRight, Clock, DollarSign, Pencil, Plus, TrendingUp, Wallet} from 'lucide-react';
+import {ArrowRight, Plus, TrendingUp, Wallet} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
 import {moveItemRelativeTo} from '../hooks/useDragReorder';
-import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
-import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
+import GoalInfoModal from './GoalInfoModal';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -379,7 +378,7 @@ export default function MoneyPane({
                         borderRadius: '12px',
                         marginTop: '8px'
                     }}>
-                        <DollarSign size={32} style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
+                        <Wallet size={32} style={{marginBottom: '12px', opacity: 0.5, color: 'var(--accent)'}}/>
                         <div style={{
                             fontSize: '14px', fontWeight: '500', color: '#fff'
                         }}>{isWalletView ? 'No goals with cost yet' : 'No money goals yet'}</div>
@@ -512,150 +511,31 @@ export default function MoneyPane({
                 </BaseModal>);
             })()}
 
-            {infoGoalId && (() => {
-                const goal = baseGoals.find(g => g.id === infoGoalId);
-                if (!goal) return null;
-                const hex = goal.color || '#8AC926';
-                const timeInfo = formatCompactDuration(goal.createdAt, goal.completedAt, goal.completed, goal.id);
-                const linkedHabits = (habits || []).filter((h: any) => {
-                    const mIds = Array.isArray(h.moneyGoalIds) ? h.moneyGoalIds : (h.moneyGoalId ? [h.moneyGoalId] : []);
-                    const rIds = Array.isArray(h.routineGoalIds) ? h.routineGoalIds : (h.routineGoalId ? [h.routineGoalId] : []);
-                    const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
-                    const isLinked = mIds.includes(infoGoalId) || (goal.type === 'routine' && rIds.includes(infoGoalId)) || (goal.type === 'life' && lIds.includes(infoGoalId));
-                    return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
-                });
+            {(() => {
+                const goal = infoGoalId ? baseGoals.find(g => g.id === infoGoalId) : null;
+                const hex = goal?.color || '#8AC926';
+                const linkedHabits = infoGoalId
+                    ? (habits || []).filter((h: any) => {
+                        const mIds = Array.isArray(h.moneyGoalIds) ? h.moneyGoalIds : (h.moneyGoalId ? [h.moneyGoalId] : []);
+                        const rIds = Array.isArray(h.routineGoalIds) ? h.routineGoalIds : (h.routineGoalId ? [h.routineGoalId] : []);
+                        const lIds = Array.isArray(h.lifeGoalIds) ? h.lifeGoalIds : (h.lifeGoalId ? [h.lifeGoalId] : []);
+                        const isLinked = mIds.includes(infoGoalId) || (goal?.type === 'routine' && rIds.includes(infoGoalId)) || (goal?.type === 'life' && lIds.includes(infoGoalId));
+                        return isLinked && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+                    })
+                    : [];
 
-                return (<BaseModal
-                        isOpen={true}
+                return (
+                    <GoalInfoModal
+                        isOpen={!!infoGoalId}
                         onClose={() => setInfoGoalId(null)}
-                        title={<span style={{display: 'flex', alignItems: 'center', gap: '8px', color: hex}}>
-                                <Wallet size={18} color={hex}/>
-                            {goal.name}
-                            </span>}
-                    >
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                            {timeInfo && (<div style={{
-                                    background: `${hex}15`,
-                                    border: `1px solid ${hex}40`,
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    fontSize: '13px',
-                                    color: 'var(--text-primary)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <Clock size={16} color={hex}/>
-                                    <span>{timeInfo.fullText}</span>
-                                </div>)}
-
-                            {goal.desc && (<div>
-                                    <div style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        marginBottom: '4px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        Description
-                                    </div>
-                                    <div style={{
-                                        background: 'var(--surface-light)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {goal.desc}
-                                    </div>
-                                </div>)}
-
-                            {typeof goal.cost === 'number' && goal.cost > 0 && (<div>
-                                    <div style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        marginBottom: '4px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        Target Cost
-                                    </div>
-                                    <div style={{
-                                        background: 'var(--surface-light)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        fontWeight: 'bold',
-                                        color: hex
-                                    }}>
-                                        ${goal.cost}
-                                    </div>
-                                </div>)}
-
-                            <div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    color: 'var(--text-secondary)',
-                                    marginBottom: '6px',
-                                    fontWeight: 'bold'
-                                }}>
-                                    Linked Habits ({linkedHabits.length})
-                                </div>
-                                {linkedHabits.length === 0 ? (<div style={{
-                                        fontSize: '13px',
-                                        color: 'var(--text-secondary)',
-                                        fontStyle: 'italic'
-                                    }}>No linked habits yet.</div>) : (
-                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
-                                        {linkedHabits.map((h: any) => (<span key={h.id} style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                background: 'var(--surface-light)',
-                                                fontSize: '12px',
-                                                border: '1px solid var(--border)'
-                                            }}>
-                                                {h.name}
-                                            </span>))}
-                                    </div>)}
-                            </div>
-
-                            <LinkedMilestonesSection
-                                name={goal.name}
-                                milestones={milestones}
-                                primaryColor={hex}
-                                onCloseModal={() => setInfoGoalId(null)}
-                            />
-
-                            <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
-                                <button
-                                    type="button"
-                                    className="secondary"
-                                    onClick={() => setInfoGoalId(null)}
-                                    style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500'}}
-                                >
-                                    Close
-                                </button>
-                                <button
-                                    type="button"
-                                    className="primary"
-                                    onClick={() => {
-                                        setInfoGoalId(null);
-                                        openEditMoneyGoal(goal);
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px 0',
-                                        borderRadius: '6px',
-                                        fontWeight: 'bold',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '6px'
-                                    }}
-                                >
-                                    <Pencil size={14}/> Edit Goal
-                                </button>
-                            </div>
-                        </div>
-                    </BaseModal>);
+                        goal={goal}
+                        icon={<Wallet size={18} color={hex} />}
+                        costLabel="Target Cost"
+                        linkedHabits={linkedHabits}
+                        milestones={milestones}
+                        onEdit={openEditMoneyGoal}
+                    />
+                );
             })()}
         </div>);
 }

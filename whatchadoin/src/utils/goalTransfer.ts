@@ -36,7 +36,7 @@ export function moveOrSaveGoal({
 
     let costValue: number | undefined = undefined;
     if (formData.cost !== undefined && formData.cost !== null && String(formData.cost).trim() !== '') {
-        const parsed = parseFloat(String(formData.cost));
+        const parsed = parseFloat(String(formData.cost).replace(/,/g, ''));
         if (!isNaN(parsed)) costValue = parsed;
     }
     if (costValue === undefined && targetCategory === 'money') {

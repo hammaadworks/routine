@@ -48,6 +48,7 @@ import {
     X
 } from "lucide-react";
 import {useCurrency} from "../hooks/useCurrency";
+import CurrencyAmountInput from "./CurrencyAmountInput";
 
 export interface CoinsEntry {
     id: string;
@@ -152,7 +153,7 @@ export default function CoinsPane({
                                   }: {
     isPublicView?: boolean; walletTotal?: number; onNavigateToMoneyGoals?: () => void; walletGoals?: any[];
 }) {
-    const {formatCurrency, currencySymbol} = useCurrency();
+    const {formatCurrency, currencySymbol, currency} = useCurrency();
 
     const [coinsEntries, setEntries] = useState<CoinsEntry[]>([]);
     const [isRevealed, setIsRevealed] = useState(false);
@@ -477,7 +478,7 @@ export default function CoinsPane({
         });
 
         if (validStreams.length === 0) {
-            setError("Please enter at least one stream with a valid amount (₹0 or greater) and source.");
+            setError(`Please enter at least one stream with a valid amount (${currencySymbol}0 or greater) and source.`);
             return;
         }
 
@@ -557,7 +558,7 @@ export default function CoinsPane({
         setSuccessMsg("");
         const amt = parseFloat(rangeDraft.amount);
         if (isNaN(amt) || amt < 0) {
-            setError("Enter a valid amount (₹0 or greater).");
+            setError(`Enter a valid amount (${currencySymbol}0 or greater).`);
             return;
         }
         const months = monthsBetween(rangeDraft.startYear, rangeDraft.startMonth, rangeDraft.endYear, rangeDraft.endMonth);
@@ -577,7 +578,7 @@ export default function CoinsPane({
         void persist([...coinsEntries, ...newEntries]);
         setExpandedYear(rangeDraft.endYear);
         if (amt === 0) {
-            setSuccessMsg(`Logged ${months.length} monthly entries of ₹0.00 each (${months.length} months documented as zero income).`);
+            setSuccessMsg(`Logged ${months.length} monthly entries of ${formatCurrency(0)} each (${months.length} months documented as zero income).`);
         } else {
             setSuccessMsg(`Logged ${months.length} monthly entries of ${formatCurrency(amt)} each (${formatCurrency(amt * months.length)} total).`);
         }
@@ -905,7 +906,7 @@ export default function CoinsPane({
                 icon: <Flame size={15} color="#7FA87A"/>,
                 tag: "CASH FLOW STREAK",
                 title: `Active ${stats.currentPositiveStreak}-Month Positive Earning Streak`,
-                desc: `Maintained continuous positive income (>₹0) for ${stats.currentPositiveStreak} consecutive month${stats.currentPositiveStreak === 1 ? "" : "s"} with zero dry spells. (All-time peak streak: ${stats.longestPositiveStreak} months).`,
+                desc: `Maintained continuous positive income (>${currencySymbol}0) for ${stats.currentPositiveStreak} consecutive month${stats.currentPositiveStreak === 1 ? "" : "s"} with zero dry spells. (All-time peak streak: ${stats.longestPositiveStreak} months).`,
                 color: "#7FA87A"
             });
         } else {
@@ -916,7 +917,7 @@ export default function CoinsPane({
                 icon: <Activity size={15} color="#F59E0B"/>,
                 tag: "STREAK RESET",
                 title: isLatestZero ? "Documented Zero-Income Month" : "No Active Positive Earning Streak",
-                desc: isLatestZero ? `Latest period had documented ₹0 earnings. Your honesty preserves full ledger integrity at ${stats.coveragePct}% career coverage. Best all-time positive streak was ${stats.longestPositiveStreak} consecutive months.` : `The latest period had ₹0 or unlogged earnings. Your best all-time positive earning streak was ${stats.longestPositiveStreak} consecutive months.`,
+                desc: isLatestZero ? `Latest period had documented ${currencySymbol}0 earnings. Your honesty preserves full ledger integrity at ${stats.coveragePct}% career coverage. Best all-time positive streak was ${stats.longestPositiveStreak} consecutive months.` : `The latest period had ${currencySymbol}0 or unlogged earnings. Your best all-time positive earning streak was ${stats.longestPositiveStreak} consecutive months.`,
                 color: "#F59E0B"
             });
         }
@@ -927,7 +928,7 @@ export default function CoinsPane({
                 icon: <ShieldCheck size={15} color="#8AA9C9"/>,
                 tag: "DATA INTEGRITY",
                 title: `${stats.zeroMonthsLogged} Documented Zero-Income Month${stats.zeroMonthsLogged === 1 ? "" : "s"}`,
-                desc: `You have honestly recorded ${stats.zeroMonthsLogged} month${stats.zeroMonthsLogged === 1 ? "" : "s"} with ₹0 earnings. True missing data is only ${stats.unloggedMonthsCount} months, giving you an authentic ${stats.coveragePct}% career coverage.`,
+                desc: `You have honestly recorded ${stats.zeroMonthsLogged} month${stats.zeroMonthsLogged === 1 ? "" : "s"} with ${currencySymbol}0 earnings. True missing data is only ${stats.unloggedMonthsCount} months, giving you an authentic ${stats.coveragePct}% career coverage.`,
                 color: "#8AA9C9"
             });
         }
@@ -1717,16 +1718,16 @@ export default function CoinsPane({
                                 </div>
                                 <div>
                                     <Label>Amount ({currencySymbol})</Label>
-                                    <input
+                                    <CurrencyAmountInput
                                         id="edit-amount-input"
-                                        type="number"
-                                        min="0"
-                                        step="any"
+                                        placeholder="0"
                                         value={editingEntry.amount}
-                                        onChange={e => setEditingEntry({
+                                        onChange={(_valStr, numVal) => setEditingEntry({
                                             ...editingEntry,
-                                            amount: Number(e.target.value)
+                                            amount: numVal ?? 0
                                         })}
+                                        currency={currency}
+                                        showWords={true}
                                     />
                                 </div>
                                 <div>
@@ -1826,14 +1827,13 @@ export default function CoinsPane({
                                         </div>
                                         <div>
                                             <Label>Amount ({currencySymbol})</Label>
-                                            <input
+                                            <CurrencyAmountInput
                                                 id={`stream-amt-${idx}`}
-                                                type="number"
-                                                min="0"
-                                                step="any"
                                                 placeholder="0"
                                                 value={stream.amount}
-                                                onChange={e => updateStreamRow(stream.id, "amount", e.target.value)}
+                                                onChange={(valStr) => updateStreamRow(stream.id, "amount", valStr)}
+                                                currency={currency}
+                                                showWords={true}
                                             />
                                         </div>
                                         <div className="stream-row-notes-col">
@@ -1909,7 +1909,7 @@ export default function CoinsPane({
                                     }}
                                     title="Log honest zero earnings for this month (e.g. unemployed, broke, sabbatical, student)"
                                 >
-                                    + Log ₹0 (Broke / Nil)
+                                    + Log {currencySymbol}0 (Broke / Nil)
                                 </button>
                                 <span className="mono" style={{fontSize: 11, color: "#5E6570", marginLeft: 4}}>Quick Add:</span>
                                 {SOURCE_PRESETS.map(preset => (<button
@@ -1962,7 +1962,7 @@ export default function CoinsPane({
                                 }).length > 0 && streamRows.reduce((acc, s) => {
                                     const a = parseFloat(s.amount.trim());
                                     return !isNaN(a) && a >= 0 ? acc + a : acc;
-                                }, 0) === 0 ? `Record Honest Zero Income (₹0) for ${MONTHS[entryMonth - 1]} ${entryYear}` : `Save Income for ${MONTHS[entryMonth - 1]} ${entryYear}`}
+                                }, 0) === 0 ? `Record Honest Zero Income (${currencySymbol}0) for ${MONTHS[entryMonth - 1]} ${entryYear}` : `Save Income for ${MONTHS[entryMonth - 1]} ${entryYear}`}
                             </button>
                         </form>)}
 
@@ -2095,7 +2095,7 @@ export default function CoinsPane({
                             </div>
                             <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 6, overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
                                 {stats?.positiveMonthsLogged || 0} active earning months
-                                {stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.zeroMonthsLogged} broke / ₹0` : ""}
+                                {stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.zeroMonthsLogged} broke / ${currencySymbol}0` : ""}
                             </div>
                         </div>
 
@@ -2119,7 +2119,7 @@ export default function CoinsPane({
                                 </div>
                             </div>
                             <div className="mono" style={{fontSize: 11, color: "#5E6570", marginTop: 6, overflowWrap: "break-word", wordBreak: "break-word", lineHeight: 1.3}}>
-                                across all {stats?.careerMonths || 0} career mos (unlogged & ₹0 count as $0)
+                                across all {stats?.careerMonths || 0} career mos (unlogged & {currencySymbol}0 count as {currencySymbol}0)
                             </div>
                         </div>
 
@@ -2473,7 +2473,7 @@ export default function CoinsPane({
                                                 type="number"
                                                 min="0"
                                                 step="any"
-                                                placeholder="₹ / mo"
+                                                placeholder={`${currencySymbol} / mo`}
                                                 value={coinsTargets[String(CURRENT_YEAR)] ?? ""}
                                                 onChange={e => {
                                                     const val = e.target.value === "" ? 0 : Number(e.target.value);
@@ -3119,13 +3119,13 @@ export default function CoinsPane({
                                     letterSpacing: "0.06em",
                                     color: "#EDE7D9"
                                 }}>
-                                    CAREER TIMELINE & LOGGED MONTHS ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} logged{stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.positiveMonthsLogged} positive, ${stats.zeroMonthsLogged} broke/₹0` : ""})
+                                    CAREER TIMELINE & LOGGED MONTHS ({stats?.monthsLogged || 0} of {stats?.careerMonths || 0} logged{stats && stats.zeroMonthsLogged > 0 ? ` • ${stats.positiveMonthsLogged} positive, ${stats.zeroMonthsLogged} broke/${currencySymbol}0` : ""})
                                 </span>
                             </div>
                             <div style={{display: "flex", alignItems: "center", gap: "6px 14px", flexWrap: "wrap", fontSize: 11}}
                                  className="mono">
                                 <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
-                                    <span style={{width: 9, height: 9, background: "#C9A227", borderRadius: 2}}></span> logged (&gt;₹0)
+                                    <span style={{width: 9, height: 9, background: "#C9A227", borderRadius: 2}}></span> logged (&gt;{currencySymbol}0)
                                 </span>
                                 <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
                                     <span style={{
@@ -3134,7 +3134,7 @@ export default function CoinsPane({
                                         background: "#78350F",
                                         border: "1px solid #F59E0B",
                                         borderRadius: 2
-                                    }}></span> logged (₹0 / broke)
+                                    }}></span> logged ({currencySymbol}0 / broke)
                                 </span>
                                 <span style={{display: "flex", alignItems: "center", gap: 5, color: "#8A8F98"}}>
                                     <span style={{
@@ -3169,7 +3169,7 @@ export default function CoinsPane({
 
                                                 const cellBorder = isPositive ? "1px solid #E0B838" : isZeroLogged ? "1px solid #F59E0B" : (isPastOrPresent ? "1px solid #2A3038" : "1px dashed #1F252C");
 
-                                                const cellTitle = isPositive ? `${m} ${y}: Logged ${formatCurrency(monthData?.total || 0)} (${monthData?.sources.join(", ") || "Income"})` : isZeroLogged ? `${m} ${y}: Logged ₹0.00 (Broke / Zero Income - ${monthData?.sources.join(", ") || "Nil"})` : (isPastOrPresent ? `${m} ${y}: Unlogged (Missing record)` : `${m} ${y}: Future`);
+                                                const cellTitle = isPositive ? `${m} ${y}: Logged ${formatCurrency(monthData?.total || 0)} (${monthData?.sources.join(", ") || "Income"})` : isZeroLogged ? `${m} ${y}: Logged ${formatCurrency(0)} (Broke / Zero Income - ${monthData?.sources.join(", ") || "Nil"})` : (isPastOrPresent ? `${m} ${y}: Unlogged (Missing record)` : `${m} ${y}: Future`);
 
                                                 return (<div
                                                         key={mm}

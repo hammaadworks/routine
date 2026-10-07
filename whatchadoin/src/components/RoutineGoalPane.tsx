@@ -1,17 +1,16 @@
 import React, {useEffect, useState} from 'react';
-import {Activity, Clock, Pencil, Plus, Rocket, Target} from 'lucide-react';
+import {Activity, Plus, Rocket, Target} from 'lucide-react';
 import SearchSortBar from './SearchSortBar';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import GoalCard from './GoalCard';
 import GoalForm from './GoalForm';
 import {moveItemRelativeTo} from '../hooks/useDragReorder';
-import {formatCompactDuration} from '../utils';
 import {type GoalCategory, moveOrSaveGoal} from '../utils/goalTransfer';
 import type {Habit, RoutineGoal, Template, TemplateBlock} from '../types/routine';
 import type {LifeGoal} from '../types/goals';
 import type {ConfirmConfig} from '../types/ui';
-import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
+import GoalInfoModal from './GoalInfoModal';
 
 interface RoutineGoalPaneProps {
     isPublicView?: boolean;
@@ -450,142 +449,23 @@ export default function RoutineGoalPane({
                     </div>
                 </BaseModal>)}
 
-            {infoGoalId && (() => {
-                const goal = routineGoals.find(g => g.id === infoGoalId);
-                if (!goal) return null;
-                const hex = goal.color || '#1982C4';
-                const timeInfo = formatCompactDuration(goal.createdAt as string, goal.completedAt as string, !!goal.completed, goal.id);
-                const linkedHabits = (habits || []).filter(h => ((h.routineGoalIds as string[] | undefined)?.includes(infoGoalId) || h.routineGoalId === infoGoalId) && (!isPublicView || h.isPublic || (h.name || '').includes('[public]')));
+            {(() => {
+                const goal = infoGoalId ? routineGoals.find(g => g.id === infoGoalId) : null;
+                const hex = goal?.color || '#1982C4';
+                const linkedHabits = infoGoalId ? (habits || []).filter(h => ((h.routineGoalIds as string[] | undefined)?.includes(infoGoalId) || h.routineGoalId === infoGoalId) && (!isPublicView || h.isPublic || (h.name || '').includes('[public]'))) : [];
 
-                return (<BaseModal
-                        isOpen={true}
+                return (
+                    <GoalInfoModal
+                        isOpen={!!infoGoalId}
                         onClose={() => setInfoGoalId(null)}
-                        title={<span style={{display: 'flex', alignItems: 'center', gap: '8px', color: hex}}>
-                                <Target size={18} color={hex}/>
-                            {goal.name}
-                            </span>}
-                    >
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                            {timeInfo && (<div style={{
-                                    background: `${hex}15`,
-                                    border: `1px solid ${hex}40`,
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    fontSize: '13px',
-                                    color: 'var(--text-primary)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}>
-                                    <Clock size={16} color={hex}/>
-                                    <span>{timeInfo.fullText}</span>
-                                </div>)}
-
-                            {!!goal.desc && (<div>
-                                    <div style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        marginBottom: '4px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        Description
-                                    </div>
-                                    <div style={{
-                                        background: 'var(--surface-light)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        whiteSpace: 'pre-wrap'
-                                    }}>
-                                        {String(goal.desc)}
-                                    </div>
-                                </div>)}
-
-                            {typeof goal.cost === 'number' && goal.cost > 0 && (<div>
-                                    <div style={{
-                                        fontSize: '12px',
-                                        color: 'var(--text-secondary)',
-                                        marginBottom: '4px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        Estimated Cost
-                                    </div>
-                                    <div style={{
-                                        background: 'var(--surface-light)',
-                                        padding: '12px',
-                                        borderRadius: '8px',
-                                        fontSize: '14px'
-                                    }}>
-                                        ${goal.cost}
-                                    </div>
-                                </div>)}
-
-                            <div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    color: 'var(--text-secondary)',
-                                    marginBottom: '6px',
-                                    fontWeight: 'bold'
-                                }}>
-                                    Linked Habits ({linkedHabits.length})
-                                </div>
-                                {linkedHabits.length === 0 ? (<div style={{
-                                        fontSize: '13px',
-                                        color: 'var(--text-secondary)',
-                                        fontStyle: 'italic'
-                                    }}>No linked habits yet.</div>) : (
-                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
-                                        {linkedHabits.map(h => (<span key={h.id} style={{
-                                                padding: '4px 8px',
-                                                borderRadius: '6px',
-                                                background: 'var(--surface-light)',
-                                                fontSize: '12px',
-                                                border: '1px solid var(--border)'
-                                            }}>
-                                                {h.name}
-                                            </span>))}
-                                    </div>)}
-                            </div>
-
-                            <LinkedMilestonesSection
-                                name={goal.name}
-                                milestones={milestones}
-                                primaryColor={hex}
-                                onCloseModal={() => setInfoGoalId(null)}
-                            />
-
-                            <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
-                                <button
-                                    type="button"
-                                    className="secondary"
-                                    onClick={() => setInfoGoalId(null)}
-                                    style={{flex: 1, padding: '10px 0', borderRadius: '6px', fontWeight: '500'}}
-                                >
-                                    Close
-                                </button>
-                                <button
-                                    type="button"
-                                    className="primary"
-                                    onClick={() => {
-                                        setInfoGoalId(null);
-                                        openEditRoutineGoal(goal);
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '10px 0',
-                                        borderRadius: '6px',
-                                        fontWeight: 'bold',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '6px'
-                                    }}
-                                >
-                                    <Pencil size={14}/> Edit Goal
-                                </button>
-                            </div>
-                        </div>
-                    </BaseModal>);
+                        goal={goal}
+                        icon={<Target size={18} color={hex} />}
+                        costLabel="Estimated Cost"
+                        linkedHabits={linkedHabits}
+                        milestones={milestones}
+                        onEdit={openEditRoutineGoal}
+                    />
+                );
             })()}
         </div>);
 }

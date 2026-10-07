@@ -20,6 +20,7 @@ import getCaretCoordinates from 'textarea-caret';
 import Dropdown from './Dropdown';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
+import SearchSortBar from './SearchSortBar';
 import {
     getAllGoalsForMention,
     getGoalColor,
@@ -126,7 +127,10 @@ export default function HabitsPane({
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
-        const [sortByName, setSortByName] = useState(false);
+    const [goalSearchQuery, setGoalSearchQuery] = useState('');
+    const [goalCategoryFilter, setGoalCategoryFilter] = useState<'all' | 'routine' | 'life' | 'money' | 'selected'>('all');
+    const [sortGoalsByName, setSortGoalsByName] = useState(false);
+    const [sortByName, setSortByName] = useState(false);
     const [confirmConfig, setConfirmConfig] = useState<any>(null);
     const [showMilestoneModal, setShowMilestoneModal] = useState(false);
     const [editingMilestoneIdx, setEditingMilestoneIdx] = useState<any>(null);
@@ -760,6 +764,9 @@ export default function HabitsPane({
 
     const openAddHabit = useCallback(() => {
         setEditingHabitId(null);
+        setGoalSearchQuery('');
+        setGoalCategoryFilter('all');
+        setSortGoalsByName(false);
         setHabitForm({
             name: '',
             isPublic: true,
@@ -805,6 +812,9 @@ export default function HabitsPane({
 
     const openEditHabit = (goal: any) => {
         setEditingHabitId(goal.id);
+        setGoalSearchQuery('');
+        setGoalCategoryFilter('all');
+        setSortGoalsByName(false);
 
         const rIds = Array.isArray(goal.routineGoalIds) ? goal.routineGoalIds : (goal.routineGoalId ? [goal.routineGoalId] : []);
         const lIds = Array.isArray(goal.lifeGoalIds) ? goal.lifeGoalIds : (goal.lifeGoalId ? [goal.lifeGoalId] : []);
@@ -1404,101 +1414,325 @@ export default function HabitsPane({
                         </div>
                     </div>
 
-                    <div>
-                        <label style={{
-                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px'
-                        }}>
-                            Link to Goals <span style={{opacity: 0.5}}>- Select goals this habit supports</span>
-                        </label>
+                    {(() => {
+                        const selectedRoutineCount = (habitForm.routineGoalIds || []).length;
+                        const selectedMoneyCount = (habitForm.moneyGoalIds || []).length;
+                        const selectedLifeCount = (habitForm.lifeGoalIds || []).length;
+                        const totalSelected = selectedRoutineCount + selectedMoneyCount + selectedLifeCount;
 
-                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
-                            {/* Routine Goals */}
-                            {(routineGoals || []).map(sg => {
-                                const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
-                                const hex = sg.color || '#3b82f6';
-                                return (<div
-                                        key={sg.id}
-                                        onClick={() => {
-                                            const current = habitForm.routineGoalIds || [];
-                                            const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
-                                            setHabitForm({...habitForm, routineGoalIds: next});
-                                        }}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            fontSize: '13px',
-                                            cursor: 'pointer',
-                                            fontWeight: isSelected ? '500' : 'normal',
-                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                            color: isSelected ? hex : 'var(--text-secondary)',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        {sg.name}
-                                    </div>);
-                            })}
+                        const normalizedQuery = goalSearchQuery.trim().toLowerCase();
+                        const filterGoal = (g: any, selectedIds: string[]) => {
+                            const isSelected = selectedIds.includes(g.id);
+                            if (goalCategoryFilter === 'selected' && !isSelected) return false;
+                            if (!normalizedQuery) return true;
+                            const nameMatch = (g.name || '').toLowerCase().includes(normalizedQuery);
+                            const descMatch = (g.desc || '').toLowerCase().includes(normalizedQuery);
+                            return nameMatch || descMatch;
+                        };
 
-                            {/* Money Goals */}
-                            {(moneyGoals || []).map(mg => {
-                                const isSelected = (habitForm.moneyGoalIds || []).includes(mg.id);
-                                const hex = mg.color || '#8AC926';
-                                return (<div
-                                        key={mg.id}
-                                        onClick={() => {
-                                            const current = habitForm.moneyGoalIds || [];
-                                            const next = isSelected ? current.filter((id: string) => id !== mg.id) : [...current, mg.id];
-                                            setHabitForm({...habitForm, moneyGoalIds: next});
-                                        }}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            fontSize: '13px',
-                                            cursor: 'pointer',
-                                            fontWeight: isSelected ? '500' : 'normal',
-                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                            color: isSelected ? hex : 'var(--text-secondary)',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        {mg.name}
-                                    </div>);
-                            })}
+                        const visibleRoutine = (goalCategoryFilter === 'all' || goalCategoryFilter === 'routine' || goalCategoryFilter === 'selected')
+                            ? (routineGoals || []).filter(g => filterGoal(g, habitForm.routineGoalIds || []))
+                            : [];
+                        const visibleMoney = (goalCategoryFilter === 'all' || goalCategoryFilter === 'money' || goalCategoryFilter === 'selected')
+                            ? (moneyGoals || []).filter(g => filterGoal(g, habitForm.moneyGoalIds || []))
+                            : [];
+                        const visibleLife = (goalCategoryFilter === 'all' || goalCategoryFilter === 'life' || goalCategoryFilter === 'selected')
+                            ? (lifeGoals || []).filter(g => filterGoal(g, habitForm.lifeGoalIds || []))
+                            : [];
+                        if (sortGoalsByName) {
+                            visibleRoutine.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+                            visibleMoney.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+                            visibleLife.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+                        }
 
-                            {/* Life Goals */}
-                            {(lifeGoals || []).map(lg => {
-                                const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
-                                const hex = lg.color || '#eab308';
-                                return (<div
-                                        key={lg.id}
-                                        onClick={() => {
-                                            const current = habitForm.lifeGoalIds || [];
-                                            const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
-                                            setHabitForm({...habitForm, lifeGoalIds: next});
-                                        }}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '6px',
-                                            fontSize: '13px',
-                                            cursor: 'pointer',
-                                            fontWeight: isSelected ? '500' : 'normal',
-                                            background: isSelected ? `${hex}15` : 'var(--panel-bg)',
-                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
-                                            color: isSelected ? hex : 'var(--text-secondary)',
-                                            transition: 'all 0.2s ease'
-                                        }}
-                                    >
-                                        {lg.name}
-                                    </div>);
-                            })}
+                        const totalVisible = visibleRoutine.length + visibleMoney.length + visibleLife.length;
+                        const totalAvailable = (routineGoals || []).length + (moneyGoals || []).length + (lifeGoals || []).length;
 
-                            {(routineGoals || []).length === 0 && (moneyGoals || []).length === 0 && (lifeGoals || []).length === 0 && (
-                                <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                                No goals available
-                            </span>)}
-                        </div>
-                    </div>
+                        return (
+                            <div>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '8px'
+                                }}>
+                                    <label style={{
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        margin: 0
+                                    }}>
+                                        Link to Goals {totalSelected > 0 && <span style={{ color: 'var(--accent)', fontWeight: 600 }}>({totalSelected} selected)</span>}
+                                    </label>
+                                    {totalSelected > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setHabitForm({ ...habitForm, routineGoalIds: [], moneyGoalIds: [], lifeGoalIds: [] })}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: 'var(--text-secondary)',
+                                                fontSize: '11px',
+                                                cursor: 'pointer',
+                                                padding: '2px 6px',
+                                                textDecoration: 'underline'
+                                            }}
+                                        >
+                                            Clear selected
+                                        </button>
+                                    )}
+                                </div>
+
+                                <SearchSortBar
+                                    searchQuery={goalSearchQuery}
+                                    setSearchQuery={setGoalSearchQuery}
+                                    placeholder="Search goals..."
+                                    sortByName={sortGoalsByName}
+                                    setSortByName={setSortGoalsByName}
+                                    isFilterActive={goalCategoryFilter !== 'all' || !!goalSearchQuery}
+                                    onFilterClear={() => {
+                                        setGoalSearchQuery('');
+                                        setGoalCategoryFilter('all');
+                                    }}
+                                />
+
+                                {/* Category Filter Chips */}
+                                {totalAvailable > 0 && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        flexWrap: 'wrap',
+                                        marginBottom: '10px'
+                                    }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setGoalCategoryFilter('all')}
+                                            style={{
+                                                fontSize: '11px',
+                                                padding: '3px 8px',
+                                                borderRadius: '12px',
+                                                background: goalCategoryFilter === 'all' ? 'var(--accent)' : 'var(--panel-bg)',
+                                                color: goalCategoryFilter === 'all' ? '#000' : 'var(--text-secondary)',
+                                                border: `1px solid ${goalCategoryFilter === 'all' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                                cursor: 'pointer',
+                                                fontWeight: goalCategoryFilter === 'all' ? 600 : 400
+                                            }}
+                                        >
+                                            All ({totalAvailable})
+                                        </button>
+                                        {(routineGoals || []).length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'routine' ? 'all' : 'routine')}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '12px',
+                                                    background: goalCategoryFilter === 'routine' ? 'rgba(59, 130, 246, 0.25)' : 'var(--panel-bg)',
+                                                    color: goalCategoryFilter === 'routine' ? '#60a5fa' : 'var(--text-secondary)',
+                                                    border: `1px solid ${goalCategoryFilter === 'routine' ? '#3b82f6' : 'var(--panel-border)'}`,
+                                                    cursor: 'pointer',
+                                                    fontWeight: goalCategoryFilter === 'routine' ? 600 : 400
+                                                }}
+                                            >
+                                                🎯 Routine ({(routineGoals || []).length})
+                                            </button>
+                                        )}
+                                        {(lifeGoals || []).length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'life' ? 'all' : 'life')}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '12px',
+                                                    background: goalCategoryFilter === 'life' ? 'rgba(234, 179, 8, 0.25)' : 'var(--panel-bg)',
+                                                    color: goalCategoryFilter === 'life' ? 'var(--accent)' : 'var(--text-secondary)',
+                                                    border: `1px solid ${goalCategoryFilter === 'life' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                                    cursor: 'pointer',
+                                                    fontWeight: goalCategoryFilter === 'life' ? 600 : 400
+                                                }}
+                                            >
+                                                ⭐ Life ({(lifeGoals || []).length})
+                                            </button>
+                                        )}
+                                        {(moneyGoals || []).length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'money' ? 'all' : 'money')}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '12px',
+                                                    background: goalCategoryFilter === 'money' ? 'rgba(138, 201, 38, 0.25)' : 'var(--panel-bg)',
+                                                    color: goalCategoryFilter === 'money' ? '#8AC926' : 'var(--text-secondary)',
+                                                    border: `1px solid ${goalCategoryFilter === 'money' ? '#8AC926' : 'var(--panel-border)'}`,
+                                                    cursor: 'pointer',
+                                                    fontWeight: goalCategoryFilter === 'money' ? 600 : 400
+                                                }}
+                                            >
+                                                💰 Money ({(moneyGoals || []).length})
+                                            </button>
+                                        )}
+                                        {totalSelected > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'selected' ? 'all' : 'selected')}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '12px',
+                                                    background: goalCategoryFilter === 'selected' ? 'rgba(34, 197, 94, 0.25)' : 'var(--panel-bg)',
+                                                    color: goalCategoryFilter === 'selected' ? 'var(--success, #22c55e)' : 'var(--text-secondary)',
+                                                    border: `1px solid ${goalCategoryFilter === 'selected' ? 'var(--success, #22c55e)' : 'var(--panel-border)'}`,
+                                                    cursor: 'pointer',
+                                                    fontWeight: goalCategoryFilter === 'selected' ? 600 : 400
+                                                }}
+                                            >
+                                                ✓ Selected ({totalSelected})
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Goal Pills Container */}
+                                <div style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '8px',
+                                    maxHeight: '180px',
+                                    overflowY: 'auto',
+                                    padding: '6px',
+                                    border: '1px solid var(--panel-border)',
+                                    borderRadius: '8px',
+                                    background: 'rgba(0, 0, 0, 0.15)'
+                                }}>
+                                    {/* Routine Goals */}
+                                    {visibleRoutine.map(sg => {
+                                        const isSelected = (habitForm.routineGoalIds || []).includes(sg.id);
+                                        const hex = sg.color || '#3b82f6';
+                                        return (
+                                            <div
+                                                key={sg.id}
+                                                onClick={() => {
+                                                    const current = habitForm.routineGoalIds || [];
+                                                    const next = isSelected ? current.filter((id: string) => id !== sg.id) : [...current, sg.id];
+                                                    setHabitForm({ ...habitForm, routineGoalIds: next });
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: isSelected ? '500' : 'normal',
+                                                    background: isSelected ? `${hex}20` : 'var(--panel-bg)',
+                                                    border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                                    color: isSelected ? hex : 'var(--text-secondary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <span>🎯</span>
+                                                <span>{sg.name}</span>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Money Goals */}
+                                    {visibleMoney.map(mg => {
+                                        const isSelected = (habitForm.moneyGoalIds || []).includes(mg.id);
+                                        const hex = mg.color || '#8AC926';
+                                        return (
+                                            <div
+                                                key={mg.id}
+                                                onClick={() => {
+                                                    const current = habitForm.moneyGoalIds || [];
+                                                    const next = isSelected ? current.filter((id: string) => id !== mg.id) : [...current, mg.id];
+                                                    setHabitForm({ ...habitForm, moneyGoalIds: next });
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: isSelected ? '500' : 'normal',
+                                                    background: isSelected ? `${hex}20` : 'var(--panel-bg)',
+                                                    border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                                    color: isSelected ? hex : 'var(--text-secondary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <span>💰</span>
+                                                <span>{mg.name}</span>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Life Goals */}
+                                    {visibleLife.map(lg => {
+                                        const isSelected = (habitForm.lifeGoalIds || []).includes(lg.id);
+                                        const hex = lg.color || '#eab308';
+                                        return (
+                                            <div
+                                                key={lg.id}
+                                                onClick={() => {
+                                                    const current = habitForm.lifeGoalIds || [];
+                                                    const next = isSelected ? current.filter((id: string) => id !== lg.id) : [...current, lg.id];
+                                                    setHabitForm({ ...habitForm, lifeGoalIds: next });
+                                                }}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: isSelected ? '500' : 'normal',
+                                                    background: isSelected ? `${hex}20` : 'var(--panel-bg)',
+                                                    border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? hex : 'var(--panel-border)'}`,
+                                                    color: isSelected ? hex : 'var(--text-secondary)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                            >
+                                                <span>⭐</span>
+                                                <span>{lg.name}</span>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {totalVisible === 0 && (
+                                        <div style={{
+                                            padding: '12px',
+                                            textAlign: 'center',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '12px',
+                                            width: '100%'
+                                        }}>
+                                            {goalSearchQuery.trim() || goalCategoryFilter !== 'all' ? (
+                                                <div>
+                                                    No goals match your filter.{' '}
+                                                    <span
+                                                        onClick={() => { setGoalSearchQuery(''); setGoalCategoryFilter('all'); }}
+                                                        style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}
+                                                    >
+                                                        Clear filter
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                'No goals available'
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     <div style={{
                         display: 'flex',

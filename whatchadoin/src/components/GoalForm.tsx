@@ -1,6 +1,8 @@
 import React from 'react';
 import {Copy, Globe, Palette, Star, Target, Wallet} from 'lucide-react';
 import type {GoalCategory} from '../utils/goalTransfer';
+import {useCurrency} from '../hooks/useCurrency';
+import CurrencyAmountInput from './CurrencyAmountInput';
 
 const PRESET_COLORS = ['#FF595E', '#FF9F1C', '#FFCA3A', '#8AC926', '#00F5D4', '#1982C4', '#4361EE', '#6A4C93', '#F15BB5'];
 
@@ -40,6 +42,7 @@ export default function GoalForm({
                                      requireCost,
                                      currentCategory
                                  }: GoalFormProps) {
+    const { currency, currencySymbol } = useCurrency();
     const isCustomColor = formData.color && !PRESET_COLORS.map(c => c.toLowerCase()).includes(formData.color.toLowerCase());
 
     const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,8 +68,12 @@ export default function GoalForm({
         submitLabel = `Save to ${targetCatLabel}`;
     }
 
-    const isDuplicateDisabled = !formData.name?.trim() || (isCostRequired && (!formData.cost || isNaN(parseFloat(String(formData.cost)))));
-    const isSubmitDisabled = !!colorError || !formData.name?.trim() || (isCostRequired && (!formData.cost || isNaN(parseFloat(String(formData.cost)))));
+    const parsedCost = formData.cost !== undefined && formData.cost !== null && String(formData.cost).trim() !== ''
+        ? parseFloat(String(formData.cost).replace(/,/g, ''))
+        : NaN;
+    const isCostValid = !isNaN(parsedCost) && parsedCost >= 0;
+    const isDuplicateDisabled = !formData.name?.trim() || (isCostRequired && !isCostValid);
+    const isSubmitDisabled = !!colorError || !formData.name?.trim() || (isCostRequired && !isCostValid);
 
     return (<form onSubmit={onSubmit} className="modal-form-layout">
             <div className="modal-form-content">
@@ -125,16 +132,17 @@ export default function GoalForm({
                     <label style={{
                         fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
                     }}>
-                        Estimated Cost {isCostRequired ? <span style={{color: '#ef4444'}}>*</span> :
+                        {targetCategory === 'money' ? 'Target Cost' : 'Estimated Cost'} ({currencySymbol}) {isCostRequired ? <span style={{color: '#ef4444'}}>*</span> :
                         <span style={{opacity: 0.5}}>(optional)</span>}
                     </label>
-                    <input name="auto_field_11"
-                           type="number" step="0.01"
-                           placeholder={isCostRequired ? "e.g. 50 (required for money)" : "e.g. 50"}
-                           value={formData.cost ?? ''}
-                           onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                           style={{width: '100%'}}
-                           required={isCostRequired}
+                    <CurrencyAmountInput
+                        name="auto_field_11"
+                        placeholder={isCostRequired ? `e.g. 50,000 (required for money)` : `e.g. 50,000`}
+                        value={formData.cost ?? ''}
+                        onChange={(valStr) => setFormData({...formData, cost: valStr})}
+                        required={isCostRequired}
+                        currency={currency}
+                        showWords={true}
                     />
                 </div>
                 <div>
