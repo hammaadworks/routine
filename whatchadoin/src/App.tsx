@@ -3,7 +3,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import MyDay from './components/MyDay';
 import ConfirmModal from './components/ConfirmModal';
 import {saveSyncConfig} from './sync';
-import {BookOpen, Calendar, ChevronDown, Clock, ListTodo, Star, TrendingUp} from 'lucide-react';
+import {BookOpen, Calendar, ChevronDown, Clock, Hash, ListTodo, PanelLeftClose, PanelLeftOpen, Star, TrendingUp} from 'lucide-react';
 import './index.css';
 import MobileTabBar from './components/MobileTabBar';
 import QuotesWidget from './components/QuotesWidget';
@@ -81,6 +81,7 @@ const LifePane = safeLazy(() => import('./components/LifePane'));
 const HabitsPane = safeLazy(() => import('./components/HabitsPane'));
 const MoneyPane = safeLazy(() => import('./components/MoneyPane'));
 const AIAgentApp = safeLazy(() => import('./components/AIAgentApp'));
+const CountersPane = safeLazy(() => import('./components/CountersPane'));
 
 const WalletModal = safeLazy(() => import('./components/WalletModal'));
 const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
@@ -165,6 +166,34 @@ export default function App() {
             window.removeEventListener('whatchadoin_milestones_updated', handleMilestonesUpdate);
             window.removeEventListener('storage', handleStorage);
         };
+    }, []);
+
+    useEffect(() => {
+        const handleSyncApplied = () => {
+            try {
+                const r = loadRoutines();
+                if (r && Array.isArray(r) && r.length > 0) setRoutines(r);
+                const activeId = loadActiveRoutineId();
+                if (activeId) setActiveRoutineId(activeId);
+
+                const lg = localStorage.getItem('whatchadoin_life_goals');
+                if (lg) setLifeGoals(JSON.parse(lg));
+
+                const mg = localStorage.getItem('whatchadoin_money_goals');
+                if (mg) setMoneyGoals(JSON.parse(mg));
+
+                const ms = localStorage.getItem('whatchadoin_milestones');
+                if (ms) setMilestones(JSON.parse(ms));
+
+                const ai = localStorage.getItem('whatchadoin_ai_config');
+                if (ai) setAiConfig(JSON.parse(ai));
+            } catch (e) {
+                console.error('Error applying cloud sync in App', e);
+            }
+        };
+
+        window.addEventListener('whatchadoin_cloud_sync_applied', handleSyncApplied);
+        return () => window.removeEventListener('whatchadoin_cloud_sync_applied', handleSyncApplied);
     }, []);
 
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
@@ -257,9 +286,22 @@ export default function App() {
     const [isMidPaneExpanded, setIsMidPaneExpanded] = useState<boolean>(true);
     const [isPublicView, setIsPublicView] = useState(false);
     const [isLeftPaneExpanded, setIsLeftPaneExpanded] = useState<boolean>(false);
+    const [isLeftPaneCollapsed, setIsLeftPaneCollapsed] = useState<boolean>(false);
+    const [isRightPaneCollapsed, setIsRightPaneCollapsed] = useState<boolean>(false);
     const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
     const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
     const [aiDockState, setAiDockState] = useState<string>('closed'); // 'closed', 'right', 'bottom', 'popped_out'
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth <= 1400) {
+                setIsLeftPaneCollapsed(false);
+                setIsRightPaneCollapsed(false);
+            }
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         sanitizeAllStorage();
@@ -426,6 +468,7 @@ export default function App() {
             const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
             const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
             const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+            const counters = JSON.parse(localStorage.getItem('whatchadoin_counters') || '[]');
             const s = stateRef.current;
             const appState = {
                 activeRoutine: s.activeRoutine,
@@ -434,6 +477,7 @@ export default function App() {
                 moneyGoals: s.moneyGoals,
                 quickTasks,
                 coins: {entries: coinsEntries, targets: coinsTargets},
+                counters,
                 activeCenterTab: s.activeCenterTab,
                 activeLeftTab: s.activeLeftTab
             };
@@ -497,6 +541,7 @@ export default function App() {
         const quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
         const coinsEntries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
         const coinsTargets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+        const counters = JSON.parse(localStorage.getItem('whatchadoin_counters') || '[]');
         const currency = localStorage.getItem('whatchadoin_currency') || 'USD';
         const quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
         const aiConfig = JSON.parse(localStorage.getItem('whatchadoin_ai_config') || '{}');
@@ -513,6 +558,7 @@ export default function App() {
             quickTasks,
             coinsEntries,
             coinsTargets,
+            counters,
             lifePlans,
             lifeFolders,
             currency,
@@ -536,130 +582,220 @@ export default function App() {
         reader.onload = (event: any) => {
             try {
                 const data = JSON.parse(event.target.result.toString());
-
-                if (data.isFullBackup) {
-                    setConfirmConfig({
-                        title: 'Import Full Backup',
-                        message: 'This will REPLACE all your existing routines and plans with the imported data. Are you absolutely sure?',
-                        isDanger: true,
-                        onConfirm: () => {
-                            routines.forEach((v: any) => {
-                                localStorage.removeItem(`whatchadoin_plans_${v.id}`);
-                                localStorage.removeItem(`whatchadoin_plans_folders_${v.id}`);
-                            });
-
-                            data.routines.forEach((v: any) => {
-                                if (data.allPlans && data.allPlans[v.id]) {
-                                    localStorage.setItem(`whatchadoin_plans_${v.id}`, JSON.stringify(data.allPlans[v.id]));
-                                }
-                                if (data.allFolders && data.allFolders[v.id]) {
-                                    localStorage.setItem(`whatchadoin_plans_folders_${v.id}`, JSON.stringify(data.allFolders[v.id]));
-                                }
-                            });
-                            setRoutines(data.routines);
-                            setActiveRoutineId(data.activeRoutineId || data.routines[0].id);
-                            if (data.lifeGoals) {
-                                setLifeGoals(data.lifeGoals);
-                            }
-                            if (data.moneyGoals) {
-                                setMoneyGoals(data.moneyGoals);
-                            }
-                            if (data.quickTasks) {
-                                localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(data.quickTasks));
-                                window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
-                            }
-                            if (data.coinsEntries) {
-                                localStorage.setItem('whatchadoin_coins_entries', JSON.stringify(data.coinsEntries));
-                                window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
-                            }
-                            if (data.coinsTargets) {
-                                localStorage.setItem('whatchadoin_coins_targets', JSON.stringify(data.coinsTargets));
-                                window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
-                            }
-                            if (data.lifePlans) {
-                                localStorage.setItem('whatchadoin_life_plans', JSON.stringify(data.lifePlans));
-                            }
-                            if (data.lifeFolders) {
-                                localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify(data.lifeFolders));
-                            }
-                            if (data.currency) {
-                                localStorage.setItem('whatchadoin_currency', data.currency);
-                                window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
-                            }
-                            if (data.quotes) {
-                                localStorage.setItem('whatchadoin_quotes', JSON.stringify(data.quotes));
-                                window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
-                            }
-                            if (data.aiConfig) {
-                                localStorage.setItem('whatchadoin_ai_config', JSON.stringify(data.aiConfig));
-                                setAiConfig(data.aiConfig);
-                            }
-                            if (data.milestones) {
-                                localStorage.setItem('whatchadoin_milestones', JSON.stringify(data.milestones));
-                                setMilestones(data.milestones);
-                                window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
-                            }
-                            sanitizeAllStorage();
-                            window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
-                            setShowRoutineModal(false);
-                            setConfirmConfig(null);
-                        },
-                        onCancel: () => setConfirmConfig(null)
-                    });
-                } else if (data && data.routine && data.routine.id) {
-                    const newId = Date.now().toString();
-                    const newRoutine = {
-                        ...data.routine, id: newId, name: `${data.routine.name} (Imported)`
-                    };
-                    setRoutines((prev: any[]) => [...prev, newRoutine]);
-                    if (data.plans) {
-                        localStorage.setItem(`whatchadoin_plans_${newId}`, JSON.stringify(data.plans));
-                    }
-                    if (data.plansFolders) {
-                        localStorage.setItem(`whatchadoin_plans_folders_${newId}`, JSON.stringify(data.plansFolders));
-                    }
-                    if (data.lifeGoals) {
-                        setLifeGoals((prev: any[]) => {
-                            const existingIds = new Set(prev.map((g: any) => g.id));
-                            const newGoals = data.lifeGoals.filter((g: any) => !existingIds.has(g.id));
-                            return [...prev, ...newGoals];
-                        });
-                    }
-                    if (data.moneyGoals) {
-                        setMoneyGoals((prev: any[]) => {
-                            const existingIds = new Set(prev.map((g: any) => g.id));
-                            const newGoals = data.moneyGoals.filter((g: any) => !existingIds.has(g.id));
-                            return [...prev, ...newGoals];
-                        });
-                    }
-                    if (data.lifePlans) {
-                        const existingLifePlans = JSON.parse(localStorage.getItem('whatchadoin_life_plans') || '[]');
-                        const existingPlanIds = new Set(existingLifePlans.map((p: any) => p.id));
-                        const newPlans = data.lifePlans.filter((p: any) => !existingPlanIds.has(p.id));
-                        localStorage.setItem('whatchadoin_life_plans', JSON.stringify([...existingLifePlans, ...newPlans]));
-                    }
-                    if (data.lifeFolders) {
-                        const existingFolders = JSON.parse(localStorage.getItem('whatchadoin_life_plans_folders') || '[]');
-                        const existingFolderIds = new Set(existingFolders.map((f: any) => f.id));
-                        const newFolders = data.lifeFolders.filter((f: any) => !existingFolderIds.has(f.id));
-                        localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify([...existingFolders, ...newFolders]));
-                    }
-                    window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
-                    setActiveRoutineId(newId);
-                    setShowRoutineModal(false);
-                } else {
-                    setConfirmConfig({
-                        title: 'Import Failed',
-                        message: 'The selected file is not a valid whatchadoin backup.',
-                        isDanger: true,
-                        onConfirm: () => setConfirmConfig(null),
-                        onCancel: null
-                    });
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid backup file');
                 }
-            } catch {
+
+                setConfirmConfig({
+                    title: 'Import & Merge Backup',
+                    message: 'This will merge the imported routines, plans, goals, counters, and tasks with your existing data. Existing items will be preserved and new items will be added. Do you want to proceed?',
+                    isDanger: false,
+                    onConfirm: () => {
+                        // 1. Routines
+                        const incomingRoutines: any[] = data.isFullBackup && Array.isArray(data.routines)
+                            ? data.routines
+                            : (data.routine && data.routine.id ? [data.routine] : []);
+
+                        if (incomingRoutines.length > 0) {
+                            const existingMap = new Map<string, any>(routines.map((r: any) => [r.id, r]));
+                            const mergedRoutines = [...routines];
+                            incomingRoutines.forEach((r: any) => {
+                                if (!r || !r.id) return;
+                                if (existingMap.has(r.id)) {
+                                    const idx = mergedRoutines.findIndex((item: any) => item.id === r.id);
+                                    if (idx !== -1) {
+                                        mergedRoutines[idx] = { ...mergedRoutines[idx], ...r };
+                                    }
+                                } else {
+                                    mergedRoutines.push(r);
+                                    existingMap.set(r.id, r);
+                                }
+                            });
+                            setRoutines(mergedRoutines);
+                            localStorage.setItem('whatchadoin_routines', JSON.stringify(mergedRoutines));
+                        }
+
+                        // 2. Routine Plans & Folders
+                        const planSources: Record<string, any[]> = data.allPlans || {};
+                        const folderSources: Record<string, any[]> = data.allFolders || {};
+                        if (data.routine && data.routine.id) {
+                            if (data.plans) planSources[data.routine.id] = data.plans;
+                            if (data.plansFolders) folderSources[data.routine.id] = data.plansFolders;
+                        }
+
+                        Object.keys(planSources).forEach(rId => {
+                            const existing = JSON.parse(localStorage.getItem(`whatchadoin_plans_${rId}`) || '[]');
+                            const existingIds = new Set(existing.map((p: any) => p.id));
+                            const merged = [...existing];
+                            (planSources[rId] || []).forEach((p: any) => {
+                                if (p && p.id && !existingIds.has(p.id)) {
+                                    merged.push(p);
+                                    existingIds.add(p.id);
+                                }
+                            });
+                            localStorage.setItem(`whatchadoin_plans_${rId}`, JSON.stringify(merged));
+                        });
+
+                        Object.keys(folderSources).forEach(rId => {
+                            const existing = JSON.parse(localStorage.getItem(`whatchadoin_plans_folders_${rId}`) || '[]');
+                            const existingIds = new Set(existing.map((f: any) => f.id));
+                            const merged = [...existing];
+                            (folderSources[rId] || []).forEach((f: any) => {
+                                if (f && f.id && !existingIds.has(f.id)) {
+                                    merged.push(f);
+                                    existingIds.add(f.id);
+                                }
+                            });
+                            localStorage.setItem(`whatchadoin_plans_folders_${rId}`, JSON.stringify(merged));
+                        });
+
+                        // 3. Life Plans & Folders
+                        if (Array.isArray(data.lifePlans)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_life_plans') || '[]');
+                            const existingIds = new Set(existing.map((p: any) => p.id));
+                            const merged = [...existing];
+                            data.lifePlans.forEach((p: any) => {
+                                if (p && p.id && !existingIds.has(p.id)) {
+                                    merged.push(p);
+                                    existingIds.add(p.id);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_life_plans', JSON.stringify(merged));
+                        }
+                        if (Array.isArray(data.lifeFolders)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_life_plans_folders') || '[]');
+                            const existingIds = new Set(existing.map((f: any) => f.id));
+                            const merged = [...existing];
+                            data.lifeFolders.forEach((f: any) => {
+                                if (f && f.id && !existingIds.has(f.id)) {
+                                    merged.push(f);
+                                    existingIds.add(f.id);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_life_plans_folders', JSON.stringify(merged));
+                        }
+
+                        // 4. Life Goals
+                        if (Array.isArray(data.lifeGoals)) {
+                            setLifeGoals((prev: any[]) => {
+                                const existingIds = new Set(prev.map((g: any) => g.id));
+                                const newGoals = data.lifeGoals.filter((g: any) => g && g.id && !existingIds.has(g.id));
+                                const merged = [...prev, ...newGoals];
+                                localStorage.setItem('whatchadoin_life_goals', JSON.stringify(merged));
+                                return merged;
+                            });
+                        }
+
+                        // 5. Money Goals
+                        if (Array.isArray(data.moneyGoals)) {
+                            setMoneyGoals((prev: any[]) => {
+                                const existingIds = new Set(prev.map((g: any) => g.id));
+                                const newGoals = data.moneyGoals.filter((g: any) => g && g.id && !existingIds.has(g.id));
+                                const merged = [...prev, ...newGoals];
+                                localStorage.setItem('whatchadoin_money_goals', JSON.stringify(merged));
+                                return merged;
+                            });
+                        }
+
+                        // 6. Quick Tasks
+                        if (Array.isArray(data.quickTasks)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
+                            const existingIds = new Set(existing.map((t: any) => t.id));
+                            const merged = [...existing];
+                            data.quickTasks.forEach((t: any) => {
+                                if (t && t.id && !existingIds.has(t.id)) {
+                                    merged.push(t);
+                                    existingIds.add(t.id);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+                        }
+
+                        // 7. Coins Entries & Targets
+                        if (Array.isArray(data.coinsEntries)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+                            const existingIds = new Set(existing.map((c: any) => c.id));
+                            const merged = [...existing];
+                            data.coinsEntries.forEach((c: any) => {
+                                if (c && c.id && !existingIds.has(c.id)) {
+                                    merged.push(c);
+                                    existingIds.add(c.id);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_coins_entries', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+                        }
+                        if (data.coinsTargets && typeof data.coinsTargets === 'object') {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+                            const merged = { ...existing, ...data.coinsTargets };
+                            localStorage.setItem('whatchadoin_coins_targets', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+                        }
+
+                        // 8. Counters
+                        if (Array.isArray(data.counters)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_counters') || '[]');
+                            const existingIds = new Set(existing.map((c: any) => c.id));
+                            const merged = [...existing];
+                            data.counters.forEach((c: any) => {
+                                if (c && c.id && !existingIds.has(c.id)) {
+                                    merged.push(c);
+                                    existingIds.add(c.id);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_counters', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_counters_updated'));
+                        }
+
+                        // 9. Milestones
+                        if (data.milestones && typeof data.milestones === 'object') {
+                            setMilestones(prev => {
+                                const merged = { ...prev, ...data.milestones };
+                                localStorage.setItem('whatchadoin_milestones', JSON.stringify(merged));
+                                window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
+                                return merged;
+                            });
+                        }
+
+                        // 10. Quotes
+                        if (Array.isArray(data.quotes)) {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
+                            const existingTexts = new Set(existing.map((q: any) => q.text));
+                            const merged = [...existing];
+                            data.quotes.forEach((q: any) => {
+                                if (q && q.text && !existingTexts.has(q.text)) {
+                                    merged.push(q);
+                                    existingTexts.add(q.text);
+                                }
+                            });
+                            localStorage.setItem('whatchadoin_quotes', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
+                        }
+
+                        // 11. Currency & AI Config
+                        if (data.currency) {
+                            localStorage.setItem('whatchadoin_currency', data.currency);
+                            window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
+                        }
+                        if (data.aiConfig) {
+                            localStorage.setItem('whatchadoin_ai_config', JSON.stringify(data.aiConfig));
+                            setAiConfig(data.aiConfig);
+                        }
+
+                        sanitizeAllStorage();
+                        window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+                        setShowRoutineModal(false);
+                        setShowSettingsModal(false);
+                        setConfirmConfig(null);
+                    },
+                    onCancel: () => setConfirmConfig(null)
+                });
+            } catch (err) {
+                console.error('Failed to import backup', err);
                 setConfirmConfig({
                     title: 'Import Failed',
-                    message: 'The selected file is not a valid whatchadoin backup.',
+                    message: 'The selected file is not a valid whatchadoin backup JSON file.',
                     isDanger: true,
                     onConfirm: () => setConfirmConfig(null),
                     onCancel: null
@@ -713,6 +849,12 @@ export default function App() {
                 walletTotal={headerWalletTotal}
                 isPublicView={isPublicView}
                 setIsPublicView={setIsPublicView}
+                activeCenterTab={activeCenterTab}
+                onCounterClick={() => {
+                    setActiveCenterTab('counters');
+                    setMobileTab('counters');
+                    setIsMidPaneExpanded(true);
+                }}
                 onWalletClick={() => {
                     setActiveLeftTab('money');
                     setMobileTab('goals');
@@ -766,30 +908,69 @@ export default function App() {
                 setCalendarSubTab={setCalendarSubTab}
             />
 
-            <main className={`main-content mobile-tab-${mobileTab}`}>
-                <aside className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'}`}
+            <main className={`main-content mobile-tab-${mobileTab} ${isLeftPaneCollapsed ? 'pc-left-collapsed' : ''} ${isRightPaneCollapsed ? 'pc-right-collapsed' : ''}`}>
+                <aside className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'} ${isLeftPaneCollapsed ? 'pc-collapsed' : ''}`}
                        style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
-                    <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)}
-                         style={{
-                             display: 'flex',
-                             justifyContent: 'space-between',
-                             alignItems: 'center',
-                             padding: '16px 24px',
-                             cursor: 'pointer',
-                             borderBottom: '1px solid var(--panel-border)'
-                         }}>
-                        <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <Star size={18} color="var(--accent)"/> Goals
-                        </h2>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                            <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
-                                <ChevronDown size={16} style={{
-                                    transform: isLeftPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s'
-                                }}/>
+                    {isLeftPaneCollapsed ? (
+                        <div
+                            className="pc-collapsed-rail"
+                            onClick={() => setIsLeftPaneCollapsed(false)}
+                            title="Expand Goals (Click to expand)"
+                            role="button"
+                            tabIndex={0}
+                        >
+                            <button
+                                type="button"
+                                className="pc-rail-expand-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsLeftPaneCollapsed(false);
+                                }}
+                                title="Expand Goals"
+                                aria-label="Expand Goals"
+                            >
+                                <PanelLeftOpen size={16} />
                             </button>
+                            <div className="pc-rail-badge">
+                                <Star size={16} color="var(--accent)"/>
+                            </div>
+                            <span className="pc-rail-title">Goals</span>
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            <div className="panel-header" onClick={() => setIsLeftPaneExpanded(!isLeftPaneExpanded)}
+                                 style={{
+                                     display: 'flex',
+                                     justifyContent: 'space-between',
+                                     alignItems: 'center',
+                                     padding: '12px 16px',
+                                     cursor: 'pointer',
+                                     borderBottom: '1px solid var(--panel-border)'
+                                 }}>
+                                <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600, color: '#fff'}}>
+                                    <Star size={18} color="var(--accent)"/> Goals
+                                </h2>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <button className="accordion-icon icon-btn" style={{padding: '4px'}}>
+                                        <ChevronDown size={16} style={{
+                                            transform: isLeftPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                            transition: 'transform 0.2s'
+                                        }}/>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="pc-pane-toggle-btn icon-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsLeftPaneCollapsed(true);
+                                        }}
+                                        title="Collapse Goals pane"
+                                        aria-label="Collapse Goals pane"
+                                    >
+                                        <PanelLeftClose size={16} />
+                                    </button>
+                                </div>
+                            </div>
                     <div style={{
                         display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0
                     }}>
@@ -878,6 +1059,8 @@ export default function App() {
                             </React.Suspense>);
                         })()}
                     </div>
+                        </>
+                    )}
                 </aside>
 
                 <div className={`myday-area timeline-area ${mobileTab === 'calendar' ? (isMobileCalendarOpen ? 'mobile-calendar-open' : 'mobile-calendar-collapsed') : (isMidPaneExpanded ? '' : 'mobile-collapsed')}`} style={{
@@ -980,6 +1163,16 @@ export default function App() {
                         >
                             <BookOpen size={16}/> Plans
                         </button>
+                        <button
+                            className={`tab ${activeCenterTab === 'counters' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveCenterTab('counters');
+                                setMobileTab('counters');
+                            }}
+                            style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}
+                        >
+                            <Hash size={16}/> Counters
+                        </button>
                         <button className="accordion-icon icon-btn" style={{marginLeft: 'auto', padding: '4px'}}>
                             <ChevronDown size={16} style={{
                                 transform: isMidPaneExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -991,7 +1184,11 @@ export default function App() {
                     <div className="mid-pane-content"
                          style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
                         <TabErrorBoundary tabName={activeCenterTab}>
-                            {activeCenterTab === 'myday' ? (<MyDay
+                            {activeCenterTab === 'counters' ? (
+                                <React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Counters...</div>}>
+                                    <CountersPane isPublicView={isPublicView} />
+                                </React.Suspense>
+                            ) : activeCenterTab === 'myday' ? (<MyDay
                                 isPublicView={isPublicView}
                                 templates={templates}
                                 setTemplates={setTemplates as any}
@@ -1081,6 +1278,8 @@ export default function App() {
                                 setMilestones={setMilestones}
                                 isMobileAccordionOpen={mobileTab === 'calendar' ? isMobileHabitsOpen : undefined}
                                 onToggleMobileAccordion={mobileTab === 'calendar' ? () => setIsMobileHabitsOpen(!isMobileHabitsOpen) : undefined}
+                                isPcCollapsed={isRightPaneCollapsed}
+                                onTogglePcCollapse={() => setIsRightPaneCollapsed(prev => !prev)}
                     />
                 </React.Suspense>
             </main>

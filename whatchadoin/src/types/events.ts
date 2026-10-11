@@ -2,6 +2,7 @@ export type AppEventType =
     | 'whatchadoin_currency_updated'
     | 'whatchadoin_quick_tasks_updated'
     | 'whatchadoin_coins_updated'
+    | 'whatchadoin_counters_updated'
     | 'whatchadoin_quotes_updated'
     | 'whatchadoin_habits_updated'
     | 'close-routine-drawer'

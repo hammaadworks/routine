@@ -194,6 +194,13 @@ export const importLocalData = (jsonStr: string) => {
         }
         sanitizeAllStorage();
         window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_counters_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+        window.dispatchEvent(new CustomEvent('whatchadoin_cloud_sync_applied'));
         return true;
     } catch (e) {
         logSync('error', 'Failed to parse remote sync data', e);

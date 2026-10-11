@@ -3,6 +3,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     Activity,
     Calendar,
+    Check,
     CheckCircle2,
     ChevronDown,
     Clock,
@@ -10,6 +11,8 @@ import {
     Layers,
     ListTodo,
     Palette,
+    PanelRightClose,
+    PanelRightOpen,
     Pencil,
     Plus,
     Sparkles,
@@ -24,6 +27,7 @@ import SearchSortBar from './SearchSortBar';
 import {
     getAllGoalsForMention,
     getGoalColor,
+    habitMatchesTemplate,
     parseDuration
 } from '../utils';
 import HabitList from './habits/HabitList';
@@ -67,6 +71,8 @@ interface HabitsPaneProps {
     setMilestones?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     isMobileAccordionOpen?: boolean;
     onToggleMobileAccordion?: () => void;
+    isPcCollapsed?: boolean;
+    onTogglePcCollapse?: () => void;
 }
 
 export default function HabitsPane({
@@ -99,7 +105,9 @@ export default function HabitsPane({
                                        milestones: passedMilestones,
                                        setMilestones,
                                        isMobileAccordionOpen,
-                                       onToggleMobileAccordion
+                                       onToggleMobileAccordion,
+                                       isPcCollapsed,
+                                       onTogglePcCollapse
                                    }: HabitsPaneProps) {
         const [showAllMilestones, setShowAllMilestones] = useState(true);
     const [showHabitModal, setShowHabitModal] = useState(false);
@@ -114,6 +122,7 @@ export default function HabitsPane({
         color: string;
         isPublic?: boolean;
         templateId?: string;
+        templateIds?: string[];
     }>({
         name: '',
         desc: '',
@@ -123,7 +132,8 @@ export default function HabitsPane({
         moneyGoalIds: [] as string[],
         color: '',
         isPublic: false,
-        templateId: 'all'
+        templateId: 'all',
+        templateIds: ['all']
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [milestoneSearchQuery, setMilestoneSearchQuery] = useState('');
@@ -454,7 +464,7 @@ export default function HabitsPane({
         e.preventDefault();
         if (!milestoneForm.date || !milestoneForm.name) return;
 
-        const isRepeating = !editingMilestoneIdx && milestoneForm.isRepeating;
+        const isRepeating = Boolean(milestoneForm.isRepeating);
         if (isRepeating && (!milestoneForm.endDate || repeatingDates.length === 0)) return;
 
         const dateStr = milestoneForm.date;
@@ -478,7 +488,7 @@ export default function HabitsPane({
             const targetName = (editingMilestoneIdx.originalName || '').trim().toLowerCase();
             const targetTag = (editingMilestoneIdx.originalTag || '').trim().toLowerCase();
 
-            if (milestoneForm.applyToAllMatching) {
+            if (milestoneForm.applyToAllMatching && !isRepeating) {
                 Object.keys(newMilestones).forEach(dStr => {
                     const content = newMilestones[dStr];
                     if (!content || typeof content !== 'string') return;
@@ -549,11 +559,14 @@ export default function HabitsPane({
                 ...activeRoutine, milestones: newMilestones
             });
         }
+        window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated', { detail: newMilestones }));
 
         const targetDates = isRepeating ? repeatingDates : [dateStr];
 
-        // Auto-switch to "All" view if the milestone is outside the active routine range
-        if (activeRoutine?.start && activeRoutine?.end) {
+        // Auto-switch to "All" view if repeating or if any milestone is outside the active routine range
+        if (isRepeating) {
+            setShowAllMilestones(true);
+        } else if (activeRoutine?.start && activeRoutine?.end) {
             const isOutside = targetDates.some(d => d < activeRoutine.start || d > activeRoutine.end);
             if (isOutside) {
                 setShowAllMilestones(true);
@@ -747,26 +760,12 @@ export default function HabitsPane({
         return activeTemplateId || (templates && templates[0]?.id) || null;
     }, [effectiveDate, dayMapping, activeTemplateId, templates]);
 
-    const templateDropdownOptions = useMemo(() => {
-        const opts: Array<{ value: string; label: React.ReactNode }> = [
-            { value: 'all', label: 'All Templates (Shared)' }
-        ];
-        (templates || []).forEach((t: any) => {
-            if (t && t.id) {
-                opts.push({
-                    value: t.id,
-                    label: t.name || 'Untitled Template'
-                });
-            }
-        });
-        return opts;
-    }, [templates]);
-
     const openAddHabit = useCallback(() => {
         setEditingHabitId(null);
         setGoalSearchQuery('');
         setGoalCategoryFilter('all');
         setSortGoalsByName(false);
+        const defaultTId = currentTemplateId || activeTemplateId || (templates && templates[0]?.id) || 'all';
         setHabitForm({
             name: '',
             isPublic: true,
@@ -776,7 +775,8 @@ export default function HabitsPane({
             lifeGoalIds: [],
             moneyGoalIds: [],
             color: '',
-            templateId: currentTemplateId || activeTemplateId || (templates && templates[0]?.id) || 'all'
+            templateId: defaultTId,
+            templateIds: defaultTId === 'all' ? ['all'] : [defaultTId]
         });
         setShowHabitModal(true);
     }, [currentTemplateId, activeTemplateId, templates]);
@@ -820,6 +820,10 @@ export default function HabitsPane({
         const lIds = Array.isArray(goal.lifeGoalIds) ? goal.lifeGoalIds : (goal.lifeGoalId ? [goal.lifeGoalId] : []);
         const mIds = Array.isArray(goal.moneyGoalIds) ? goal.moneyGoalIds : (goal.moneyGoalId ? [goal.moneyGoalId] : []);
 
+        const tIds: string[] = Array.isArray(goal.templateIds) && goal.templateIds.length > 0
+            ? goal.templateIds
+            : (goal.templateId ? [goal.templateId] : ['all']);
+
         setHabitForm({
             name: goal.name || '',
             desc: goal.desc || '',
@@ -829,19 +833,24 @@ export default function HabitsPane({
             moneyGoalIds: mIds,
             color: goal.color || '',
             isPublic: !!goal.isPublic,
-            templateId: goal.templateId || currentTemplateId || activeTemplateId || (templates && templates[0]?.id) || 'all'
+            templateId: tIds.includes('all') ? 'all' : (tIds[0] || 'all'),
+            templateIds: tIds
         });
         setShowHabitModal(true);
     };
 
     const duplicateHabit = (goal: any) => {
         const goalName = goal.name || '';
+        const tIds: string[] = Array.isArray(goal.templateIds) && goal.templateIds.length > 0
+            ? goal.templateIds
+            : (goal.templateId ? [goal.templateId] : (currentTemplateId ? [currentTemplateId] : ['all']));
         const newGoal = {
             ...goal,
             name: '0_' + goalName,
             id: 'rg-' + Date.now(),
             completed: false,
-            templateId: goal.templateId || currentTemplateId || 'all'
+            templateId: tIds.includes('all') ? 'all' : (tIds[0] || 'all'),
+            templateIds: tIds
         };
         setHabits([...(habits || []), newGoal]);
     };
@@ -857,6 +866,11 @@ export default function HabitsPane({
 
         const cleanName = habitForm.name.trim();
         const durationMins = timeString ? parseDuration(timeString) : 0;
+        const selectedTIds = Array.isArray(habitForm.templateIds) && habitForm.templateIds.length > 0
+            ? habitForm.templateIds
+            : (habitForm.templateId ? [habitForm.templateId] : ['all']);
+        const primaryTId = selectedTIds.includes('all') ? 'all' : (selectedTIds[0] || 'all');
+
         const goalData = {
             name: cleanName,
             desc: (habitForm.desc || '').trim(),
@@ -867,7 +881,8 @@ export default function HabitsPane({
             moneyGoalIds: habitForm.moneyGoalIds,
             isPublic: !!habitForm.isPublic,
             color: habitForm.color,
-            templateId: habitForm.templateId || currentTemplateId || activeTemplateId || 'all'
+            templateId: primaryTId,
+            templateIds: selectedTIds
         };
 
         if (editingHabitId) {
@@ -964,13 +979,11 @@ export default function HabitsPane({
         });
     }
 
+    const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
     const allVisibleHabits = (habits || []).filter(g => (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
-    const templateFilteredHabits = allVisibleHabits.filter(g => {
-        if (g.templateId === 'all') return true;
-        if (g.templateId) return currentTemplateId ? g.templateId === currentTemplateId : true;
-        const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
-        return !currentTemplateId || currentTemplateId === defaultTemplateId;
-    });
+    const templateFilteredHabits = allVisibleHabits.filter(g =>
+        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId)
+    );
     let displayedRoutineGoals: any[] = templateFilteredHabits;
 
     if (searchQuery) {
@@ -1067,45 +1080,88 @@ export default function HabitsPane({
     // Parse markdown to render colored tags
     
     return (<aside
-        className={`panel pane right-pane ${isExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''}`}
+        className={`panel pane right-pane ${isExpanded ? '' : 'mobile-collapsed'} ${isRoutineDrawerOpen ? 'drawer-open' : ''} ${isPcCollapsed ? 'pc-collapsed' : ''}`}
         style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
-        <div className="panel-header" onClick={toggleExpanded} style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            cursor: 'pointer',
-            borderBottom: isExpanded ? '1px solid var(--panel-border)' : 'none',
-            userSelect: 'none'
-        }}>
-            <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600, color: '#fff', flex: 1, minWidth: 0}}>
-                {effectiveDate ? (<>
-                    <CheckCircle2 size={18} color="var(--accent)" style={{flexShrink: 0}} />
-                    <span>{isCalendarTab ? `Habits for ${formatHeaderDate(effectiveDate)}` : `Check ${formatHeaderDate(effectiveDate)}`}</span>
-                </>) : (<>
-                    <ListTodo size={18} color="var(--accent)" style={{flexShrink: 0}} />
-                    <span>{isCalendarTab ? 'Habits' : 'Routine'}</span>
-                </>)}
-            </h2>
-            <button
-                type="button"
-                className="mobile-accordion-toggle-btn accordion-icon"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    toggleExpanded();
-                }}
-                aria-label={isExpanded ? 'Collapse habits pane' : 'Expand habits pane'}
+        {isPcCollapsed ? (
+            <div
+                className="pc-collapsed-rail"
+                onClick={() => onTogglePcCollapse && onTogglePcCollapse()}
+                title="Expand Habits (Click to expand)"
+                role="button"
+                tabIndex={0}
             >
-                <ChevronDown
-                    size={18}
-                    color="var(--accent)"
-                    style={{
-                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.25s ease'
+                <button
+                    type="button"
+                    className="pc-rail-expand-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (onTogglePcCollapse) onTogglePcCollapse();
                     }}
-                />
-            </button>
-        </div>
+                    title="Expand Habits"
+                    aria-label="Expand Habits"
+                >
+                    <PanelRightOpen size={16} />
+                </button>
+                <div className="pc-rail-badge">
+                    <ListTodo size={16} color="var(--accent)" />
+                </div>
+                <span className="pc-rail-title">Habits</span>
+            </div>
+        ) : (
+            <>
+                <div className="panel-header" onClick={toggleExpanded} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    borderBottom: isExpanded ? '1px solid var(--panel-border)' : 'none',
+                    userSelect: 'none'
+                }}>
+                    <h2 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600, color: '#fff', flex: 1, minWidth: 0}}>
+                        {effectiveDate ? (<>
+                            <CheckCircle2 size={18} color="var(--accent)" style={{flexShrink: 0}} />
+                            <span>{isCalendarTab ? `Habits for ${formatHeaderDate(effectiveDate)}` : `Check ${formatHeaderDate(effectiveDate)}`}</span>
+                        </>) : (<>
+                            <ListTodo size={18} color="var(--accent)" style={{flexShrink: 0}} />
+                            <span>{isCalendarTab ? 'Habits' : 'Routine'}</span>
+                        </>)}
+                    </h2>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <button
+                            type="button"
+                            className="mobile-accordion-toggle-btn accordion-icon"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpanded();
+                            }}
+                            aria-label={isExpanded ? 'Collapse habits pane' : 'Expand habits pane'}
+                        >
+                            <ChevronDown
+                                size={18}
+                                color="var(--accent)"
+                                style={{
+                                    transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.25s ease'
+                                }}
+                            />
+                        </button>
+                        {onTogglePcCollapse && (
+                            <button
+                                type="button"
+                                className="pc-pane-toggle-btn icon-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onTogglePcCollapse();
+                                }}
+                                title="Collapse Habits pane"
+                                aria-label="Collapse Habits pane"
+                            >
+                                <PanelRightClose size={16} />
+                            </button>
+                        )}
+                    </div>
+                </div>
         <div ref={routinePaneContentRef} className="routine-pane-content" style={{
             display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0
         }}>
@@ -1246,12 +1302,9 @@ export default function HabitsPane({
                     }
 
                     let allocatedCount = 0;
-                    const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]')).filter(g => {
-                        if (g.templateId === 'all') return true;
-                        if (g.templateId) return currentTemplateId ? g.templateId === currentTemplateId : true;
-                        const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
-                        return !currentTemplateId || currentTemplateId === defaultTemplateId;
-                    });
+                    const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]')).filter(g =>
+                        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId)
+                    );
                     if (currentTemplate && currentTemplate.blocks) {
                         allocatedCount = scopedHabits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;
                     }
@@ -1262,6 +1315,8 @@ export default function HabitsPane({
                 })()}
             </div>
         </div>
+        </>
+        )}
 
         {/* Habit Modal */}
         <BaseModal
@@ -1295,14 +1350,94 @@ export default function HabitsPane({
                         />
                     </div>
                     <div>
-                        <label style={{
-                            fontSize: '12px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px'
-                        }}>Template</label>
-                        <Dropdown
-                            value={habitForm.templateId || 'all'}
-                            options={templateDropdownOptions}
-                            onChange={(val) => setHabitForm({ ...habitForm, templateId: String(val) })}
-                        />
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
+                            <label style={{
+                                fontSize: '12px', color: 'var(--text-secondary)', display: 'block', margin: 0
+                            }}>Templates</label>
+                            <span style={{fontSize: '11px', color: 'var(--text-secondary)'}}>
+                                {((habitForm.templateIds || []).includes('all') || (habitForm.templateIds || []).length === 0)
+                                    ? 'Shared across all templates'
+                                    : `${(habitForm.templateIds || []).length} template${(habitForm.templateIds || []).length === 1 ? '' : 's'} selected`}
+                            </span>
+                        </div>
+                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                            {(() => {
+                                const isAll = (habitForm.templateIds || []).includes('all') || (habitForm.templateIds || []).length === 0;
+                                return (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setHabitForm({
+                                                ...habitForm,
+                                                templateId: 'all',
+                                                templateIds: ['all']
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontWeight: isAll ? '600' : 'normal',
+                                            background: isAll ? 'rgba(0, 245, 212, 0.15)' : 'var(--panel-bg)',
+                                            border: `1px ${isAll ? 'solid' : 'dashed'} ${isAll ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                            color: isAll ? 'var(--accent)' : 'var(--text-secondary)'
+                                        }}
+                                    >
+                                        <Layers size={13} />
+                                        <span>All Templates</span>
+                                    </button>
+                                );
+                            })()}
+
+                            {(templates || []).map((t: any) => {
+                                const currentTIds = (habitForm.templateIds || []);
+                                const isSelected = !currentTIds.includes('all') && currentTIds.includes(t.id);
+                                return (
+                                    <button
+                                        type="button"
+                                        key={t.id}
+                                        onClick={() => {
+                                            let nextTIds: string[];
+                                            if (currentTIds.includes('all')) {
+                                                nextTIds = [t.id];
+                                            } else if (isSelected) {
+                                                nextTIds = currentTIds.filter((id: string) => id !== t.id);
+                                                if (nextTIds.length === 0) {
+                                                    nextTIds = ['all'];
+                                                }
+                                            } else {
+                                                nextTIds = [...currentTIds, t.id];
+                                            }
+                                            setHabitForm({
+                                                ...habitForm,
+                                                templateId: nextTIds.includes('all') ? 'all' : (nextTIds[0] || 'all'),
+                                                templateIds: nextTIds
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontWeight: isSelected ? '600' : 'normal',
+                                            background: isSelected ? 'rgba(0, 245, 212, 0.15)' : 'var(--panel-bg)',
+                                            border: `1px ${isSelected ? 'solid' : 'dashed'} ${isSelected ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                            color: isSelected ? 'var(--accent)' : 'var(--text-secondary)'
+                                        }}
+                                    >
+                                        {isSelected && <Check size={13} />}
+                                        <span>{t.name || 'Untitled Template'}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                     <div>
                         <label style={{
@@ -1806,7 +1941,10 @@ export default function HabitsPane({
         {/* Add Milestone Modal */}
         <BaseModal
             isOpen={showMilestoneModal}
-            onClose={() => setShowMilestoneModal(false)}
+            onClose={() => {
+                setShowMilestoneModal(false);
+                setEditingMilestoneIdx(null);
+            }}
             maxWidth="460px"
             bodyClassName="modal-body-fixed-footer"
             title={<div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
@@ -2366,7 +2504,10 @@ export default function HabitsPane({
                             )}
                         </>
                     )}
-                    <button type="button" onClick={() => setShowMilestoneModal(false)} className="secondary"
+                    <button type="button" onClick={() => {
+                        setShowMilestoneModal(false);
+                        setEditingMilestoneIdx(null);
+                    }} className="secondary"
                             style={{
                                 flex: '1 1 auto',
                                 padding: '10px 12px',
@@ -2425,9 +2566,17 @@ export default function HabitsPane({
             }
             const count = goalCounts[habit.id] || 0;
 
-            const habitTemplateName = habit.templateId === 'all'
-                ? 'All Templates (Shared)'
-                : (templates || []).find((t: any) => t.id === habit.templateId)?.name || 'Default Template';
+            const habitTIds: string[] = Array.isArray(habit.templateIds) && habit.templateIds.length > 0
+                ? habit.templateIds
+                : (habit.templateId ? [habit.templateId] : ['all']);
+
+            let habitTemplateName = 'All Templates (Shared)';
+            if (!habitTIds.includes('all')) {
+                const matched = (templates || []).filter((t: any) => habitTIds.includes(t.id));
+                if (matched.length > 0) {
+                    habitTemplateName = matched.map((t: any) => t.name || 'Untitled Template').join(', ');
+                }
+            }
 
             return (
                 <BaseModal

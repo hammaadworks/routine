@@ -2,6 +2,7 @@ import React, {useEffect, useMemo} from 'react';
 import type {DayMapping, Habit, Routine, RoutineGoal} from '../types/routine';
 import type {LifeGoal, MoneyGoal} from '../types/goals';
 import type {CalendarSubTab} from '../types/ui';
+import {habitMatchesTemplate} from '../utils';
 
 interface CalendarPaneProps {
     isPublicView?: boolean;
@@ -119,11 +120,7 @@ const CalendarPane: React.FC<CalendarPaneProps> = ({
         const defaultTemplateId = activeRoutine?.activeTemplateId || (templates && templates[0]?.id);
         const templateId = (dayMapping && dayName && (dayMapping as any)[dayName]) || defaultTemplateId;
 
-        return visibleHabits.filter((h: any) => {
-            if (h.templateId === 'all') return true;
-            if (h.templateId) return h.templateId === templateId;
-            return !templateId || templateId === defaultTemplateId;
-        });
+        return visibleHabits.filter((h: any) => habitMatchesTemplate(h, templateId, defaultTemplateId));
     };
 
     const isDateComplete = (dateStr: string) => {

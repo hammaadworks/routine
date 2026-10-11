@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { Layers, Plus, Settings, Copy, Download, Trash2 } from 'lucide-react';
+import { Layers, Plus, Settings, Copy, Trash2 } from 'lucide-react';
 import BaseModal from './BaseModal';
 
 export interface Routine {
@@ -36,7 +36,7 @@ export interface RoutineModalProps {
   editingRoutineId: string | null;
   setEditingRoutineId: (id: string | null) => void;
   activeRoutine: Routine;
-  lifeGoals: any[];
+  lifeGoals?: any[];
   setConfirmConfig: (config: ConfirmConfig | null) => void;
 }
 
@@ -52,7 +52,7 @@ export default function RoutineModal({
   editingRoutineId,
   setEditingRoutineId,
   activeRoutine,
-  lifeGoals,
+  lifeGoals: _lifeGoals,
   setConfirmConfig
 }: RoutineModalProps) {
   const editRoutine = routines.find((r: Routine) => r.id === (editingRoutineId || activeRoutineId)) || activeRoutine;
@@ -208,23 +208,6 @@ export default function RoutineModal({
             >
               <Copy size={14} /> Duplicate
             </button>
-            
-            <button 
-              onClick={() => {
-                const plans = JSON.parse(localStorage.getItem(`whatchadoin_plans_${editRoutine.id}`) || '[]');
-                const plansFolders = JSON.parse(localStorage.getItem(`whatchadoin_plans_folders_${editRoutine.id}`) || '[]');
-                const backupData = { routine: editRoutine, plans, plansFolders, lifeGoals };
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-                const a = document.createElement('a');
-                a.href = dataStr;
-                a.download = `whatchadoin_routine_${editRoutine?.name?.replace(/[^a-z0-9]/gi, '_')?.toLowerCase() || 'unnamed'}.json`;
-                a.click();
-              }} 
-              className="secondary" 
-              style={{ flex: '1 1 calc(50% - 4px)', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--panel-border)' }}
-            >
-              <Download size={14} /> Export
-            </button>
 
             <button 
               onClick={() => {
@@ -254,7 +237,7 @@ export default function RoutineModal({
                 });
               }} 
               className="secondary" 
-              style={{ flex: '1 1 100%', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', borderRadius: '8px', color: 'var(--danger)', fontSize: '13px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}
+              style={{ flex: '1 1 calc(50% - 4px)', padding: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', borderRadius: '8px', color: 'var(--danger)', fontSize: '13px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.05)' }}
             >
               <Trash2 size={14} /> Delete Routine
             </button>

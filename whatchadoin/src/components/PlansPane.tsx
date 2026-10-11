@@ -212,18 +212,45 @@ export default function PlansPane({
 
     const {allGoals, filteredGoals} = getAllGoalsForMention(routineGoals, habits, lifeGoals, mentionQuery, moneyGoals, quickTasks);
 
+    const currentRoutineIdRef = useRef(activeRoutineId);
+
+    // Reload routine plans and folders when activeRoutineId changes, without overwriting
     useEffect(() => {
-        const rNotes = notes.filter(n => !n.isLife);
-        const lNotes = notes.filter(n => n.isLife);
-        localStorage.setItem(`whatchadoin_plans_${activeRoutineId}`, JSON.stringify(rNotes));
-        localStorage.setItem(`whatchadoin_life_plans`, JSON.stringify(lNotes));
+        if (currentRoutineIdRef.current !== activeRoutineId) {
+            currentRoutineIdRef.current = activeRoutineId;
+            const rSaved = localStorage.getItem(`whatchadoin_plans_${activeRoutineId}`);
+            const rNotes = rSaved ? sanitizeEntities<Note>(JSON.parse(rSaved)).map((n: any) => ({...n, isLife: false, content: normalizeListNewlines(n.content || '')})) : [];
+            const rFoldersSaved = localStorage.getItem(`whatchadoin_plans_folders_${activeRoutineId}`);
+            const rFolders = rFoldersSaved ? JSON.parse(rFoldersSaved).map((f: any) => ({...f, isLife: false})) : [];
+
+            setNotes(prev => {
+                const lNotes = prev.filter(n => n.isLife);
+                return [...lNotes, ...rNotes];
+            });
+
+            setFolders(prev => {
+                const lFolders = prev.filter(f => f.isLife);
+                return [...lFolders, ...rFolders];
+            });
+        }
+    }, [activeRoutineId]);
+
+    useEffect(() => {
+        if (currentRoutineIdRef.current === activeRoutineId) {
+            const rNotes = notes.filter(n => !n.isLife);
+            const lNotes = notes.filter(n => n.isLife);
+            localStorage.setItem(`whatchadoin_plans_${activeRoutineId}`, JSON.stringify(rNotes));
+            localStorage.setItem(`whatchadoin_life_plans`, JSON.stringify(lNotes));
+        }
     }, [notes, activeRoutineId]);
 
     useEffect(() => {
-        const rFolders = folders.filter(f => !f.isLife);
-        const lFolders = folders.filter(f => f.isLife);
-        localStorage.setItem(`whatchadoin_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
-        localStorage.setItem(`whatchadoin_life_plans_folders`, JSON.stringify(lFolders));
+        if (currentRoutineIdRef.current === activeRoutineId) {
+            const rFolders = folders.filter(f => !f.isLife);
+            const lFolders = folders.filter(f => f.isLife);
+            localStorage.setItem(`whatchadoin_plans_folders_${activeRoutineId}`, JSON.stringify(rFolders));
+            localStorage.setItem(`whatchadoin_life_plans_folders`, JSON.stringify(lFolders));
+        }
     }, [folders, activeRoutineId]);
 
     const createNote = useCallback((folderId: string | null = null, isLife = false) => {
@@ -323,6 +350,16 @@ export default function PlansPane({
             setNotes(prev => {
                 if (JSON.stringify(prev) === JSON.stringify(merged)) return prev;
                 return merged;
+            });
+
+            const rFoldersSaved = localStorage.getItem(`whatchadoin_plans_folders_${activeRoutineId}`);
+            const rFolders = rFoldersSaved ? JSON.parse(rFoldersSaved).map((f: any) => ({...f, isLife: false})) : [];
+            const lFoldersSaved = localStorage.getItem(`whatchadoin_life_plans_folders`);
+            const lFolders = lFoldersSaved ? JSON.parse(lFoldersSaved).map((f: any) => ({...f, isLife: true})) : [];
+            const mergedFolders = [...lFolders, ...rFolders];
+            setFolders(prev => {
+                if (JSON.stringify(prev) === JSON.stringify(mergedFolders)) return prev;
+                return mergedFolders;
             });
         };
         window.addEventListener('whatchadoin_plans_updated', handleUpdate);

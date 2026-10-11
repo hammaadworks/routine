@@ -645,9 +645,9 @@ export default function SettingsModal({
                         </button>
 
                         <div style={{
-                             padding: '16px',
-                            background: 'rgba(239, 68, 68, 0.05)',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            padding: '16px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--panel-border)',
                             borderRadius: '8px',
                             display: 'flex',
                             flexDirection: 'column',
@@ -655,17 +655,16 @@ export default function SettingsModal({
                         }}>
                             <h4 style={{
                                 margin: 0,
-                                color: 'var(--danger)',
+                                color: 'var(--text-primary)',
                                 fontSize: '14px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                <Import size={16}/> Import Full Backup
+                                <Import size={16}/> Import Data Backup
                             </h4>
                             <p style={{fontSize: '12px', color: 'var(--text-secondary)', margin: 0}}>
-                                Warning: Importing a full backup will <b>permanently replace</b> all your current routines
-                                and plans.
+                                Importing merges backup data over your existing routines, plans, goals, counters, and tasks. Existing items are preserved and new items are added.
                             </p>
                             <button
                                 onClick={() => fileInputRef.current?.click()}
@@ -677,8 +676,8 @@ export default function SettingsModal({
                                     alignItems: 'center',
                                     gap: '8px',
                                     borderRadius: '6px',
-                                    color: 'var(--danger)',
-                                    border: '1px solid rgba(239, 68, 68, 0.4)'
+                                    color: 'var(--text-primary)',
+                                    border: '1px solid var(--panel-border)'
                                 }}
                             >
                                 Select Backup File...

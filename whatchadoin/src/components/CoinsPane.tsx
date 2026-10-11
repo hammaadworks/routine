@@ -43,7 +43,6 @@ import {
     Trash2,
     TrendingDown,
     TrendingUp,
-    Upload,
     Wallet,
     X
 } from "lucide-react";
@@ -179,8 +178,6 @@ export default function CoinsPane({
     const [expandedYear, setExpandedYear] = useState<number | null>(CURRENT_YEAR);
     const [error, setError] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
-    const [importMsg, setImportMsg] = useState("");
-    const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
     const [coinsTargets, setTargets] = useState<Record<string, number>>({});
 
@@ -385,17 +382,6 @@ export default function CoinsPane({
         }
     }
 
-    function exportJSON() {
-        const payload = {exportedAt: new Date().toISOString(), coinsEntries, coinsTargets};
-        const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `coins-ledger-backup-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
     function csvEscape(v: any) {
         const s = String(v ?? "");
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -414,55 +400,6 @@ export default function CoinsPane({
         a.download = `coins-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-    }
-
-    function triggerImport() {
-        setImportMsg("");
-        fileInputRef.current?.click();
-    }
-
-    function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const parsed = JSON.parse(reader.result as string);
-                const incoming: any[] | null = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.coinsEntries) ? parsed.coinsEntries : null);
-                if (!incoming) {
-                    setImportMsg("Failed to parse JSON backup file.");
-                    return;
-                }
-                const existingIds = new Set(coinsEntries.map(en => en.id));
-                let added = 0;
-                const toAdd: CoinsEntry[] = [];
-                incoming.forEach((en: any) => {
-                    if (!en || !en.year || !en.month || typeof en.amount !== "number") return;
-                    const id = en.id || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-                    if (existingIds.has(id)) return;
-                    existingIds.add(id);
-                    toAdd.push({
-                        id,
-                        year: Number(en.year),
-                        month: Number(en.month),
-                        amount: Number(en.amount),
-                        source: String(en.source || "Other"),
-                        notes: String(en.notes || "")
-                    });
-                    added++;
-                });
-                if (toAdd.length > 0) void persist([...coinsEntries, ...toAdd]);
-                if (parsed.coinsTargets && typeof parsed.coinsTargets === "object") {
-                    void persistTargets({...coinsTargets, ...parsed.coinsTargets});
-                }
-                setImportMsg(`Imported ${added} entries successfully.`);
-                setTimeout(() => setImportMsg(""), 3500);
-            } catch {
-                setImportMsg("Failed to parse JSON backup file.");
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = "";
     }
 
     // Unified Monthly Income submission (supports 1 or more stream rows seamlessly, including honest ₹0/broke entries!)
@@ -1570,20 +1507,6 @@ export default function CoinsPane({
                             }}>
                                 Collapse all
                             </button>
-                            <button onClick={exportJSON} className="mono" title="Download JSON backup" style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 5,
-                                background: "#1A1F25",
-                                border: "1px solid #2A3038",
-                                color: "#8A8F98",
-                                padding: "7px 10px",
-                                borderRadius: 3,
-                                fontSize: 11,
-                                cursor: "pointer"
-                            }}>
-                                <Download size={12}/> JSON
-                            </button>
                             <button onClick={exportCSV} className="mono" title="Download CSV spreadsheet" style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -1596,28 +1519,9 @@ export default function CoinsPane({
                                 fontSize: 11,
                                 cursor: "pointer"
                             }}>
-                                <Download size={12}/> CSV
+                                <Download size={12}/> Export CSV
                             </button>
-                            <button onClick={triggerImport} className="mono" title="Restore JSON backup" style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 5,
-                                background: "#1A1F25",
-                                border: "1px solid #2A3038",
-                                color: "#8A8F98",
-                                padding: "7px 10px",
-                                borderRadius: 3,
-                                fontSize: 11,
-                                cursor: "pointer"
-                            }}>
-                                <Upload size={12}/> Import
-                            </button>
-                            <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportFile}
-                                   style={{display: "none"}}/>
                         </div>
-                        {importMsg && (<div className="mono" style={{fontSize: 10.5, color: "#8A8F98", maxWidth: 280}}>
-                                {importMsg}
-                            </div>)}
                     </div>
                 </div>
             </div>

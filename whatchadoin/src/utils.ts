@@ -46,6 +46,22 @@ export function parseDuration(val: string | number | null | undefined): number {
 }
 
 
+export function habitMatchesTemplate(
+    habit: { templateId?: string; templateIds?: string[] } | null | undefined,
+    currentTemplateId: string | null | undefined,
+    defaultTemplateId?: string | null | undefined
+): boolean {
+    if (!habit) return false;
+    const ids: string[] = Array.isArray(habit.templateIds) && habit.templateIds.length > 0
+        ? habit.templateIds
+        : (habit.templateId ? [habit.templateId] : []);
+
+    if (ids.length === 0 || ids.includes('all')) return true;
+    if (currentTemplateId) return ids.includes(currentTemplateId);
+    if (defaultTemplateId) return ids.includes(defaultTemplateId);
+    return true;
+}
+
 export function getScheduledGoalsForDate(dateStr: string, habits: Habit[], dayMapping: Record<string, string> | null | undefined, templates: Routine['templates'] | null | undefined): Habit[] {
     if (!habits || habits.length === 0) return [];
     if (!dateStr) return habits;
@@ -61,11 +77,7 @@ export function getScheduledGoalsForDate(dateStr: string, habits: Habit[], dayMa
     const defaultTemplateId = templates && templates[0]?.id;
     const templateId = (dayMapping && dayName && dayMapping[dayName]) || defaultTemplateId;
 
-    return habits.filter((h: any) => {
-        if (h.templateId === 'all') return true;
-        if (h.templateId) return templateId ? h.templateId === templateId : true;
-        return !templateId || templateId === defaultTemplateId;
-    });
+    return habits.filter((h: any) => habitMatchesTemplate(h, templateId, defaultTemplateId));
 }
 
 export function getAllGoalsForMention(routineGoals: RoutineGoal[] | null | undefined, habits: Habit[] | null | undefined, lifeGoals: LifeGoal[] | null | undefined, mentionQuery: string | null | undefined, moneyGoals?: MoneyGoal[] | null | undefined, tasks?: QuickTask[] | null | undefined): {
