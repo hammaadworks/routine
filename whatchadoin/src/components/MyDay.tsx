@@ -506,7 +506,7 @@ export interface MyDayProps {
     dayMapping: Record<string, string>;
     setDayMapping: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     updateActiveRoutine?: (updates: Partial<{
-        templates: Template[], activeTemplateId: string, dayMapping: Record<string, string>
+        templates: Template[], activeTemplateId: string, dayMapping: Record<string, string>, habits: Habit[]
     }>) => void;
     habits: Habit[];
     routineGoals?: any[];
@@ -711,6 +711,27 @@ export default function MyDay({
                 });
                 if (mappingChanged) {
                     updates.dayMapping = updatedMapping;
+                }
+
+                // Clean up habits pointing to the deleted template
+                if (habits && habits.length > 0) {
+                    const updatedHabits = habits.map(h => {
+                        const curTIds = Array.isArray(h.templateIds) && h.templateIds.length > 0
+                            ? h.templateIds
+                            : (h.templateId ? [h.templateId] : ['all']);
+
+                        if (curTIds.includes(activeTemplateId)) {
+                            const filteredTIds = curTIds.filter(id => id !== activeTemplateId);
+                            const nextTIds = filteredTIds.length > 0 ? filteredTIds : ['all'];
+                            return {
+                                ...h,
+                                templateIds: nextTIds,
+                                templateId: nextTIds[0] || 'all'
+                            };
+                        }
+                        return h;
+                    });
+                    updates.habits = updatedHabits;
                 }
 
                 if (updateActiveRoutine) {

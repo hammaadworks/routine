@@ -14,6 +14,7 @@ import {
     Hash
 } from 'lucide-react';
 import type { CounterItem, CounterCadence } from '../types/counter';
+import BaseModal from './BaseModal';
 import SearchSortBar from './SearchSortBar';
 import OrderControls from './OrderControls';
 import { moveItemRelativeTo } from '../hooks/useDragReorder';
@@ -60,6 +61,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         color: string;
         notes: string;
         isNegative: boolean;
+        backlog: number;
     }>({
         name: '',
         cadence: 'daily',
@@ -69,7 +71,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         quickSteps: '1, 5, 10, 25',
         color: '#00F5D4',
         notes: '',
-        isNegative: false
+        isNegative: false,
+        backlog: 0
     });
 
     // Modal state for changing Target with scope prompt
@@ -78,6 +81,13 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         prevTarget: number;
         newTarget: number;
         scope: 'from_today' | 'all';
+    } | null>(null);
+
+    // Modal state for directly editing/adjusting Backlog
+    const [backlogEditModal, setBacklogEditModal] = useState<{
+        counter: CounterItem;
+        currentBacklog: number;
+        newBacklog: number;
     } | null>(null);
 
     // Log with Reason ("When & Why") modal
@@ -197,7 +207,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             quickSteps: '1, 5, 10, 25',
             color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] || '#00F5D4',
             notes: '',
-            isNegative: false
+            isNegative: false,
+            backlog: 0
         });
         setShowCounterModal(true);
     };
@@ -213,7 +224,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             quickSteps: (counter.quickSteps || [1, 5, 10]).join(', '),
             color: counter.color || '#00F5D4',
             notes: counter.notes || '',
-            isNegative: !!counter.isNegative
+            isNegative: !!counter.isNegative,
+            backlog: counter.backlog || 0
         });
         setShowCounterModal(true);
     };
@@ -242,7 +254,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                     quickSteps: parsedQuickSteps.length > 0 ? parsedQuickSteps : [1, 5, 10],
                     color: counterForm.color,
                     notes: counterForm.notes.trim() || undefined,
-                    isNegative: counterForm.isNegative
+                    isNegative: counterForm.isNegative,
+                    backlog: Number(counterForm.backlog) || 0
                 };
                 setShowCounterModal(false);
                 setTargetChangeModal({
@@ -266,7 +279,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                         quickSteps: parsedQuickSteps.length > 0 ? parsedQuickSteps : [1, 5, 10],
                         color: counterForm.color,
                         notes: counterForm.notes.trim() || undefined,
-                        isNegative: counterForm.isNegative
+                        isNegative: counterForm.isNegative,
+                        backlog: Number(counterForm.backlog) || 0
                     };
                 }
                 return c;
@@ -289,7 +303,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                 isNegative: counterForm.isNegative,
                 createdAt: Date.now(),
                 startDate: todayStr,
-                backlog: 0,
+                backlog: Number(counterForm.backlog) || 0,
                 todayCount: 0,
                 lastActiveDate: todayStr,
                 pastDaysCount: 0,
@@ -333,6 +347,41 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
         setCounters(updated);
         setTargetChangeModal(null);
+    };
+
+    // Open Backlog Edit Modal directly from the card
+    const handleOpenEditBacklog = (counter: CounterItem) => {
+        const stats = calculateCounterStats(counter, selectedDate);
+        setBacklogEditModal({
+            counter,
+            currentBacklog: stats.backlog,
+            newBacklog: stats.backlog
+        });
+    };
+
+    // Save Backlog Edit: adjusts stored counter.backlog so live backlog matches user's desired value
+    const handleSaveBacklogEdit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!backlogEditModal) return;
+        const { counter, newBacklog } = backlogEditModal;
+        const stats = calculateCounterStats(counter, selectedDate);
+        const difference = Number(newBacklog) - stats.backlog;
+        const currentStored = counter.backlog || 0;
+        const adjustedStored = currentStored + difference;
+
+        const updated = counters.map(c => {
+            if (c.id === counter.id) {
+                return {
+                    ...c,
+                    backlog: adjustedStored
+                };
+            }
+            return c;
+        });
+
+        setCounters(updated);
+        saveCounters(updated);
+        setBacklogEditModal(null);
     };
 
     // Derive filtered and sorted counters matching Goals / Habits design
@@ -748,8 +797,27 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
                                         {/* Column 2: Backlog */}
                                         <div>
-                                            <div style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: '600', marginBottom: '3px' }}>
-                                                Backlog
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                                <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: '600' }}>
+                                                    Backlog
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenEditBacklog(counter)}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: 'var(--accent)',
+                                                        cursor: 'pointer',
+                                                        padding: 0,
+                                                        fontSize: '10px',
+                                                        fontWeight: '600',
+                                                        textDecoration: 'underline'
+                                                    }}
+                                                    title="Edit or adjust backlog"
+                                                >
+                                                    Edit
+                                                </button>
                                             </div>
                                             <div style={{
                                                 fontWeight: '800',
@@ -838,12 +906,12 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         </button>
                                     </div>
 
-                                    {/* Bottom Links: History and Change Target */}
+                                    {/* Bottom Links: History */}
                                     <div style={{
                                         display: 'flex',
-                                        justifyContent: 'space-between',
+                                        justifyContent: 'flex-start',
                                         alignItems: 'center',
-                                        paddingTop: '4px'
+                                        paddingTop: '2px'
                                     }}>
                                         <button
                                             type="button"
@@ -864,23 +932,6 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                             <span>
                                                 {stats.events.length} logs today {isExpanded ? '▲' : '▼'}
                                             </span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleOpenChangeTarget(counter)}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                color: 'var(--text-secondary)',
-                                                cursor: 'pointer',
-                                                padding: 0,
-                                                fontSize: '11px',
-                                                textDecoration: 'underline'
-                                            }}
-                                            title="Quick change target with scope"
-                                        >
-                                            Change Target
                                         </button>
                                     </div>
 
@@ -945,313 +996,325 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             </div>
 
             {/* Modal 1: Add / Edit Counter Definition */}
-            {showCounterModal && (
-                <div className="modal-overlay" onClick={() => setShowCounterModal(false)} style={{ zIndex: 1000 }}>
-                    <div
-                        className="modal-container"
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                            maxWidth: '460px',
-                            width: '90%',
-                            background: 'var(--panel-bg)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--panel-border)',
-                            padding: '22px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#fff' }}>
-                                {editingCounter ? 'Edit Counter' : 'New Counter'}
-                            </h2>
-                            <button className="icon-btn" onClick={() => setShowCounterModal(false)}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveCounterForm} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            <div>
-                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                    Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={counterForm.name}
-                                    onChange={e => setCounterForm(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="e.g. Pushups, SubhanAllah, Instagram Doomscroll"
-                                    required
-                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <div>
-                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                        Cadence
-                                    </label>
-                                    <select
-                                        value={counterForm.cadence}
-                                        onChange={e => setCounterForm(prev => ({ ...prev, cadence: e.target.value as CounterCadence }))}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                    >
-                                        <option value="daily">Daily Target</option>
-                                        <option value="weekly">Weekly Target (Starts Sun)</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                        Target Count
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={counterForm.targetCount}
-                                        onChange={e => setCounterForm(prev => ({ ...prev, targetCount: Number(e.target.value) || 0 }))}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <div>
-                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                        Unit Label
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={counterForm.unit}
-                                        onChange={e => setCounterForm(prev => ({ ...prev, unit: e.target.value }))}
-                                        placeholder="reps, zikr, glasses, times"
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                        Default Step
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={counterForm.step}
-                                        onChange={e => setCounterForm(prev => ({ ...prev, step: Number(e.target.value) || 1 }))}
-                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                    Quick Step Buttons (comma separated)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={counterForm.quickSteps}
-                                    onChange={e => setCounterForm(prev => ({ ...prev, quickSteps: e.target.value }))}
-                                    placeholder="1, 5, 10, 25, 33"
-                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                                    Accent Color
-                                </label>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {COLOR_PALETTE.map(c => (
-                                        <button
-                                            key={c}
-                                            type="button"
-                                            onClick={() => setCounterForm(prev => ({ ...prev, color: c }))}
-                                            style={{
-                                                width: '28px',
-                                                height: '28px',
-                                                borderRadius: '50%',
-                                                background: c,
-                                                border: counterForm.color === c ? '3px solid #fff' : '2px solid transparent',
-                                                cursor: 'pointer'
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                    Notes / Intention (optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={counterForm.notes}
-                                    onChange={e => setCounterForm(prev => ({ ...prev, notes: e.target.value }))}
-                                    placeholder="e.g. Set of 25 morning, noon, and night"
-                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
-                                />
-                            </div>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#fff' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={counterForm.isNegative}
-                                    onChange={e => setCounterForm(prev => ({ ...prev, isNegative: e.target.checked }))}
-                                />
-                                <span>Track as Vice/Distraction (e.g. doomscrolling, smoking)</span>
-                            </label>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" className="secondary" onClick={() => setShowCounterModal(false)}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
-                                    {editingCounter ? 'Update Counter' : 'Create Counter'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal 2: Target Scope Change Prompt (1. Show prev target, 2. Accept new target, 3. Ask whether to set from today or change for all) */}
-            {targetChangeModal && (
-                <div className="modal-overlay" onClick={() => setTargetChangeModal(null)} style={{ zIndex: 1100 }}>
-                    <div
-                        className="modal-container"
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                            maxWidth: '440px',
-                            width: '90%',
-                            background: 'var(--panel-bg)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--panel-border)',
-                            padding: '22px'
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#fff' }}>
-                                Change Target for "{targetChangeModal.counter.name}"
-                            </h3>
-                            <button className="icon-btn" onClick={() => setTargetChangeModal(null)}>
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        {/* 1. Show Previous Target */}
-                        <div style={{
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            borderRadius: '10px',
-                            padding: '12px 14px',
-                            border: '1px solid var(--panel-border)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '16px'
-                        }}>
-                            <div>
-                                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>
-                                    Previous Target
-                                </span>
-                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                    Active for {formatDisplayDate(selectedDate)}
-                                </div>
-                            </div>
-                            <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>
-                                {targetChangeModal.prevTarget} <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>{targetChangeModal.counter.unit || 'reps'}</span>
-                            </div>
-                        </div>
-
-                        {/* 2. Accept New Target */}
-                        <div style={{ marginBottom: '18px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                                New Target ({targetChangeModal.counter.unit || 'reps'}) *
+            <BaseModal
+                isOpen={showCounterModal}
+                onClose={() => setShowCounterModal(false)}
+                maxWidth="460px"
+                bodyClassName="modal-body-fixed-footer"
+                title={editingCounter ? 'Edit Counter' : 'New Counter'}
+            >
+                <form onSubmit={handleSaveCounterForm} className="modal-form-layout">
+                    <div className="modal-form-content">
+                        <div>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                Name *
                             </label>
                             <input
-                                type="number"
-                                min="0"
-                                value={targetChangeModal.newTarget}
-                                onChange={e => setTargetChangeModal(prev => prev ? { ...prev, newTarget: Number(e.target.value) || 0 } : null)}
-                                autoFocus
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 14px',
-                                    borderRadius: '8px',
-                                    fontSize: '18px',
-                                    fontWeight: '800',
-                                    background: 'rgba(0, 0, 0, 0.3)',
-                                    border: '1px solid var(--panel-border)',
-                                    color: 'var(--accent)'
-                                }}
+                                type="text"
+                                value={counterForm.name}
+                                onChange={e => setCounterForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="e.g. Pushups, SubhanAllah, Instagram Doomscroll"
+                                required
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
                             />
                         </div>
 
-                        {/* 3. Ask whether to set from today or change for all */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                                Target Application Scope
-                            </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {/* Option 1: DEFAULT - Set from today */}
-                                <label style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '10px',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    background: targetChangeModal.scope === 'from_today' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                                    border: `1px solid ${targetChangeModal.scope === 'from_today' ? 'var(--accent)' : 'var(--panel-border)'}`,
-                                    cursor: 'pointer'
-                                }}>
-                                    <input
-                                        type="radio"
-                                        name="targetScope"
-                                        checked={targetChangeModal.scope === 'from_today'}
-                                        onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'from_today' } : null)}
-                                        style={{ marginTop: '3px' }}
-                                    />
-                                    <div>
-                                        <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
-                                            Set this target from today (Default) ⭐
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
-                                            Preserves previous target ({targetChangeModal.prevTarget}) for historical dates; applies {targetChangeModal.newTarget} from {formatDisplayDate(selectedDate)} onwards.
-                                        </div>
-                                    </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                    Cadence
                                 </label>
+                                <select
+                                    value={counterForm.cadence}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, cadence: e.target.value as CounterCadence }))}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                >
+                                    <option value="daily">Daily Target</option>
+                                    <option value="weekly">Weekly Target (Starts Sun)</option>
+                                </select>
+                            </div>
 
-                                {/* Option 2: Change for all */}
-                                <label style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '10px',
-                                    padding: '12px',
-                                    borderRadius: '10px',
-                                    background: targetChangeModal.scope === 'all' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                                    border: `1px solid ${targetChangeModal.scope === 'all' ? 'var(--accent)' : 'var(--panel-border)'}`,
-                                    cursor: 'pointer'
-                                }}>
-                                    <input
-                                        type="radio"
-                                        name="targetScope"
-                                        checked={targetChangeModal.scope === 'all'}
-                                        onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'all' } : null)}
-                                        style={{ marginTop: '3px' }}
-                                    />
-                                    <div>
-                                        <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
-                                            Change for all dates
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
-                                            Retroactively updates target to {targetChangeModal.newTarget} across all past, present, and future dates.
-                                        </div>
-                                    </div>
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                    Target Count
                                 </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={counterForm.targetCount}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, targetCount: Number(e.target.value) || 0 }))}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                />
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button className="secondary" onClick={() => setTargetChangeModal(null)}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                    Unit Label
+                                </label>
+                                <input
+                                    type="text"
+                                    value={counterForm.unit}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, unit: e.target.value }))}
+                                    placeholder="reps, zikr, glasses, times"
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                    Default Step
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={counterForm.step}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, step: Number(e.target.value) || 1 }))}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                Quick Step Buttons (comma separated)
+                            </label>
+                            <input
+                                type="text"
+                                value={counterForm.quickSteps}
+                                onChange={e => setCounterForm(prev => ({ ...prev, quickSteps: e.target.value }))}
+                                placeholder="1, 5, 10, 25, 33"
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                            />
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                                Accent Color
+                            </label>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {COLOR_PALETTE.map(c => (
+                                    <button
+                                        key={c}
+                                        type="button"
+                                        onClick={() => setCounterForm(prev => ({ ...prev, color: c }))}
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            borderRadius: '50%',
+                                            background: c,
+                                            border: counterForm.color === c ? '3px solid #fff' : '2px solid transparent',
+                                            cursor: 'pointer'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                                Notes / Intention (optional)
+                            </label>
+                            <input
+                                type="text"
+                                value={counterForm.notes}
+                                onChange={e => setCounterForm(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="e.g. Set of 25 morning, noon, and night"
+                                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                            />
+                        </div>
+
+                        {editingCounter && (
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                padding: '12px',
+                                borderRadius: '10px',
+                                border: '1px solid var(--panel-border)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                        Accumulated Backlog ({counterForm.unit || 'reps'})
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCounterForm(prev => ({ ...prev, backlog: 0 }))}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--accent)',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            fontWeight: '600',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        Reset to 0
+                                    </button>
+                                </div>
+                                <input
+                                    type="number"
+                                    value={counterForm.backlog}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, backlog: Number(e.target.value) || 0 }))}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                />
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                                    Cumulative backlog accumulated before today. Adjust this to account for previously completed counts you forgot to log.
+                                </div>
+                            </div>
+                        )}
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#fff' }}>
+                            <input
+                                type="checkbox"
+                                checked={counterForm.isNegative}
+                                onChange={e => setCounterForm(prev => ({ ...prev, isNegative: e.target.checked }))}
+                            />
+                            <span>Track as Vice/Distraction (e.g. doomscrolling, smoking)</span>
+                        </label>
+                    </div>
+
+                    <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
+                        <button type="button" className="secondary" onClick={() => setShowCounterModal(false)}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
+                            {editingCounter ? 'Update Counter' : 'Create Counter'}
+                        </button>
+                    </div>
+                </form>
+            </BaseModal>
+
+            {/* Modal 2: Target Scope Change Prompt */}
+            <BaseModal
+                isOpen={!!targetChangeModal}
+                onClose={() => setTargetChangeModal(null)}
+                maxWidth="440px"
+                bodyClassName="modal-body-fixed-footer"
+                title={targetChangeModal ? `Change Target for "${targetChangeModal.counter.name}"` : ''}
+            >
+                {targetChangeModal && (
+                    <div className="modal-form-layout">
+                        <div className="modal-form-content">
+                            {/* 1. Show Previous Target */}
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                borderRadius: '10px',
+                                padding: '12px 14px',
+                                border: '1px solid var(--panel-border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>
+                                        Previous Target
+                                    </span>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                        Active for {formatDisplayDate(selectedDate)}
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>
+                                    {targetChangeModal.prevTarget} <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>{targetChangeModal.counter.unit || 'reps'}</span>
+                                </div>
+                            </div>
+
+                            {/* 2. Accept New Target */}
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                                    New Target ({targetChangeModal.counter.unit || 'reps'}) *
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={targetChangeModal.newTarget}
+                                    onChange={e => setTargetChangeModal(prev => prev ? { ...prev, newTarget: Number(e.target.value) || 0 } : null)}
+                                    autoFocus
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '18px',
+                                        fontWeight: '800',
+                                        background: 'rgba(0, 0, 0, 0.3)',
+                                        border: '1px solid var(--panel-border)',
+                                        color: 'var(--accent)'
+                                    }}
+                                />
+                            </div>
+
+                            {/* 3. Ask whether to set from today or change for all */}
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+                                    Target Application Scope
+                                </label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                    {/* Option 1: DEFAULT - Set from today */}
+                                    <label style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        background: targetChangeModal.scope === 'from_today' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                        border: `1px solid ${targetChangeModal.scope === 'from_today' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                        cursor: 'pointer'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="targetScope"
+                                            checked={targetChangeModal.scope === 'from_today'}
+                                            onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'from_today' } : null)}
+                                            style={{ marginTop: '3px' }}
+                                        />
+                                        <div>
+                                            <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
+                                                Set this target from today (Default) ⭐
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
+                                                Preserves previous target ({targetChangeModal.prevTarget}) for historical dates; applies {targetChangeModal.newTarget} from {formatDisplayDate(selectedDate)} onwards.
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    {/* Option 2: Change for all */}
+                                    <label style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        background: targetChangeModal.scope === 'all' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                        border: `1px solid ${targetChangeModal.scope === 'all' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                        cursor: 'pointer'
+                                    }}>
+                                        <input
+                                            type="radio"
+                                            name="targetScope"
+                                            checked={targetChangeModal.scope === 'all'}
+                                            onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'all' } : null)}
+                                            style={{ marginTop: '3px' }}
+                                        />
+                                        <div>
+                                            <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
+                                                Change for all dates
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
+                                                Retroactively updates target to {targetChangeModal.newTarget} across all past, present, and future dates.
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button type="button" className="secondary" onClick={() => setTargetChangeModal(null)}>
                                 Cancel
                             </button>
                             <button
+                                type="button"
                                 className="primary"
                                 onClick={handleConfirmTargetChange}
                                 style={{ padding: '8px 20px', borderRadius: '8px', fontWeight: '700' }}
@@ -1260,29 +1323,145 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </BaseModal>
 
-            {/* Modal 3: Log with Reason (When & Why) */}
-            {reasonModal && (
-                <div className="modal-overlay" onClick={() => setReasonModal(null)} style={{ zIndex: 1100 }}>
-                    <div
-                        className="modal-container"
-                        onClick={e => e.stopPropagation()}
-                        style={{
-                            maxWidth: '380px',
-                            width: '90%',
-                            background: 'var(--panel-bg)',
-                            borderRadius: '16px',
-                            border: '1px solid var(--panel-border)',
-                            padding: '20px'
-                        }}
-                    >
-                        <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: '#fff' }}>
-                            Log {reasonModal.counter.name}
-                        </h3>
+            {/* Modal 3: Direct Backlog Edit Modal */}
+            <BaseModal
+                isOpen={!!backlogEditModal}
+                onClose={() => setBacklogEditModal(null)}
+                maxWidth="440px"
+                bodyClassName="modal-body-fixed-footer"
+                title={backlogEditModal ? `Edit Backlog for "${backlogEditModal.counter.name}"` : ''}
+            >
+                {backlogEditModal && (
+                    <form onSubmit={handleSaveBacklogEdit} className="modal-form-layout">
+                        <div className="modal-form-content">
+                            {/* Current Live Backlog Display */}
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                borderRadius: '10px',
+                                padding: '12px 14px',
+                                border: '1px solid var(--panel-border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <span style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '0.5px' }}>
+                                        Current Live Backlog
+                                    </span>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                        {backlogEditModal.currentBacklog > 0 ? 'Behind target' : (backlogEditModal.currentBacklog === 0 ? 'On track' : 'Ahead of target')}
+                                    </div>
+                                </div>
+                                <div style={{
+                                    fontSize: '18px',
+                                    fontWeight: '800',
+                                    color: backlogEditModal.currentBacklog > 0 ? '#FF9F1C' : (backlogEditModal.currentBacklog === 0 ? '#10B981' : '#00F5D4')
+                                }}>
+                                    {backlogEditModal.currentBacklog > 0 ? `+${backlogEditModal.currentBacklog}` : backlogEditModal.currentBacklog} <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-secondary)' }}>{backlogEditModal.counter.unit || 'reps'}</span>
+                                </div>
+                            </div>
 
-                        <form onSubmit={handleSaveReasonDelta} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                        New Backlog ({backlogEditModal.counter.unit || 'reps'}) *
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBacklogEditModal(prev => prev ? { ...prev, newBacklog: 0 } : null)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--accent)',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            fontWeight: '600',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        Set to 0 (Clear Backlog)
+                                    </button>
+                                </div>
+                                <input
+                                    type="number"
+                                    value={backlogEditModal.newBacklog}
+                                    onChange={e => setBacklogEditModal(prev => prev ? { ...prev, newBacklog: Number(e.target.value) || 0 } : null)}
+                                    autoFocus
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '18px',
+                                        fontWeight: '800',
+                                        background: 'rgba(0, 0, 0, 0.3)',
+                                        border: '1px solid var(--panel-border)',
+                                        color: '#fff'
+                                    }}
+                                />
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: 1.4 }}>
+                                    Tip: If you completed reps in the past that you forgot to log, decrease this number (e.g. by subtracting the done amount) or set it to 0.
+                                </div>
+                            </div>
+
+                            {/* Quick delta adjustment pills */}
+                            <div>
+                                <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                                    Quick Adjust (e.g. forgot to log reps):
+                                </label>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    {(backlogEditModal.counter.quickSteps || [1, 5, 10, 25]).map(step => (
+                                        <button
+                                            key={`sub-${step}`}
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => setBacklogEditModal(prev => prev ? { ...prev, newBacklog: prev.newBacklog - step } : null)}
+                                            style={{
+                                                padding: '6px 10px',
+                                                borderRadius: '6px',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                background: 'rgba(255, 255, 255, 0.05)'
+                                            }}
+                                            title={`Logged ${step} previously`}
+                                        >
+                                            -{step} {backlogEditModal.counter.unit || 'reps'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button type="button" className="secondary" onClick={() => setBacklogEditModal(null)}>
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                className="primary"
+                                style={{ padding: '8px 20px', borderRadius: '8px', fontWeight: '700' }}
+                            >
+                                Save Backlog
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </BaseModal>
+
+            {/* Modal 4: Log with Reason (When & Why) */}
+            <BaseModal
+                isOpen={!!reasonModal}
+                onClose={() => setReasonModal(null)}
+                maxWidth="380px"
+                bodyClassName="modal-body-fixed-footer"
+                title={reasonModal ? `Log ${reasonModal.counter.name}` : ''}
+            >
+                {reasonModal && (
+                    <form onSubmit={handleSaveReasonDelta} className="modal-form-layout">
+                        <div className="modal-form-content">
                             <div>
                                 <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
                                     Amount to add
@@ -1331,19 +1510,19 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     </button>
                                 ))}
                             </div>
+                        </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" className="secondary" onClick={() => setReasonModal(null)}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
-                                    Record Entry
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                        <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button type="button" className="secondary" onClick={() => setReasonModal(null)}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
+                                Record Entry
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </BaseModal>
 
             {/* Modal 4: Fullscreen Focus Clicker */}
             {focusClickerCounter && (() => {

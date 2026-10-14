@@ -151,6 +151,77 @@ const parseGitHubError = async (res: Response): Promise<{ message: string; type:
     };
 };
 
+/**
+ * Recursively canonicalizes any JSON-serializable value by sorting object keys,
+ * ensuring deterministic byte-for-byte serialization.
+ */
+export const canonicalizeJson = (value: any): any => {
+    if (value === null || typeof value !== 'object') {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        return value.map(canonicalizeJson);
+    }
+    const sortedObj: Record<string, any> = {};
+    Object.keys(value).sort().forEach(key => {
+        sortedObj[key] = canonicalizeJson(value[key]);
+    });
+    return sortedObj;
+};
+
+/**
+ * Parses and canonicalizes a data payload or key-value dictionary,
+ * parsing inner JSON string values where applicable for true semantic comparison.
+ */
+export const normalizeSyncPayload = (raw: Record<string, any> | string): Record<string, any> => {
+    let parsed: Record<string, any>;
+    if (typeof raw === 'string') {
+        try {
+            parsed = JSON.parse(raw);
+        } catch {
+            return {};
+        }
+    } else {
+        parsed = raw;
+    }
+
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    const normalized: Record<string, any> = {};
+    Object.keys(parsed).sort().forEach(k => {
+        const val = parsed[k];
+        if (typeof val === 'string') {
+            try {
+                // If the value itself is serialized JSON (e.g., routines or counters array), parse it
+                const innerParsed = JSON.parse(val);
+                normalized[k] = canonicalizeJson(innerParsed);
+            } catch {
+                // Plain string (e.g. activeRoutineId)
+                normalized[k] = val;
+            }
+        } else {
+            normalized[k] = canonicalizeJson(val);
+        }
+    });
+    return normalized;
+};
+
+/**
+ * Checks if two sync payloads are semantically identical, ignoring formatting, key ordering,
+ * or raw vs parsed JSON differences.
+ */
+export const isDataSemanticallyEquivalent = (aStr: string, bStr: string): boolean => {
+    if (aStr === bStr) return true;
+    if (!aStr || !bStr) return false;
+    try {
+        const normA = JSON.stringify(normalizeSyncPayload(aStr));
+        const normB = JSON.stringify(normalizeSyncPayload(bStr));
+        return normA === normB;
+    } catch {
+        return false;
+    }
+};
+
 export const exportLocalData = () => {
     sanitizeAllStorage();
     const data: Record<string, string | null> = {};
@@ -172,6 +243,9 @@ export const importLocalData = (jsonStr: string) => {
     try {
         const data = JSON.parse(jsonStr);
 
+        // Track which sections actually changed to avoid spurious re-renders
+        const changedKeys = new Set<string>();
+
         // Remove local keys that are not present in remote data (strictly whatchadoin_ data keys)
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
@@ -180,26 +254,68 @@ export const importLocalData = (jsonStr: string) => {
             if (key.startsWith('whatchadoin_') && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename' && key !== 'whatchadoin_force_sync_push' && key !== 'whatchadoin_last_synced_at' && key !== 'whatchadoin_last_sync_error') {
                 if (!data.hasOwnProperty(key)) {
                     keysToRemove.push(key);
+                    changedKeys.add(key);
                 }
             }
         }
         keysToRemove.forEach(k => localStorage.removeItem(k));
 
         for (const key in data) {
-            if (typeof data[key] === 'string') {
-                localStorage.setItem(key, data[key]);
-            } else {
-                localStorage.setItem(key, JSON.stringify(data[key]));
+            const currentVal = localStorage.getItem(key);
+            const nextVal = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+            if (currentVal !== nextVal) {
+                // Check if semantic difference exists
+                let isDiff = true;
+                if (currentVal && nextVal) {
+                    try {
+                        const parsedCurr = JSON.stringify(canonicalizeJson(JSON.parse(currentVal)));
+                        const parsedNext = JSON.stringify(canonicalizeJson(JSON.parse(nextVal)));
+                        if (parsedCurr === parsedNext) isDiff = false;
+                    } catch {
+                        isDiff = currentVal !== nextVal;
+                    }
+                }
+                if (isDiff) {
+                    localStorage.setItem(key, nextVal);
+                    changedKeys.add(key);
+                }
             }
         }
+
         sanitizeAllStorage();
-        window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_counters_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
-        window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+
+        // If nothing actually changed, don't blast event storms
+        if (changedKeys.size === 0) {
+            return true;
+        }
+
+        if (changedKeys.has('whatchadoin_milestones')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated'));
+        }
+        if (changedKeys.has('whatchadoin_counters')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_counters_updated'));
+        }
+        if (changedKeys.has('whatchadoin_quick_tasks')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+        }
+        if (changedKeys.has('whatchadoin_coins_entries') || changedKeys.has('whatchadoin_coins_targets')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+        }
+        if (changedKeys.has('whatchadoin_currency')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated'));
+        }
+        if (changedKeys.has('whatchadoin_quotes')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
+        }
+        for (const k of changedKeys) {
+            if (k.startsWith('whatchadoin_plans_') || k === 'whatchadoin_life_plans') {
+                window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+                break;
+            }
+        }
+        if (changedKeys.has('whatchadoin_dispatch')) {
+            window.dispatchEvent(new CustomEvent('whatchadoin_dispatch_updated'));
+        }
         window.dispatchEvent(new CustomEvent('whatchadoin_cloud_sync_applied'));
         return true;
     } catch (e) {
@@ -260,7 +376,7 @@ export const pushToGist = async (force = false, targetToken = gistToken, targetI
     }
 
     const currentStr = exportLocalData();
-    if (!force && currentStr === lastSyncedStr) {
+    if (!force && (currentStr === lastSyncedStr || isDataSemanticallyEquivalent(currentStr, lastSyncedStr))) {
         logSync('info', 'Push skipped: Local state is identical to last sync.');
         return {success: true};
     }
@@ -343,7 +459,7 @@ export const triggerManualSync = async (forcePush = false): Promise<{
     const localData = exportLocalData();
 
     if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
-        if (remoteData !== localData) {
+        if (!isDataSemanticallyEquivalent(remoteData, localData)) {
             try {
                 JSON.parse(remoteData);
                 logSync('info', 'Remote data differs from local. Updating local state from Gist...');
@@ -351,7 +467,6 @@ export const triggerManualSync = async (forcePush = false): Promise<{
                 lastSyncedStr = remoteData;
                 const nowIso = new Date().toISOString();
                 updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null});
-                window.location.reload();
                 return {success: true};
             } catch {
                 const err = `Remote Gist file "${gistFilename}" contains invalid JSON format.`;
@@ -477,7 +592,7 @@ export const initSync = (onRemoteUpdate?: () => void) => {
 
         if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
             const localData = exportLocalData();
-            if (remoteData !== localData) {
+            if (!isDataSemanticallyEquivalent(remoteData, localData)) {
                 const success = importLocalData(remoteData);
                 if (success) {
                     lastSyncedStr = remoteData;

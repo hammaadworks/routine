@@ -664,7 +664,7 @@ export default function SettingsModal({
                                 <Import size={16}/> Import Data Backup
                             </h4>
                             <p style={{fontSize: '12px', color: 'var(--text-secondary)', margin: 0}}>
-                                Importing merges backup data over your existing routines, plans, goals, counters, and tasks. Existing items are preserved and new items are added.
+                                Importing merges backup data over your existing routines, plans, goals, counters, tasks, and content dispatch quotas. Existing items are preserved and new items are added.
                             </p>
                             <button
                                 onClick={() => fileInputRef.current?.click()}

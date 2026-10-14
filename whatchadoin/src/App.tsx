@@ -86,6 +86,8 @@ const CountersPane = safeLazy(() => import('./components/CountersPane'));
 const WalletModal = safeLazy(() => import('./components/WalletModal'));
 const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
 const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
+const DispatchModal = safeLazy(() => import('./components/dispatch/DispatchModal'));
+import {mergeDispatchData} from './utils/dispatchStore';
 
 export default function App() {
     const [routines, setRoutines] = useState<any[]>(loadRoutines);
@@ -203,6 +205,7 @@ export default function App() {
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
     const [isMobileCalendarOpen, setIsMobileCalendarOpen] = useState<boolean>(true);
     const [isMobileHabitsOpen, setIsMobileHabitsOpen] = useState<boolean>(true);
+    const [showDispatchModal, setShowDispatchModal] = useState<boolean>(false);
 
     const formatMobileCalendarDate = (dateStr: string | null) => {
         if (!dateStr) return '';
@@ -546,6 +549,7 @@ export default function App() {
         const quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
         const aiConfig = JSON.parse(localStorage.getItem('whatchadoin_ai_config') || '{}');
         const milestonesData = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
+        const contentDispatch = JSON.parse(localStorage.getItem('whatchadoin_content_dispatch') || 'null');
 
         const backupData = {
             isFullBackup: true,
@@ -564,7 +568,8 @@ export default function App() {
             currency,
             quotes,
             aiConfig,
-            milestones: milestonesData
+            milestones: milestonesData,
+            contentDispatch
         };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -736,12 +741,18 @@ export default function App() {
                         // 8. Counters
                         if (Array.isArray(data.counters)) {
                             const existing = JSON.parse(localStorage.getItem('whatchadoin_counters') || '[]');
-                            const existingIds = new Set(existing.map((c: any) => c.id));
+                            const existingMap = new Map<string, any>(existing.map((c: any) => [c.id, c]));
                             const merged = [...existing];
                             data.counters.forEach((c: any) => {
-                                if (c && c.id && !existingIds.has(c.id)) {
+                                if (!c || !c.id) return;
+                                if (existingMap.has(c.id)) {
+                                    const idx = merged.findIndex((item: any) => item.id === c.id);
+                                    if (idx !== -1) {
+                                        merged[idx] = { ...merged[idx], ...c };
+                                    }
+                                } else {
                                     merged.push(c);
-                                    existingIds.add(c.id);
+                                    existingMap.set(c.id, c);
                                 }
                             });
                             localStorage.setItem('whatchadoin_counters', JSON.stringify(merged));
@@ -781,6 +792,14 @@ export default function App() {
                         if (data.aiConfig) {
                             localStorage.setItem('whatchadoin_ai_config', JSON.stringify(data.aiConfig));
                             setAiConfig(data.aiConfig);
+                        }
+
+                        // 12. Content Dispatch
+                        if (data.contentDispatch && typeof data.contentDispatch === 'object') {
+                            const existing = JSON.parse(localStorage.getItem('whatchadoin_content_dispatch') || 'null');
+                            const merged = mergeDispatchData(existing, data.contentDispatch);
+                            localStorage.setItem('whatchadoin_content_dispatch', JSON.stringify(merged));
+                            window.dispatchEvent(new CustomEvent('whatchadoin_dispatch_updated'));
                         }
 
                         sanitizeAllStorage();
@@ -863,6 +882,7 @@ export default function App() {
                         window.dispatchEvent(new CustomEvent('open-wallet-view'));
                     }, 10);
                 }}
+                onOpenDispatch={() => setShowDispatchModal(true)}
             />
 
             {/* Mobile Tab Bar */}
@@ -1328,6 +1348,13 @@ export default function App() {
                     setAiConfig={setAiConfig}
                     exportAllData={exportAllData}
                     fileInputRef={fileInputRef as any}
+                />
+            </React.Suspense>)}
+
+            {showDispatchModal && (<React.Suspense fallback={null}>
+                <DispatchModal
+                    isOpen={showDispatchModal}
+                    onClose={() => setShowDispatchModal(false)}
                 />
             </React.Suspense>)}
 

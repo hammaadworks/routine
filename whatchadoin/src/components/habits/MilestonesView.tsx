@@ -247,13 +247,6 @@ export default function MilestonesView({
                                             {diffStr}
                                         </span>)}
                                     </div>
-                                    <button
-                                        className="icon-btn"
-                                        onClick={() => openEditMilestone(dateStr, 0, blocks[0] || '')}
-                                        style={{padding: '4px', display: 'flex', alignItems: 'center'}}
-                                    >
-                                        <Pencil size={14} color="var(--text-secondary)"/>
-                                    </button>
                                 </div>
 
                                 {blocks.map((block: string, idx: number) => {
@@ -262,15 +255,34 @@ export default function MilestonesView({
                                     return (<div
                                         key={idx}
                                         style={{
-                                            padding: '2px 0', marginBottom: '8px'
+                                            padding: '4px 0',
+                                            marginBottom: '8px',
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'space-between',
+                                            gap: '12px'
                                         }}
                                     >
-                                        <div className="markdown-preview">
+                                        <div className="markdown-preview" style={{flex: 1}}>
                                             <ReactMarkdown
                                                 components={customMarkdownComponents as any}>
                                                 {block === '' ? '\u00A0' : block.trim()}
                                             </ReactMarkdown>
                                         </div>
+                                        <button
+                                            className="icon-btn"
+                                            onClick={() => openEditMilestone(dateStr, idx, block)}
+                                            style={{
+                                                padding: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                flexShrink: 0,
+                                                opacity: 0.7
+                                            }}
+                                            title="Edit milestone"
+                                        >
+                                            <Pencil size={13} color="var(--text-secondary)"/>
+                                        </button>
                                     </div>);
                                 })}
                             </div>);

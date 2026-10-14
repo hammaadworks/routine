@@ -49,7 +49,8 @@ export function parseDuration(val: string | number | null | undefined): number {
 export function habitMatchesTemplate(
     habit: { templateId?: string; templateIds?: string[] } | null | undefined,
     currentTemplateId: string | null | undefined,
-    defaultTemplateId?: string | null | undefined
+    defaultTemplateId?: string | null | undefined,
+    existingTemplateIds?: string[]
 ): boolean {
     if (!habit) return false;
     const ids: string[] = Array.isArray(habit.templateIds) && habit.templateIds.length > 0
@@ -57,6 +58,13 @@ export function habitMatchesTemplate(
         : (habit.templateId ? [habit.templateId] : []);
 
     if (ids.length === 0 || ids.includes('all')) return true;
+
+    // Defensive check: if none of the habit's templateIds exist among existing templates, fallback to visible (treat as 'all')
+    if (existingTemplateIds && existingTemplateIds.length > 0) {
+        const hasAnyExistingTemplate = ids.some(id => existingTemplateIds.includes(id));
+        if (!hasAnyExistingTemplate) return true;
+    }
+
     if (currentTemplateId) return ids.includes(currentTemplateId);
     if (defaultTemplateId) return ids.includes(defaultTemplateId);
     return true;
@@ -273,6 +281,37 @@ export function sanitizeAllStorage(): void {
             }
         } catch (e) {
             console.error('Failed to sanitize milestones in storage', e);
+        }
+    }
+
+    // 7. Counters (Validate schema, preserve backlog, prevent corrupted/malformed items)
+    const countersRaw = localStorage.getItem('whatchadoin_counters');
+    if (countersRaw) {
+        try {
+            const parsed = JSON.parse(countersRaw);
+            if (Array.isArray(parsed)) {
+                const cleaned = parsed
+                    .filter((c: any) => c && typeof c === 'object' && typeof c.id === 'string' && typeof c.name === 'string')
+                    .map((c: any) => ({
+                        ...c,
+                        name: c.name.trim(),
+                        cadence: c.cadence === 'weekly' ? 'weekly' : 'daily',
+                        targetCount: typeof c.targetCount === 'number' && !isNaN(c.targetCount) ? c.targetCount : 1,
+                        targetHistory: Array.isArray(c.targetHistory) ? c.targetHistory : [],
+                        backlog: typeof c.backlog === 'number' && !isNaN(c.backlog) ? c.backlog : 0,
+                        todayCount: typeof c.todayCount === 'number' && !isNaN(c.todayCount) ? c.todayCount : 0,
+                        lastActiveDate: typeof c.lastActiveDate === 'string' ? c.lastActiveDate : '',
+                        pastDaysCount: typeof c.pastDaysCount === 'number' && !isNaN(c.pastDaysCount) ? c.pastDaysCount : 0,
+                        pastTotalDid: typeof c.pastTotalDid === 'number' && !isNaN(c.pastTotalDid) ? c.pastTotalDid : 0,
+                        todayEvents: Array.isArray(c.todayEvents) ? c.todayEvents : []
+                    }));
+                const newRaw = JSON.stringify(cleaned);
+                if (newRaw !== countersRaw) {
+                    localStorage.setItem('whatchadoin_counters', newRaw);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to sanitize counters in storage', e);
         }
     }
 }

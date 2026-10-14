@@ -32,9 +32,8 @@ polyfill({
 window.addEventListener('touchmove', function () {
 }, {passive: false});
 
-initSync(() => {
-    window.location.reload();
-});
+initSync();
+
 
 const path = window.location.pathname;
 

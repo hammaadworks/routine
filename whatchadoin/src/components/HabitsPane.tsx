@@ -980,9 +980,10 @@ export default function HabitsPane({
     }
 
     const defaultTemplateId = activeTemplateId || (templates && templates[0]?.id);
+    const existingTemplateIds = useMemo(() => (templates || []).map(t => t.id), [templates]);
     const allVisibleHabits = (habits || []).filter(g => (!isPublicView || g.isPublic || (g.name || '').includes('[public]')));
     const templateFilteredHabits = allVisibleHabits.filter(g =>
-        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId)
+        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId, existingTemplateIds)
     );
     let displayedRoutineGoals: any[] = templateFilteredHabits;
 
@@ -1303,7 +1304,7 @@ export default function HabitsPane({
 
                     let allocatedCount = 0;
                     const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]')).filter(g =>
-                        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId)
+                        habitMatchesTemplate(g, currentTemplateId, defaultTemplateId, existingTemplateIds)
                     );
                     if (currentTemplate && currentTemplate.blocks) {
                         allocatedCount = scopedHabits.filter(h => currentTemplate.blocks.some((b: any) => b.name === h.name)).length;

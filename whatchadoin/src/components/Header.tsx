@@ -1,8 +1,10 @@
+import {useState, useEffect} from 'react';
 import type {Dispatch, SetStateAction} from 'react';
-import {Bot, Command, Globe, Lock, Settings, Wallet} from 'lucide-react';
+import {Bot, Command, Globe, Lock, Send, Settings, Wallet} from 'lucide-react';
 import RoutineSelector from './RoutineSelector';
 import {useCurrency} from '../hooks/useCurrency';
 import {useSyncStatus} from '../hooks/useSyncStatus';
+import {loadDispatchData, calculateDailyMetrics, getTodayDateStr} from '../utils/dispatchStore';
 
 interface Routine {
     id?: string;
@@ -25,6 +27,7 @@ interface HeaderProps {
     onWalletClick?: () => void;
     activeCenterTab?: string;
     onCounterClick?: () => void;
+    onOpenDispatch?: () => void;
 }
 
 export default function Header({
@@ -38,10 +41,36 @@ export default function Header({
     isPublicView,
     setIsPublicView,
     activeCenterTab: _activeCenterTab,
-    onCounterClick: _onCounterClick
+    onCounterClick: _onCounterClick,
+    onOpenDispatch
 }: HeaderProps) {
     const {formatCurrency} = useCurrency();
     const syncState = useSyncStatus();
+
+    const [dispatchMetrics, setDispatchMetrics] = useState(() => {
+        return calculateDailyMetrics(loadDispatchData(), getTodayDateStr());
+    });
+
+    useEffect(() => {
+        const updateMetrics = () => {
+            const next = calculateDailyMetrics(loadDispatchData(), getTodayDateStr());
+            setDispatchMetrics(prev => {
+                if (
+                    prev.completed === next.completed &&
+                    prev.total === next.total &&
+                    prev.remaining === next.remaining &&
+                    prev.isAllComplete === next.isAllComplete
+                ) {
+                    return prev;
+                }
+                return next;
+            });
+        };
+        window.addEventListener('whatchadoin_dispatch_updated', updateMetrics);
+        return () => {
+            window.removeEventListener('whatchadoin_dispatch_updated', updateMetrics);
+        };
+    }, []);
 
     const getLogoTooltip = () => {
         if (syncState.status === 'error') {
@@ -64,7 +93,7 @@ export default function Header({
         <header className="header">
             {/* Top row container: On desktop has display: contents so left and right groups sit on far ends; on mobile behaves as row 1 */}
             <div className="header-top-row">
-                {/* 1. FAR LEFT: Logo and wordmark ONLY */}
+                {/* 1. FAR LEFT: Logo and wordmark + Content Dispatch button */}
                 <div className="header-left-group">
                     <h1
                         className="header-logo"
@@ -96,6 +125,19 @@ export default function Header({
                             whatchadoin
                         </span>
                     </h1>
+
+                    {/* Entry Point: Content Dispatch & Daily Quota */}
+                    <button
+                        className="header-dispatch-btn"
+                        onClick={onOpenDispatch}
+                        title={`Content Dispatch: ${dispatchMetrics.completed}/${dispatchMetrics.total} Completed (${dispatchMetrics.remaining} Left Today)`}
+                    >
+                        <Send size={13} className="header-dispatch-icon" />
+                        <span className="header-dispatch-text">Dispatch</span>
+                        <span className={`header-dispatch-pill ${dispatchMetrics.isAllComplete && dispatchMetrics.total > 0 ? 'complete' : ''}`}>
+                            {dispatchMetrics.completed}/{dispatchMetrics.total}
+                        </span>
+                    </button>
                 </div>
 
                 {/* 3. FAR RIGHT: Public toggle and Wallet goal (Settings & AI Agent hidden) */}

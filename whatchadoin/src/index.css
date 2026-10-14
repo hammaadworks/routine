@@ -235,6 +235,51 @@ body {
     white-space: nowrap;
 }
 
+.header-dispatch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.header-dispatch-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--accent);
+}
+
+.header-dispatch-btn .header-dispatch-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.header-dispatch-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--block-bg);
+    color: var(--accent);
+    border: 1px solid rgba(201, 162, 39, 0.3);
+    font-family: var(--font-mono);
+    line-height: 1.3;
+}
+
+.header-dispatch-pill.complete {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10B981;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
 .header-center-wrapper {
     position: absolute;
     left: 50%;
@@ -530,7 +575,8 @@ body {
         flex-shrink: 0 !important;
     }
 
-    .header-btn-text {
+    .header-btn-text,
+    .header-dispatch-text {
         display: none !important;
     }
 

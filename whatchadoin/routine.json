@@ -1,0 +1,3939 @@
+{
+  "isFullBackup": true,
+  "routines": [
+    {
+      "id": "1790339743415",
+      "name": "Vanilla",
+      "desc": "",
+      "start": "",
+      "end": "",
+      "routineGoals": [],
+      "habits": [],
+      "templates": [
+        {
+          "id": "t1",
+          "name": "Vanilla whatchadoin",
+          "blocks": []
+        }
+      ],
+      "activeTemplateId": "t1",
+      "dayMapping": {
+        "Monday": "",
+        "Tuesday": "",
+        "Wednesday": "",
+        "Thursday": "",
+        "Friday": "",
+        "Saturday": "",
+        "Sunday": ""
+      },
+      "timeLogs": {}
+    },
+    {
+      "id": "90985552-2d64-4cc7-84f5-318064a69ad6",
+      "name": "100DREAM",
+      "desc": "",
+      "start": "2026-10-13",
+      "end": "2027-01-31",
+      "routineGoals": [
+        {
+          "id": "sg-1791250108526",
+          "name": "Ramadhaan Umrah 1",
+          "isPublic": false,
+          "color": "#00A1D8",
+          "completed": true,
+          "desc": "- Alhamdulillahi Rabbil Aalameen\nUmrah Mubarak in Ramadhaan Kareem '27\n- Bangalore : Jeddah (Flight)\n- Jeddah : Makkah (Bus)\n- Makkah : Medina (Harmain Trains)\n- Medina : Dubai (Flight)\n- Dubai : Bangalore (Flight)",
+          "cost": 750000,
+          "createdAt": "2026-09-27T08:18:33.851Z",
+          "type": "routine",
+          "completedAt": "2026-10-10T05:22:09.004Z"
+        },
+        {
+          "name": "Repay Amanullah Debt",
+          "color": "#FF595E",
+          "desc": "",
+          "cost": 60000,
+          "isPublic": false,
+          "type": "routine",
+          "id": "sg-1790680453247",
+          "completed": true,
+          "createdAt": "2026-09-29T11:14:13.247Z",
+          "completedAt": "2026-10-10T05:20:41.152Z"
+        },
+        {
+          "name": "50 Fasts",
+          "color": "#FF595E",
+          "desc": "- 50 Fasts in 111 days to gain the pleasure and taqwa of ALLAH SWT\n- 3 fasts/week",
+          "isPublic": false,
+          "type": "routine",
+          "id": "sg-1791294754352",
+          "completed": true,
+          "createdAt": "2026-10-06T13:52:34.352Z",
+          "completedAt": "2026-10-10T05:24:15.157Z"
+        },
+        {
+          "name": "DSA x300",
+          "color": "#FFCA3A",
+          "desc": "Complete DSA concepts by atleast doing 300 problems\n- x3/day\n- create a cruxmap",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790691039685",
+          "completed": true,
+          "createdAt": "2026-09-29T14:10:39.685Z",
+          "completedAt": "2026-10-10T05:27:07.972Z"
+        },
+        {
+          "name": "Master LLD",
+          "color": "#FFCA3A",
+          "desc": "- cruxmap the entire LLD\n- live public documented\n- release LLDone 1-Apr-27",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790691975628",
+          "completed": true,
+          "createdAt": "2026-09-29T14:26:15.628Z",
+          "completedAt": "2026-10-10T05:30:11.209Z"
+        },
+        {
+          "name": "Speed Typing",
+          "color": "#FF9F1C",
+          "desc": "Get comfy with qwerty",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790884274833",
+          "completed": true,
+          "createdAt": "2026-10-01T19:51:14.833Z",
+          "completedAt": "2026-10-10T19:54:06.832Z"
+        },
+        {
+          "name": "10 Books Live",
+          "color": "#FFCA3A",
+          "desc": "1. The Personal MBA\n2. 100M Offers\n3. The Mom Test\n4. Never Split the Difference\n5. ReWork\n6. 100M Leads\n7. The Hard Thing about Hard Things\n8. The Lean Startup\n9. Influence\n10. DDIA\n- Amazon Shareholder Letters",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790693235451",
+          "completed": true,
+          "createdAt": "2026-09-29T14:47:15.451Z",
+          "completedAt": "2026-10-10T19:54:16.563Z"
+        },
+        {
+          "name": "FPV Sim Live",
+          "color": "#FF9F1C",
+          "desc": "Get super comfy with FPV sim on \n- Radiomaster T8L\n- Liftoff\n- flightdivision.com/sim",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790691853302",
+          "completed": true,
+          "createdAt": "2026-09-29T14:24:13.302Z",
+          "completedAt": "2026-10-10T19:56:25.280Z"
+        },
+        {
+          "name": "Lisan App Cohort",
+          "color": "#00FAC8",
+          "desc": "- 6W cohort\n- 12 families \n- Doctors recommendations\n- Grand Cohort Meetup (w.guest speakers)",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790884167753",
+          "completed": false,
+          "createdAt": "2026-10-01T19:49:27.753Z"
+        },
+        {
+          "name": "Wonderla Pins",
+          "color": "#6A4C93",
+          "desc": "Pins for all amusement parks\n- Wonderla\n- Fun world\n- and others",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790884127945",
+          "completed": false,
+          "createdAt": "2026-10-01T19:48:47.945Z"
+        },
+        {
+          "name": "Lalbagh Republic",
+          "color": "#00FAC8",
+          "desc": "",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790884144586",
+          "completed": false,
+          "createdAt": "2026-10-01T19:49:04.586Z"
+        },
+        {
+          "name": "Survive Nate Box",
+          "color": "#FF9F1C",
+          "desc": "Endurance Boxing through the entire video without crashing out\n\n1. R1: https://www.youtube.com/watch?v=kbgkeTTSau8 \n2. R2: https://www.youtube.com/watch?v=yQ0dopb69ns\n3. R3: https://www.youtube.com/watch?v=4Iqux_jcJJk\n4. RX: https://www.youtube.com/watch?v=9eOBnIq07bQ ",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1791524339343",
+          "completed": false,
+          "createdAt": "2026-10-09T05:38:59.343Z"
+        },
+        {
+          "name": "xmfclub",
+          "color": "#0096C8",
+          "desc": "- xmfclub.com/proposal\n- 1.5x Revenue\n- Student ID Card System\n- Tech support for xmfclub events\n- Online store and affiliate earnings\n- Body Transformations: 13 content collabs\n\n- Help reach 5K IG followers\n- Make proposals to partner with schools\n- Help in getting FitIndia (other associate) certificate\n- Help Whatsapp Business chat Meta AI integrations",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790884301151",
+          "completed": false,
+          "createdAt": "2026-10-01T19:51:41.151Z"
+        },
+        {
+          "name": "streambuzz",
+          "color": "#3296C8",
+          "desc": "build for your livestreams using JEV",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790902560467",
+          "completed": false,
+          "createdAt": "2026-10-02T00:56:00.467Z"
+        },
+        {
+          "name": "eventskaro",
+          "color": "#3296C8",
+          "desc": "experimental poc with auditor",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790902571667",
+          "completed": false,
+          "createdAt": "2026-10-02T00:56:11.667Z"
+        },
+        {
+          "name": "Victory Vacay",
+          "color": "#FF9F1C",
+          "desc": "- Celebrate the discipline on a vacay road trip\n- Earn enough to get a \n29, 30, 31 Vacay yay!",
+          "cost": 80000,
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1790870935930",
+          "completed": true,
+          "createdAt": "2026-10-01T16:08:55.930Z",
+          "completedAt": "2026-10-10T16:48:15.865Z"
+        },
+        {
+          "name": "Build a Community",
+          "color": "#FFCA3A",
+          "desc": "- Make true valuable content\n- 2K followers to share value\n- Build a cool community",
+          "isPublic": true,
+          "type": "routine",
+          "id": "sg-1791609467186",
+          "completed": true,
+          "createdAt": "2026-10-10T05:17:47.186Z",
+          "completedAt": "2026-10-10T05:19:13.969Z"
+        }
+      ],
+      "habits": [
+        {
+          "name": "Saum",
+          "desc": "- Fasting to attain the pleasure and taqwa of ALLAH SWT",
+          "time": "13:00",
+          "duration": 780,
+          "routineGoalIds": [
+            "sg-1791294754352"
+          ],
+          "lifeGoalIds": [
+            "lg-1790420692381"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1790981435515",
+          "completed": false,
+          "templateId": "1790981363181"
+        },
+        {
+          "name": "Walk Pic x10K",
+          "desc": "- Listen Qur'an Majeed\n- Weighted 10K steps everyday on Pacer\n- With ankle weights\n- Post the pic on \n- IG, FB : hammaadrawx\n- X, WA : hammaadworks",
+          "time": "0:15",
+          "duration": 15,
+          "routineGoalIds": [
+            "sg-1790770645011"
+          ],
+          "lifeGoalIds": [
+            "lg-1790431341508",
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1791185807358",
+          "completed": false,
+          "templateId": "all"
+        },
+        {
+          "name": "Face Zikr x100",
+          "desc": "- Zikr and Calisthenics",
+          "time": "2:00",
+          "duration": 120,
+          "routineGoalIds": [
+            "sg-1790770645011"
+          ],
+          "lifeGoalIds": [
+            "lg-1791192258076",
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "templateId": "all",
+          "id": "rg-1791284940988",
+          "completed": false
+        },
+        {
+          "name": "Calisthenics",
+          "desc": "- Pushups, Pullups\n- Dumbbells, Kettlebells\n- Raises, Twists\n- Squats, Bridges",
+          "time": "2:00",
+          "duration": 120,
+          "routineGoalIds": [
+            "sg-1790884301151",
+            "sg-1791524339343"
+          ],
+          "lifeGoalIds": [
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "templateId": "all",
+          "id": "rg-1791526737532",
+          "completed": false,
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Healthy Diet Check",
+          "desc": "- whole foods\n- no junk calories\n- no impulse eating",
+          "time": "13:00",
+          "duration": 780,
+          "routineGoalIds": [
+            "sg-1790770645011"
+          ],
+          "lifeGoalIds": [
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "templateId": "all",
+          "id": "rg-1791202801625",
+          "completed": false,
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Athan Practice",
+          "desc": "- Practice Athan of Shk. Marwan\n- https://www.youtube.com/watch?v=R-0aUl0iQBg",
+          "time": "0:15",
+          "duration": 15,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1791192258076"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1790434709216",
+          "completed": false,
+          "templateId": "all"
+        },
+        {
+          "name": "19 Rakah",
+          "desc": "- 12 Sunnah\n- 4 Tahajjud\n- 3 Witr",
+          "time": "0:20",
+          "duration": 20,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1791192258076"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1790432806701",
+          "completed": false,
+          "templateId": "all"
+        },
+        {
+          "name": "Salah",
+          "desc": "- Salah, Qur'an\n- Walk, FamTime\n- Food, Plans",
+          "time": "0:45",
+          "duration": 45,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1790481630988"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1790432874702",
+          "completed": false,
+          "templateId": "all",
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "2 Juz Qur'an",
+          "desc": "M - Baqarah\nT - Furqan, Shu'ara, Naml\nW - Hajj, Mu'minun, Nur\nT - Maryam, Taha, Anbiya\nF - Kahf, Musabbihaat\nS - 26, 27\nS - 29, 30\n\n- Walking is included",
+          "time": "0:15",
+          "duration": 15,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1790431341508"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1790432597002",
+          "completed": false,
+          "templateId": "all"
+        },
+        {
+          "name": "DSA x3",
+          "desc": "- Complete any 3 DSA Questions\n- 7am, 1pm, 7pm\n- 15 concepts/questions per week",
+          "time": "1:30",
+          "duration": 90,
+          "routineGoalIds": [
+            "sg-1790691039685"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "templateId": "all",
+          "id": "rg-1791375576726",
+          "completed": false,
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Sofware Designs Live",
+          "desc": "Live Learning Software Designs LLD & HLD\nAgenda\n1. Start with some DSA\n2. 1hr into LLD/HLD\n   - Design Patterns\n   - Design Questions\n   - Books & Cruxmap\n 3. End with a fun typing session",
+          "time": "1:30",
+          "duration": 90,
+          "routineGoalIds": [
+            "sg-1790691975628",
+            "sg-1790691039685",
+            "sg-1790884274833",
+            "sg-1791609467186"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1790685266931",
+          "completed": false,
+          "templateId": "1790981363181",
+          "templateIds": [
+            "1790981363181",
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Typing Practice",
+          "desc": "- Complete the Typing Course",
+          "time": "0:10",
+          "duration": 10,
+          "routineGoalIds": [
+            "sg-1790884274833"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "templateId": "1790981363181",
+          "id": "rg-1791438104283",
+          "completed": false,
+          "templateIds": [
+            "1790981363181",
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Live Backlog Filler",
+          "desc": "- Filler for Bonus or Missed Livestreams\n- Software Designs Live\n- Book Reading\n- FPV Sim Live",
+          "time": "1:00",
+          "duration": 60,
+          "routineGoalIds": [
+            "sg-1790691975628",
+            "sg-1790691039685",
+            "sg-1790691853302",
+            "sg-1790884274833",
+            "sg-1790693235451"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "#fafafa",
+          "templateId": "1791685860360",
+          "templateIds": [
+            "1791685860360"
+          ],
+          "id": "rg-1791686495082",
+          "completed": false
+        },
+        {
+          "name": "Clip Farming",
+          "desc": "- Convert my streams to bite sized\n- Edit value content\n- Schedule posts on platforms\n- Interact with community",
+          "time": "1:00",
+          "duration": 60,
+          "routineGoalIds": [
+            "sg-1791609467186"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1791689148822",
+          "completed": false,
+          "templateId": "1791685860360",
+          "templateIds": [
+            "1791685860360"
+          ]
+        },
+        {
+          "name": "Value Content",
+          "desc": "- Strategize\n- Shoot\n- Edit\n- Schedule\n- Super Valuable Content",
+          "time": "0:30",
+          "duration": 30,
+          "routineGoalIds": [
+            "sg-1791609467186"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "#FF595E",
+          "id": "rg-1791615542729",
+          "completed": false,
+          "templateId": "1791458580413",
+          "templateIds": [
+            "1791458580413",
+            "1791685860360"
+          ]
+        },
+        {
+          "name": "Focused Work",
+          "desc": "",
+          "time": "2:00",
+          "duration": 120,
+          "routineGoalIds": [
+            "sg-1790680453247",
+            "sg-1791250108526",
+            "sg-1790884167753",
+            "sg-1790884127945"
+          ],
+          "lifeGoalIds": [
+            "lg-1791420131271"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "#646464",
+          "id": "rg-1790770921561",
+          "completed": false,
+          "templateId": "all",
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Plansup",
+          "desc": "- Shitpost\n- Calisthenics\n- Break\n- Context Switch\n- Chores\n- Plans whatsup next",
+          "time": "0:20",
+          "duration": 20,
+          "routineGoalIds": [
+            "sg-1790870935930"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "#ffffff",
+          "id": "rg-1790770373482",
+          "completed": false,
+          "templateId": "1790981363181",
+          "templateIds": [
+            "1790981363181",
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Boxing",
+          "desc": "30M of pure heavy bag frustration release",
+          "time": "0:30",
+          "duration": 30,
+          "routineGoalIds": [
+            "sg-1790770645011",
+            "sg-1791524339343",
+            "sg-1790884301151"
+          ],
+          "lifeGoalIds": [
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1790500214674",
+          "completed": false,
+          "templateId": "1791458580413",
+          "templateIds": [
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Dawah Studies",
+          "desc": "- 30 mins of Pure Dawah Studies\n- Cruxmapped",
+          "time": "0:40",
+          "duration": 40,
+          "routineGoalIds": [
+            "sg-1791375672857"
+          ],
+          "lifeGoalIds": [
+            "lg-1791526049147",
+            "lg-1790431341508"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "templateId": "1791540656174",
+          "id": "rg-1791526256013",
+          "completed": false,
+          "templateIds": [
+            "1791540656174"
+          ]
+        },
+        {
+          "name": "Bayyinah Intensive",
+          "desc": "- 30 mins of learning Qur'anic Arabic\n- Cruxmapped",
+          "time": "0:40",
+          "duration": 40,
+          "routineGoalIds": [
+            "sg-1791185958240"
+          ],
+          "lifeGoalIds": [
+            "lg-1790431341508",
+            "lg-1791526049147"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "templateId": "1791540656174",
+          "id": "rg-1791203026741",
+          "completed": false,
+          "templateIds": [
+            "1791540656174"
+          ]
+        },
+        {
+          "name": "Dawah Bayyinah",
+          "desc": "1. Dawah Studies\n2. Dawah AI bot\n3. Bayyinah Intensive\n4. Cruxmaped\n--- 2hrs/week\n1. Complete all Dawah Books\n2. Watch Dawah Videos\n3. Complete all the 4 intensive with Ustd. Nouman\n\n1. https://youtube.com/playlist?list=PLutdSTmJ7bAKZdXPAjG3-T7OuByMRYa6z&si=SXmAFkrjmFgxMbKf\n\n2. https://youtube.com/playlist?list=PLutdSTmJ7bAJ9IT9MY03oX0HDOLAXKRRp&si=EdEYJ2HcgWP_w0l7\n\n3. https://youtube.com/playlist?list=PLutdSTmJ7bAIpObrMdOUq4tSGzY22rCZI&si=e84oLJeEHkrtcYAt\n\n4. https://youtube.com/playlist?list=PLutdSTmJ7bALtCYBhJwP6E1ydBalwhHS1&si=q4wI2lTlr2big4jw",
+          "time": "2:00",
+          "duration": 120,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1791526049147"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "id": "rg-1791686902324",
+          "completed": false,
+          "templateId": "1791685860360",
+          "templateIds": [
+            "1791685860360"
+          ]
+        },
+        {
+          "name": "Log of Proof",
+          "desc": "- Day summary IG video\n- done, delayed, good, bad, lessons, value.\n- Goal marking and recovery",
+          "time": "0:30",
+          "duration": 30,
+          "routineGoalIds": [
+            "sg-1791609467186"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1791422157614",
+          "completed": false,
+          "templateId": "all",
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Power Relax",
+          "desc": "- Sunnah afternoon nap\n- Sehri and Iftar",
+          "time": "0:25",
+          "duration": 25,
+          "routineGoalIds": [],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "#c832c8",
+          "id": "rg-1790434527514",
+          "completed": false,
+          "templateId": "all"
+        },
+        {
+          "name": "FPV Practice Live",
+          "desc": "",
+          "time": "0:40",
+          "duration": 40,
+          "routineGoalIds": [
+            "sg-1790691853302"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [
+            "mg-1790450090807"
+          ],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1790770828227",
+          "completed": false,
+          "templateId": "1791458580413",
+          "templateIds": [
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Book Reading Live",
+          "desc": "",
+          "time": "0:20",
+          "duration": 20,
+          "routineGoalIds": [
+            "sg-1790693235451",
+            "sg-1791609467186"
+          ],
+          "lifeGoalIds": [],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "",
+          "id": "rg-1790769915262",
+          "completed": false,
+          "templateId": "1790981363181",
+          "templateIds": [
+            "1790981363181",
+            "1791458580413"
+          ]
+        },
+        {
+          "name": "Fam Dars",
+          "desc": "- 15 mins Ilm\n- Just before relax\n- Witr",
+          "time": "0:20",
+          "duration": 20,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1790431341508",
+            "lg-1790420692381"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": false,
+          "color": "",
+          "templateId": "all",
+          "id": "rg-1791278791347",
+          "completed": false,
+          "templateIds": [
+            "all"
+          ]
+        },
+        {
+          "name": "Relax",
+          "desc": "Strict 7h Sleep Cycle",
+          "time": "7:00",
+          "duration": 420,
+          "routineGoalIds": [],
+          "lifeGoalIds": [
+            "lg-1791368617345"
+          ],
+          "moneyGoalIds": [],
+          "isPublic": true,
+          "color": "#c832c8",
+          "id": "rg-1790431110773",
+          "completed": false,
+          "templateId": "all"
+        }
+      ],
+      "templates": [
+        {
+          "id": "1790981363181",
+          "name": "Bizzy Day",
+          "blocks": [
+            {
+              "id": "1790431117679",
+              "name": "Relax",
+              "startTime": 1275,
+              "duration": 420,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790431110773",
+              "isPublic": true
+            },
+            {
+              "id": "1790775871634",
+              "name": "Salah",
+              "startTime": 330,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775890174",
+              "name": "Salah",
+              "startTime": 1220,
+              "duration": 35,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775896175",
+              "name": "Salah",
+              "startTime": 1090,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775901770",
+              "name": "Salah",
+              "startTime": 995,
+              "duration": 35,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775906664",
+              "name": "Salah",
+              "startTime": 790,
+              "duration": 50,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1791359046106",
+              "name": "Athan Practice",
+              "startTime": 255,
+              "duration": 15,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790434709216",
+              "isPublic": false
+            },
+            {
+              "id": "1791359067683",
+              "name": "19 Rakah",
+              "startTime": 295,
+              "duration": 20,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432806701",
+              "isPublic": false
+            },
+            {
+              "id": "1791375441262",
+              "name": "Sofware Designs Live",
+              "startTime": 420,
+              "duration": 90,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790685266931",
+              "isPublic": true
+            },
+            {
+              "id": "1791422144569",
+              "name": "Fam Dars",
+              "startTime": 1255,
+              "duration": 20,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791278791347",
+              "isPublic": false
+            },
+            {
+              "id": "1791424446215",
+              "name": "Power Relax",
+              "startTime": 1135,
+              "duration": 25,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424507471",
+              "name": "Book Reading Live",
+              "startTime": 1160,
+              "duration": 20,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790769915262",
+              "isPublic": true
+            },
+            {
+              "id": "1791424638056",
+              "name": "Power Relax",
+              "startTime": 270,
+              "duration": 25,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424864981",
+              "name": "2 Juz Qur'an",
+              "startTime": 375,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791424922198",
+              "name": "Walk Pic x10K",
+              "startTime": 315,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791185807358",
+              "isPublic": true
+            },
+            {
+              "id": "1791425140134",
+              "name": "2 Juz Qur'an",
+              "startTime": 390,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791425143224",
+              "name": "2 Juz Qur'an",
+              "startTime": 405,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791458296085",
+              "name": "Book Reading Live",
+              "startTime": 1180,
+              "duration": 20,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790769915262",
+              "isPublic": true
+            },
+            {
+              "id": "1791458314237",
+              "name": "Book Reading Live",
+              "startTime": 1200,
+              "duration": 20,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790769915262",
+              "isPublic": true
+            },
+            {
+              "id": "1791525237162",
+              "name": "Power Relax",
+              "startTime": 840,
+              "duration": 30,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791526509302",
+              "name": "Log of Proof",
+              "startTime": 1030,
+              "duration": 30,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791422157614",
+              "isPublic": true
+            },
+            {
+              "id": "1791526519485",
+              "name": "2 Juz Qur'an",
+              "startTime": 1060,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791526523403",
+              "name": "2 Juz Qur'an",
+              "startTime": 1075,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791544087613",
+              "name": "Plansup",
+              "startTime": 645,
+              "duration": 20,
+              "color": "#ffffff",
+              "routineGoalId": "rg-1790770373482",
+              "isPublic": true
+            },
+            {
+              "id": "1791544110414",
+              "name": "Focused Work",
+              "startTime": 870,
+              "duration": 125,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791551845576",
+              "name": "Focused Work",
+              "startTime": 525,
+              "duration": 120,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791551859597",
+              "name": "Focused Work",
+              "startTime": 665,
+              "duration": 125,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791551880380",
+              "name": "Plansup",
+              "startTime": 510,
+              "duration": 15,
+              "color": "#ffffff",
+              "routineGoalId": "rg-1790770373482",
+              "isPublic": true
+            }
+          ]
+        },
+        {
+          "id": "1791458580413",
+          "name": "Snappy Day",
+          "blocks": [
+            {
+              "id": "1790431117679",
+              "name": "Relax",
+              "startTime": 1275,
+              "duration": 420,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790431110773",
+              "isPublic": true
+            },
+            {
+              "id": "1790775871634",
+              "name": "Salah",
+              "startTime": 330,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775890174",
+              "name": "Salah",
+              "startTime": 1215,
+              "duration": 40,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775896175",
+              "name": "Salah",
+              "startTime": 1090,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775901770",
+              "name": "Salah",
+              "startTime": 995,
+              "duration": 35,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775906664",
+              "name": "Salah",
+              "startTime": 790,
+              "duration": 50,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1791359046106",
+              "name": "Athan Practice",
+              "startTime": 255,
+              "duration": 15,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790434709216",
+              "isPublic": false
+            },
+            {
+              "id": "1791359067683",
+              "name": "19 Rakah",
+              "startTime": 295,
+              "duration": 20,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432806701",
+              "isPublic": false
+            },
+            {
+              "id": "1791375441262",
+              "name": "Sofware Designs Live",
+              "startTime": 420,
+              "duration": 90,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790685266931",
+              "isPublic": true
+            },
+            {
+              "id": "1791422144569",
+              "name": "Fam Dars",
+              "startTime": 1255,
+              "duration": 20,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791278791347",
+              "isPublic": false
+            },
+            {
+              "id": "1791424446215",
+              "name": "Power Relax",
+              "startTime": 1135,
+              "duration": 20,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424638056",
+              "name": "Power Relax",
+              "startTime": 270,
+              "duration": 25,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424864981",
+              "name": "2 Juz Qur'an",
+              "startTime": 375,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791424922198",
+              "name": "Walk Pic x10K",
+              "startTime": 315,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791185807358",
+              "isPublic": true
+            },
+            {
+              "id": "1791425140134",
+              "name": "2 Juz Qur'an",
+              "startTime": 390,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791425143224",
+              "name": "2 Juz Qur'an",
+              "startTime": 405,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791438471768",
+              "name": "Log of Proof",
+              "startTime": 1030,
+              "duration": 30,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791422157614",
+              "isPublic": true
+            },
+            {
+              "id": "1791458671395",
+              "name": "FPV Practice Live",
+              "startTime": 1155,
+              "duration": 40,
+              "color": "#FF9F1C",
+              "routineGoalId": "rg-1790770828227",
+              "isPublic": true
+            },
+            {
+              "id": "1791525336965",
+              "name": "Power Relax",
+              "startTime": 840,
+              "duration": 30,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791614320579",
+              "name": "Plansup",
+              "startTime": 510,
+              "duration": 15,
+              "color": "#ffffff",
+              "routineGoalId": "rg-1790770373482",
+              "isPublic": true
+            },
+            {
+              "id": "1791614330490",
+              "name": "Focused Work",
+              "startTime": 525,
+              "duration": 120,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791614334610",
+              "name": "Plansup",
+              "startTime": 645,
+              "duration": 20,
+              "color": "#ffffff",
+              "routineGoalId": "rg-1790770373482",
+              "isPublic": true
+            },
+            {
+              "id": "1791614341658",
+              "name": "Focused Work",
+              "startTime": 665,
+              "duration": 125,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791614379459",
+              "name": "Focused Work",
+              "startTime": 870,
+              "duration": 90,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791614451524",
+              "name": "Book Reading Live",
+              "startTime": 1195,
+              "duration": 20,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1790769915262",
+              "isPublic": true
+            },
+            {
+              "id": "1791615678651",
+              "name": "Boxing",
+              "startTime": 960,
+              "duration": 35,
+              "color": "#0096C8",
+              "routineGoalId": "rg-1790500214674",
+              "isPublic": true
+            },
+            {
+              "id": "1791625553677",
+              "name": "Value Content",
+              "startTime": 1060,
+              "duration": 30,
+              "color": "#FF595E",
+              "routineGoalId": "rg-1791615542729",
+              "isPublic": true
+            },
+            {
+              "id": "1791661495513",
+              "name": "Focused Work",
+              "startTime": 1060,
+              "duration": 30,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            }
+          ]
+        },
+        {
+          "id": "1791685860360",
+          "name": "Clippy Day",
+          "blocks": [
+            {
+              "id": "1790431117679",
+              "name": "Relax",
+              "startTime": 1275,
+              "duration": 420,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790431110773",
+              "isPublic": true
+            },
+            {
+              "id": "1790775871634",
+              "name": "Salah",
+              "startTime": 330,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775890174",
+              "name": "Salah",
+              "startTime": 1215,
+              "duration": 40,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775896175",
+              "name": "Salah",
+              "startTime": 1090,
+              "duration": 45,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775901770",
+              "name": "Salah",
+              "startTime": 995,
+              "duration": 35,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1790775906664",
+              "name": "Salah",
+              "startTime": 750,
+              "duration": 120,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432874702",
+              "isPublic": false
+            },
+            {
+              "id": "1791359046106",
+              "name": "Athan Practice",
+              "startTime": 255,
+              "duration": 15,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790434709216",
+              "isPublic": false
+            },
+            {
+              "id": "1791359067683",
+              "name": "19 Rakah",
+              "startTime": 295,
+              "duration": 20,
+              "color": "#00FFB4",
+              "routineGoalId": "rg-1790432806701",
+              "isPublic": false
+            },
+            {
+              "id": "1791422144569",
+              "name": "Fam Dars",
+              "startTime": 1255,
+              "duration": 20,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791278791347",
+              "isPublic": false
+            },
+            {
+              "id": "1791424446215",
+              "name": "Power Relax",
+              "startTime": 1135,
+              "duration": 20,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424638056",
+              "name": "Power Relax",
+              "startTime": 270,
+              "duration": 25,
+              "color": "#c832c8",
+              "routineGoalId": "rg-1790434527514",
+              "isPublic": true
+            },
+            {
+              "id": "1791424864981",
+              "name": "2 Juz Qur'an",
+              "startTime": 375,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791424922198",
+              "name": "Walk Pic x10K",
+              "startTime": 315,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791185807358",
+              "isPublic": true
+            },
+            {
+              "id": "1791425140134",
+              "name": "2 Juz Qur'an",
+              "startTime": 390,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791425143224",
+              "name": "2 Juz Qur'an",
+              "startTime": 405,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791438471768",
+              "name": "Log of Proof",
+              "startTime": 1030,
+              "duration": 30,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791422157614",
+              "isPublic": true
+            },
+            {
+              "id": "1791686513153",
+              "name": "Live Backlog Filler",
+              "startTime": 420,
+              "duration": 60,
+              "color": "#fafafa",
+              "routineGoalId": "rg-1791686495082",
+              "isPublic": true
+            },
+            {
+              "id": "1791689787913",
+              "name": "Value Content",
+              "startTime": 1060,
+              "duration": 30,
+              "color": "#FF595E",
+              "routineGoalId": "rg-1791615542729",
+              "isPublic": true
+            },
+            {
+              "id": "1791689855698",
+              "name": "Value Content",
+              "startTime": 540,
+              "duration": 30,
+              "color": "#FF595E",
+              "routineGoalId": "rg-1791615542729",
+              "isPublic": true
+            },
+            {
+              "id": "1791689891298",
+              "name": "Clip Farming",
+              "startTime": 690,
+              "duration": 60,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791689148822",
+              "isPublic": true
+            },
+            {
+              "id": "1791697528547",
+              "name": "2 Juz Qur'an",
+              "startTime": 1060,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791697604594",
+              "name": "Live Backlog Filler",
+              "startTime": 1155,
+              "duration": 60,
+              "color": "#fafafa",
+              "routineGoalId": "rg-1791686495082",
+              "isPublic": true
+            },
+            {
+              "id": "1791697686081",
+              "name": "2 Juz Qur'an",
+              "startTime": 1075,
+              "duration": 15,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1790432597002",
+              "isPublic": false
+            },
+            {
+              "id": "1791697833632",
+              "name": "Live Backlog Filler",
+              "startTime": 480,
+              "duration": 60,
+              "color": "#fafafa",
+              "routineGoalId": "rg-1791686495082",
+              "isPublic": true
+            },
+            {
+              "id": "1791697971783",
+              "name": "Clip Farming",
+              "startTime": 420,
+              "duration": 60,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791689148822",
+              "isPublic": true
+            },
+            {
+              "id": "1791697975283",
+              "name": "Clip Farming",
+              "startTime": 480,
+              "duration": 60,
+              "color": "#FFCA3A",
+              "routineGoalId": "rg-1791689148822",
+              "isPublic": true
+            },
+            {
+              "id": "1791697988732",
+              "name": "Focused Work",
+              "startTime": 570,
+              "duration": 120,
+              "color": "#00FAC8",
+              "routineGoalId": "rg-1790770921561",
+              "isPublic": true
+            },
+            {
+              "id": "1791698572971",
+              "name": "Dawah Bayyinah",
+              "startTime": 870,
+              "duration": 125,
+              "color": "#00B4FF",
+              "routineGoalId": "rg-1791686902324",
+              "isPublic": false
+            }
+          ]
+        }
+      ],
+      "activeTemplateId": "1791458580413",
+      "dayMapping": {
+        "Monday": "1790981363181",
+        "Tuesday": "1791458580413",
+        "Wednesday": "1791458580413",
+        "Thursday": "1790981363181",
+        "Friday": "1791685860360",
+        "Saturday": "1791685860360",
+        "Sunday": "1791458580413"
+      },
+      "timeLogs": {
+        "2026-09-28": []
+      },
+      "milestones": {
+        "2027-01-28": "**@50 Fasts** - **Complete the 50 fasts**\n\n**@Victory Vacay** - **Vacay Yay!**  \nGoing to a blessed trip with my Pyaru MummyPappa as we completed the 100 days of Dream Protocol\n- Arrange all the money and itenary",
+        "2027-08-15": "**@Debt Clearance** - **Debt Free Alhamdulillah**  \n- Alhamdulillah by the Fazl of ALLAH SWT me, my MummyPappa and our entire generations are debt free so we can take care of the Ummah better.",
+        "2027-09-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 1st Instalment (20L)**  \n- First Hajj Instalment of 20L\n- Covers Private Booking",
+        "2027-12-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 2nd Instalment (20L)**  \n- Second Hajj Instalment of 20L\n- Covers Travelling and Stay",
+        "2028-03-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 3rd Instalment (20L)**  \n- Third Hajj Instalment of 20L\n- Covers All Alhamdulillah",
+        "2029-01-01": "**@Build Masjid Fee Sabeelillah** - **Masjid Init**  \n- Alhamdulillah by the Fazl of ALLAH SWT me, my Pyaru MummyPappa and family will start building the masajid fee sabeelillah",
+        "2027-03-15": "**@Qur'an Hafidh** - **Hifz 15, 16, 29, 30**  \nStrongly place juz 15, 16, 29, 30 in your heart by the Fazl of ALLAH SWT",
+        "2027-01-08": "**@Ramadhaan Umrah 1** - **Umrah Paperwork**",
+        "2026-10-27": "**@Repay Amanullah Debt** - **Repay 60K**  \nThe map app must repay the debt by the Fazl of ALLAH SWT",
+        "2027-03-18": "**@Master LLD** - **LLDone - Alpha**  \nthe LLDone cruxmapped version is up for grabs in alpha phase",
+        "2027-04-01": "**@Master LLD** - **LLDone release - Cohort**  \nStart Personal LLDone training cohort",
+        "2026-12-21": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment",
+        "2026-12-26": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment",
+        "2026-12-31": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment\n\n**@Build a Community** - **2K Community**\n\n**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2027-01-30": "**@DSA x300** - **DSA 300 🎉**  \n- Completed the 300 questions on a streak\n- 3qpd",
+        "2026-11-13": "**@Pyarus Phones** - **Pixel Coupons**",
+        "2026-10-15": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-10-22": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-10-29": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-11-05": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-11-12": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-11-19": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-11-26": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-12-03": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-12-10": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-12-17": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-12-24": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2027-01-07": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+        "2026-10-31": "**@Lisan App Cohort** - **Cohort Invite**  \n- Spoken to 4 doctors\n- Daily invite reels for 12 participants for 6 weeks",
+        "2026-10-26": "**@Lisan App Cohort** - **Bade Ammi Deploy**  \n- Speak to 4 doctors\n- Prepare for invite"
+      }
+    }
+  ],
+  "activeRoutineId": "90985552-2d64-4cc7-84f5-318064a69ad6",
+  "allPlans": {
+    "1790339743415": [],
+    "90985552-2d64-4cc7-84f5-318064a69ad6": [
+      {
+        "id": "1791389814842",
+        "name": "October Plans [public]",
+        "content": "1. Amusent Park Pins\n2. Lisan\n3. eventskaro\n4. xmfclub\n\n---\n\n### 1. Amusement Park Pins\n\nBuild and sell the maps to \n- Play Arena\n- Area 83\n- Wonderla\n- Mango Mist\n- Vels Bidadi\n- Cubbon Park\n\n\nClose atleast Play Arena and Wonderla Deal\nRepay Amanullah reinvest in Lisaan\n\n### 2. Lisaan\n\nCompletely build and start marketing the cohort\n\n### 3. eventskaro\n\n- Pilot\n- Demo\n\n### 4. xmfclub\n\n- Affiliate\n- Store\n- Content\n\n",
+        "folderId": null,
+        "createdAt": "2026-10-07T16:16:54.842Z",
+        "isLife": false
+      },
+      {
+        "id": "1791394361285",
+        "name": "November Plans [public]",
+        "content": "1. Inmasjid\n2. Lisaan\n3. Amusent Park Pins\n4. xmfclub\n\n---\n\n### 1. Amusement Park Pins\n\nBuild and sell the maps to \n- Play Arena\n- Area 83\n- Wonderla\n- Mango Mist\n- Vels Bidadi\n- Cubbon Park\n\n\nClose atleast Play Arena and Wonderla Deal\nRepay Amanullah reinvest in Lisaan\n\n### 2. Lisaan\n\nCohort\n\n### 3. eventskaro\n\n- Pilot\n- Demo\n\n### 4. xmfclub\n\n- Affiliate\n- Store\n- Content\n\n",
+        "folderId": null,
+        "createdAt": "2026-10-07T17:32:41.285Z",
+        "isLife": false
+      },
+      {
+        "id": "1791649294307",
+        "name": "Untitled Routine Plan [public]",
+        "content": "530-615\n\n110-200\n\n435-510\n\n610-655\n\n815-855\n\n",
+        "folderId": null,
+        "createdAt": "2026-10-10T16:21:34.307Z",
+        "isLife": false
+      }
+    ]
+  },
+  "allFolders": {
+    "1790339743415": [],
+    "90985552-2d64-4cc7-84f5-318064a69ad6": []
+  },
+  "lifeGoals": [
+    {
+      "id": "lg-1790481630988",
+      "name": "Debt Clearance",
+      "isPublic": false,
+      "color": "#00FFB4",
+      "completed": true,
+      "desc": "Alhamdulillahi Rabbil Aalameen",
+      "cost": 1500000,
+      "createdAt": "2026-09-27T04:00:30.988Z",
+      "type": "life",
+      "completedAt": "2026-10-10T05:14:42.650Z"
+    },
+    {
+      "id": "lg-1790420692381",
+      "name": "Hajj Mabroor Maqbool Mubarak",
+      "isPublic": false,
+      "color": "#00FFB4",
+      "completed": true,
+      "desc": "Alhamdulillah Hajj with my MummyPappa in ihsaan following Rasoolullah SAW and pleasing ALLAH SWT.\n- Hajj Party\n- Hajj Gifts",
+      "cost": 6000000,
+      "createdAt": "2026-09-26T11:04:52.381Z",
+      "type": "life",
+      "completedAt": "2026-10-10T05:14:43.783Z"
+    },
+    {
+      "name": "Build Masjid Fee Sabeelillah",
+      "color": "#00FFB4",
+      "desc": "- By the Fazl of ALLAH SWT me, my Pyaru MummyPappa and family must build a Masjid for the sake of ALLAH SWT following our beloved Rasoolullah SAW\n- It was narrated that 'Umar bin Khattab said:\nI heard the Messenger of Allah say: 'Whoever builds a mosque in which the Name of Allah is mentioned, Allah will build a house for him in Paradise.'\n- https://sunnah.com/ibnmajah/4",
+      "isPublic": false,
+      "type": "life",
+      "id": "lg-1791192258076",
+      "completed": true,
+      "createdAt": "2026-10-05T09:24:18.076Z",
+      "cost": 50000000,
+      "completedAt": "2026-10-10T05:14:44.850Z"
+    },
+    {
+      "name": "InMasjid Ihsanity",
+      "color": "#00B4FF",
+      "desc": "- Develop and Register the Khair Business",
+      "isPublic": false,
+      "type": "life",
+      "id": "lg-1791420131271",
+      "completed": false,
+      "createdAt": "2026-10-01T19:49:36.171Z"
+    },
+    {
+      "name": "Ahsan Al Qawl",
+      "color": "#00B4FF",
+      "desc": "1. Dawah Studies\n2. Dawah AI bot\n3. Bayyinah Intensive\n4. Cruxmaped\n--- 2hrs/week\n1. Complete all Dawah Books\n2. Watch Dawah Videos\n3. Complete all the 4 intensive with Ustd. Nouman\n\n1. https://youtube.com/playlist?list=PLutdSTmJ7bAKZdXPAjG3-T7OuByMRYa6z&si=SXmAFkrjmFgxMbKf\n\n2. https://youtube.com/playlist?list=PLutdSTmJ7bAJ9IT9MY03oX0HDOLAXKRRp&si=EdEYJ2HcgWP_w0l7\n\n3. https://youtube.com/playlist?list=PLutdSTmJ7bAIpObrMdOUq4tSGzY22rCZI&si=e84oLJeEHkrtcYAt\n\n4. https://youtube.com/playlist?list=PLutdSTmJ7bALtCYBhJwP6E1ydBalwhHS1&si=q4wI2lTlr2big4jw\n",
+      "isPublic": false,
+      "type": "life",
+      "id": "lg-1791526049147",
+      "completed": false,
+      "createdAt": "2026-10-05T07:39:18.240Z"
+    },
+    {
+      "id": "lg-1790431341508",
+      "name": "Qur'an Hafidh",
+      "isPublic": false,
+      "color": "#00B4FF",
+      "completed": false,
+      "desc": "Alhamdulillah, by the Fazl of ALLAH SWT be a humble carrier of the Noble Holy Qur'an Majeed and live by it with success in this world and in the next with my MummyPappa and family, close to Rasoolullah SAW under the Mighty Throne of ALLAH SWT. Aameen.",
+      "createdAt": "2026-09-26T14:02:21.508Z",
+      "type": "life"
+    },
+    {
+      "name": "Fat2Fit",
+      "color": "#FF595E",
+      "desc": "- Shredded\n- Athletic\n- Muscular\n- Lean Low Fat\n- Fix Sleep Cycle\n- Train the Body to Tame the Mind",
+      "isPublic": true,
+      "type": "life",
+      "id": "lg-1791368617345",
+      "completed": false,
+      "createdAt": "2026-09-30T12:17:25.011Z"
+    },
+    {
+      "id": "lg-1790497554108",
+      "name": "Sila Rehmi",
+      "isPublic": false,
+      "color": "#FF595E",
+      "completed": false,
+      "desc": "Ya ALLAH SWT make my Pyaru MummyPappa respectable by doing Sila Rehmi with their own hands\n\n0. Allocate 25% of my earnings to feed, spend and aid needy of our Ummah of our beloved Rasoolullah SAW.\n1. Give Aunty, Mamas, Taus all the Karz back and pardon them.\n2. Throw family get-togethers.\n3. Random family visit to aid and support their needs.\n4. Gift Frequently Eid, Monthly and Quarterly to My Pyari Bhaan, Sis Cousins and Bro Cousins\n5. Spend on your inner circle, employees and outer circle, such that Khair spreads from us by the Fazl of ALLAH SWT.",
+      "createdAt": "2026-09-27T08:25:54.108Z",
+      "type": "life"
+    },
+    {
+      "id": "lg-1790422188181",
+      "name": "Hazel Bike Crush",
+      "isPublic": false,
+      "color": "#C8B414",
+      "completed": false,
+      "desc": "- Alhamdulillah, marrying my first crush\n- Debadged Wrapped Modded Lit\n- Action Camera Content Machine\n- Shut up and dance with me! (https://youtube.com/shorts/nFRLenH8cb4?si=1vTJcoZ7WEpi31za)",
+      "cost": 700000,
+      "createdAt": "2026-09-26T11:29:48.181Z",
+      "type": "life"
+    },
+    {
+      "name": "Zaujatam Mu'minah",
+      "color": "#C8B414",
+      "desc": "Ya ALLAH SWT I ask you for a beautiful pious noble compassionate calm well-mannered loyal loving wife that will take care of my Pyaru MummyPappa and my upcoming family to please YOU and follow the footsteps of my beloved Rasoolullah SAW.\n\nYa ALLAH SWT I ask you for someone who is either a sincere believing \n- revert\n- alone\n- haafizah aalimah e khair\n\nYa ALLAH SWT I ask you to unite me with Preethi if she is better for me, my Pyaru MummyPappa for our dunya and akhirah and grant us all closeness to YOU and our beloved Rasoolullah SAW Aameen.\n\n1. https://sunnah.com/ibnmajah:1855\n2. https://sunnah.com/ibnmajah:1856\n3. https://sunnah.com/ibnmajah:1858",
+      "isPublic": false,
+      "type": "life",
+      "id": "lg-1790676665672",
+      "completed": false,
+      "createdAt": "2026-09-29T10:11:05.672Z",
+      "cost": 3000000
+    }
+  ],
+  "moneyGoals": [
+    {
+      "id": "mg-1791420729029",
+      "name": "Pyarus Healthy",
+      "isPublic": false,
+      "color": "#FF595E",
+      "completed": false,
+      "desc": "- Gym membership (cult.fit)\n- Wellness programs\n- Personal trainer\n- Supplements\n- Alhamdulillah I ask ALLAH SWT to bless my Pyaru MummyPappa with abundant goodness health wealth prosperity guidance love peace and salaamti",
+      "cost": 125000,
+      "createdAt": "2026-09-27T03:53:15.776Z",
+      "type": "money"
+    },
+    {
+      "id": "mg-1790480563710",
+      "name": "Wardrobe Upgrade",
+      "isPublic": false,
+      "color": "#FF595E",
+      "cost": 100000,
+      "completed": false,
+      "desc": "Modest clothing set for me and Pyaru MummyPappa following Rasoolullah SAW to please ALLAH SWT\n- Attire\n- Shoes\n- Accessories",
+      "createdAt": "2026-09-27T03:42:43.710Z",
+      "type": "money"
+    },
+    {
+      "name": "Pyarus Phones",
+      "color": "#1982C4",
+      "desc": "- Cool salaamti tech\n- Phones\n- Wearables\n- Electronics",
+      "cost": 150000,
+      "isPublic": false,
+      "type": "money",
+      "id": "mg-1791383110911",
+      "completed": false,
+      "createdAt": "2026-10-07T14:25:10.911Z"
+    },
+    {
+      "id": "mg-1790450090807",
+      "name": "Content CamFPV Gear",
+      "isPublic": true,
+      "color": "#1982C4",
+      "cost": 400000,
+      "completed": false,
+      "desc": "Content shooting FPV\n- Cinewhoop\n- Ray Ban Meta Glasses\n- DJI Action Camera\n- DJI Insta 360\n- Camera Gear",
+      "createdAt": "2026-09-26T19:14:50.807Z",
+      "type": "money"
+    },
+    {
+      "id": "mg-1790454865833",
+      "name": "3D Printer",
+      "isPublic": true,
+      "color": "#FFCA3A",
+      "cost": 400000,
+      "completed": false,
+      "desc": "B2B Entrepreneurial Collab",
+      "createdAt": "2026-09-26T20:34:25.833Z"
+    },
+    {
+      "id": "mg-1790480671038",
+      "name": "Merch Printer",
+      "isPublic": false,
+      "color": "#FFCA3A",
+      "cost": 250000,
+      "completed": false,
+      "desc": "Sublimation Metal and Merch Business Collab\n- inmasjid\n- ihsanity",
+      "createdAt": "2026-09-27T03:44:31.038Z",
+      "type": "money"
+    },
+    {
+      "id": "mg-1790420780053",
+      "name": "Fam SUV Car",
+      "isPublic": false,
+      "color": "#FF9F1C",
+      "cost": 1000000,
+      "completed": false,
+      "desc": "Decent debadged modded SUV suiting all needs of my Pyarus.\n- Aircross\n- Triber\n- Wrapped Debadged Modded",
+      "createdAt": "2026-09-26T11:06:20.053Z",
+      "type": "money"
+    }
+  ],
+  "quickTasks": [
+    {
+      "id": "54df136d-ee78-4313-9b51-6dfc6069ba9a",
+      "name": "and compelet teh challenge start video",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-10T19:57:41.654Z"
+    },
+    {
+      "id": "c4d318aa-46be-46b6-8095-5a2e202086d9",
+      "name": "record the goals",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-10T19:57:31.695Z"
+    },
+    {
+      "id": "9aa254d5-1eba-4e2c-b71c-b5bc1f6e90cb",
+      "name": "fix the clippy day",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-10T19:57:26.056Z"
+    },
+    {
+      "id": "36d4280f-f706-4f23-b1ba-798ffc46e032",
+      "name": "content mgmt dash",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T13:39:40.001Z"
+    },
+    {
+      "id": "79096b80-d669-4832-a0dc-7162ec71ecac",
+      "name": "when to do the missing tasks",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T13:32:41.365Z"
+    },
+    {
+      "id": "70a70f86-7523-42a7-b8a1-dde7b18d1d15",
+      "name": "fri sat clipping 10hr",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T10:42:06.180Z"
+    },
+    {
+      "id": "f4897946-7b83-4052-ae43-af3ebca6795c",
+      "name": "fri sat content",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T10:41:04.167Z"
+    },
+    {
+      "id": "4b288c34-92fd-4e8d-9cb5-852c30d482bb",
+      "name": "content shooting",
+      "completed": true,
+      "isPublic": true,
+      "createdAt": "2026-10-09T06:42:19.153Z",
+      "completedAt": "2026-10-11T02:37:16.846Z"
+    },
+    {
+      "id": "397d610c-7e3d-411c-995f-d337e2f81414",
+      "name": "content editing",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T06:42:24.546Z"
+    },
+    {
+      "id": "58ec5ce7-eee7-4a57-be3b-4e4bcf716060",
+      "name": "work live",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T06:42:14.706Z"
+    },
+    {
+      "id": "a0d609b5-ccb9-46b2-a96d-392b377c5229",
+      "name": "bayyinah",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T05:49:42.860Z"
+    },
+    {
+      "id": "855245cb-8dd6-481d-b671-aeb893dfb29c",
+      "name": "dawah studies",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T05:49:40.123Z"
+    },
+    {
+      "id": "74adc45b-61ec-4140-933d-2b627219a2cd",
+      "name": "rev on friday",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T05:51:39.778Z"
+    },
+    {
+      "id": "985f1a4e-a1fb-4eb6-964c-a8c261d47376",
+      "name": "darood on friday",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T05:51:17.614Z"
+    },
+    {
+      "id": "a9404119-7484-4fa8-b9b4-6e9b6583445b",
+      "name": "darood on weekdays",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T05:51:13.311Z"
+    },
+    {
+      "id": "3245cf32-e3be-4738-8544-ca1f60cd5d13",
+      "name": "calendar",
+      "completed": false,
+      "isPublic": true,
+      "createdAt": "2026-10-09T04:57:05.816Z"
+    }
+  ],
+  "coinsEntries": [
+    {
+      "id": "muioi5yz-0",
+      "year": 2021,
+      "month": 8,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-1",
+      "year": 2021,
+      "month": 9,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-2",
+      "year": 2021,
+      "month": 10,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-3",
+      "year": 2021,
+      "month": 11,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-4",
+      "year": 2021,
+      "month": 12,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-5",
+      "year": 2022,
+      "month": 1,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-6",
+      "year": 2022,
+      "month": 2,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioi5yz-7",
+      "year": 2022,
+      "month": 3,
+      "amount": 45000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiol34n-0",
+      "year": 2015,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34n-1",
+      "year": 2015,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-2",
+      "year": 2015,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-3",
+      "year": 2015,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-4",
+      "year": 2015,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-5",
+      "year": 2015,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-6",
+      "year": 2015,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-7",
+      "year": 2015,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-8",
+      "year": 2015,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-9",
+      "year": 2015,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-10",
+      "year": 2015,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-11",
+      "year": 2015,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-12",
+      "year": 2016,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-13",
+      "year": 2016,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-14",
+      "year": 2016,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-15",
+      "year": 2016,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-16",
+      "year": 2016,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-17",
+      "year": 2016,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-18",
+      "year": 2016,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-19",
+      "year": 2016,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-20",
+      "year": 2016,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-21",
+      "year": 2016,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-22",
+      "year": 2016,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-23",
+      "year": 2016,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-24",
+      "year": 2017,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-25",
+      "year": 2017,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-26",
+      "year": 2017,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-27",
+      "year": 2017,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-28",
+      "year": 2017,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-29",
+      "year": 2017,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-30",
+      "year": 2017,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-31",
+      "year": 2017,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-32",
+      "year": 2017,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-33",
+      "year": 2017,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-34",
+      "year": 2017,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-35",
+      "year": 2017,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-36",
+      "year": 2018,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-37",
+      "year": 2018,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-38",
+      "year": 2018,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-39",
+      "year": 2018,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-40",
+      "year": 2018,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-41",
+      "year": 2018,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-42",
+      "year": 2018,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-43",
+      "year": 2018,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-44",
+      "year": 2018,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-45",
+      "year": 2018,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-46",
+      "year": 2018,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-47",
+      "year": 2018,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-48",
+      "year": 2019,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-49",
+      "year": 2019,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-50",
+      "year": 2019,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-51",
+      "year": 2019,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-52",
+      "year": 2019,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-53",
+      "year": 2019,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-54",
+      "year": 2019,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-55",
+      "year": 2019,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-56",
+      "year": 2019,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-57",
+      "year": 2019,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-58",
+      "year": 2019,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-59",
+      "year": 2019,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-60",
+      "year": 2020,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-61",
+      "year": 2020,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-62",
+      "year": 2020,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-63",
+      "year": 2020,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-64",
+      "year": 2020,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-65",
+      "year": 2020,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-66",
+      "year": 2020,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-67",
+      "year": 2020,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-68",
+      "year": 2020,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-69",
+      "year": 2020,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-70",
+      "year": 2020,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-71",
+      "year": 2020,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-72",
+      "year": 2021,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-73",
+      "year": 2021,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-74",
+      "year": 2021,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-75",
+      "year": 2021,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-76",
+      "year": 2021,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-77",
+      "year": 2021,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiol34o-78",
+      "year": 2021,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-0",
+      "year": 2022,
+      "month": 4,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-1",
+      "year": 2022,
+      "month": 5,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-2",
+      "year": 2022,
+      "month": 6,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-3",
+      "year": 2022,
+      "month": 7,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-4",
+      "year": 2022,
+      "month": 8,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-5",
+      "year": 2022,
+      "month": 9,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-6",
+      "year": 2022,
+      "month": 10,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-7",
+      "year": 2022,
+      "month": 11,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-8",
+      "year": 2022,
+      "month": 12,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-9",
+      "year": 2023,
+      "month": 1,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-10",
+      "year": 2023,
+      "month": 2,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muiomngd-11",
+      "year": 2023,
+      "month": 3,
+      "amount": 48000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-0",
+      "year": 2023,
+      "month": 4,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-1",
+      "year": 2023,
+      "month": 5,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-2",
+      "year": 2023,
+      "month": 6,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-3",
+      "year": 2023,
+      "month": 7,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-4",
+      "year": 2023,
+      "month": 8,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-5",
+      "year": 2023,
+      "month": 9,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muioq4xj-6",
+      "year": 2023,
+      "month": 10,
+      "amount": 54000,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-0",
+      "year": 2023,
+      "month": 11,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-1",
+      "year": 2023,
+      "month": 12,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-2",
+      "year": 2024,
+      "month": 1,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-3",
+      "year": 2024,
+      "month": 2,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-4",
+      "year": 2024,
+      "month": 3,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-5",
+      "year": 2024,
+      "month": 4,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-6",
+      "year": 2024,
+      "month": 5,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-7",
+      "year": 2024,
+      "month": 6,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-8",
+      "year": 2024,
+      "month": 7,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-9",
+      "year": 2024,
+      "month": 8,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-10",
+      "year": 2024,
+      "month": 9,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muior194-11",
+      "year": 2024,
+      "month": 10,
+      "amount": 56500,
+      "source": "Xiaomi",
+      "notes": ""
+    },
+    {
+      "id": "muios9i7",
+      "year": 2025,
+      "month": 2,
+      "amount": 100000,
+      "source": "Streambuzz",
+      "notes": "Ottomator AI Hackathon"
+    },
+    {
+      "id": "muiot6ry-0",
+      "year": 2024,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiot6ry-1",
+      "year": 2024,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiot6ry-2",
+      "year": 2025,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiouxqj",
+      "year": 2026,
+      "month": 8,
+      "amount": 25000,
+      "source": "xmfclub",
+      "notes": ""
+    },
+    {
+      "id": "muiovi6b",
+      "year": 2026,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-0",
+      "year": 2025,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-1",
+      "year": 2025,
+      "month": 4,
+      "amount": 1000,
+      "source": "Stocks",
+      "notes": "Sold all the stock portfolio"
+    },
+    {
+      "id": "muiowi9b-2",
+      "year": 2025,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-3",
+      "year": 2025,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-4",
+      "year": 2025,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-5",
+      "year": 2025,
+      "month": 8,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-6",
+      "year": 2025,
+      "month": 9,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-7",
+      "year": 2025,
+      "month": 10,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-8",
+      "year": 2025,
+      "month": 11,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-9",
+      "year": 2025,
+      "month": 12,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-10",
+      "year": 2026,
+      "month": 1,
+      "amount": 0,
+      "source": "Broke",
+      "notes": "Experimenting the entire year with AI"
+    },
+    {
+      "id": "muiowi9b-11",
+      "year": 2026,
+      "month": 2,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-12",
+      "year": 2026,
+      "month": 3,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-13",
+      "year": 2026,
+      "month": 4,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-14",
+      "year": 2026,
+      "month": 5,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-15",
+      "year": 2026,
+      "month": 6,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "muiowi9b-16",
+      "year": 2026,
+      "month": 7,
+      "amount": 0,
+      "source": "Broke",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-0-9ib",
+      "year": 2015,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-1-kzq",
+      "year": 2015,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-2-die",
+      "year": 2015,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-3-dj4",
+      "year": 2015,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-4-bf2",
+      "year": 2015,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-5-lhs",
+      "year": 2015,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-6-9r7",
+      "year": 2015,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-7-1ct",
+      "year": 2015,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-8-snr",
+      "year": 2015,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-9-jr9",
+      "year": 2015,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-10-cn9",
+      "year": 2015,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-11-cxl",
+      "year": 2015,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-12-ajh",
+      "year": 2016,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-13-pn8",
+      "year": 2016,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-14-gl3",
+      "year": 2016,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-15-dbt",
+      "year": 2016,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-16-sid",
+      "year": 2016,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-17-u1g",
+      "year": 2016,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-18-hs0",
+      "year": 2016,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-19-ny7",
+      "year": 2016,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-20-2uu",
+      "year": 2016,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-21-he3",
+      "year": 2016,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-22-klz",
+      "year": 2016,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-23-9kd",
+      "year": 2016,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-24-il0",
+      "year": 2017,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-25-rg3",
+      "year": 2017,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-26-0wt",
+      "year": 2017,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-27-a96",
+      "year": 2017,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-28-koa",
+      "year": 2017,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-29-d9j",
+      "year": 2017,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-30-z74",
+      "year": 2017,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-31-ow8",
+      "year": 2017,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-32-jg5",
+      "year": 2017,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-33-gcz",
+      "year": 2017,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz6-34-qcd",
+      "year": 2017,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-35-fin",
+      "year": 2017,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-36-d5j",
+      "year": 2018,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-37-qs3",
+      "year": 2018,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-38-eqh",
+      "year": 2018,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-39-wm0",
+      "year": 2018,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-40-twn",
+      "year": 2018,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-41-w6p",
+      "year": 2018,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-42-y5w",
+      "year": 2018,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-43-or9",
+      "year": 2018,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-44-3lr",
+      "year": 2018,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-45-cg6",
+      "year": 2018,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-46-ko7",
+      "year": 2018,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-47-t96",
+      "year": 2018,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-48-rdb",
+      "year": 2019,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-49-zny",
+      "year": 2019,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-50-ig4",
+      "year": 2019,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-51-wpe",
+      "year": 2019,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-52-4fl",
+      "year": 2019,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-53-75y",
+      "year": 2019,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-54-7cy",
+      "year": 2019,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-55-1d1",
+      "year": 2019,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-56-kf0",
+      "year": 2019,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-57-dyb",
+      "year": 2019,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-58-mch",
+      "year": 2019,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-59-gh7",
+      "year": 2019,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-60-q0x",
+      "year": 2020,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-61-kgt",
+      "year": 2020,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-62-x6x",
+      "year": 2020,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-63-i6o",
+      "year": 2020,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-64-i3f",
+      "year": 2020,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-65-pl1",
+      "year": 2020,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-66-9zg",
+      "year": 2020,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-67-l8v",
+      "year": 2020,
+      "month": 8,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-68-x7v",
+      "year": 2020,
+      "month": 9,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-69-zq6",
+      "year": 2020,
+      "month": 10,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-70-xql",
+      "year": 2020,
+      "month": 11,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-71-9nt",
+      "year": 2020,
+      "month": 12,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-72-1aa",
+      "year": 2021,
+      "month": 1,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-73-0oy",
+      "year": 2021,
+      "month": 2,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-74-k3h",
+      "year": 2021,
+      "month": 3,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-75-jxz",
+      "year": 2021,
+      "month": 4,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-76-qoy",
+      "year": 2021,
+      "month": 5,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-77-bhr",
+      "year": 2021,
+      "month": 6,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    },
+    {
+      "id": "mul34kz7-78-v5e",
+      "year": 2021,
+      "month": 7,
+      "amount": 0,
+      "source": "Job",
+      "notes": ""
+    }
+  ],
+  "coinsTargets": {
+    "2026": 120000
+  },
+  "counters": [
+    {
+      "id": "cnt-pushups",
+      "name": "Pushups Eyes",
+      "cadence": "daily",
+      "targetCount": 40,
+      "unit": "reps",
+      "step": 1,
+      "quickSteps": [
+        1,
+        5
+      ],
+      "color": "#E07A5F",
+      "notes": "full form (+5/week)",
+      "isNegative": false,
+      "createdAt": 1791521835181,
+      "startDate": "2026-10-09",
+      "backlog": 40,
+      "todayCount": 0,
+      "lastActiveDate": "2026-10-10",
+      "pastDaysCount": 1,
+      "pastTotalDid": 0,
+      "todayEvents": [],
+      "targetHistory": []
+    },
+    {
+      "id": "cnt-subhanallah",
+      "name": "Pullups Eyes",
+      "cadence": "daily",
+      "targetCount": 30,
+      "unit": "reps",
+      "step": 1,
+      "quickSteps": [
+        1,
+        5
+      ],
+      "color": "#FF595E",
+      "notes": "full form (+5/week)",
+      "isNegative": false,
+      "createdAt": 1791521836182,
+      "startDate": "2026-10-09",
+      "backlog": 30,
+      "todayCount": 0,
+      "lastActiveDate": "2026-10-10",
+      "pastDaysCount": 1,
+      "pastTotalDid": 0,
+      "todayEvents": [],
+      "targetHistory": []
+    },
+    {
+      "id": "cnt-instagram",
+      "name": "Curls Lips",
+      "cadence": "daily",
+      "targetCount": 50,
+      "unit": "reps",
+      "step": 1,
+      "quickSteps": [
+        1,
+        5,
+        10
+      ],
+      "color": "#F15BB5",
+      "notes": "full form (+5/week)",
+      "isNegative": false,
+      "createdAt": 1791521837182,
+      "startDate": "2026-10-09",
+      "backlog": 50,
+      "todayCount": 0,
+      "lastActiveDate": "2026-10-10",
+      "pastDaysCount": 1,
+      "pastTotalDid": 0,
+      "todayEvents": [],
+      "targetHistory": []
+    },
+    {
+      "id": "cnt-1791522744026",
+      "name": "Kettlebells Nose",
+      "cadence": "daily",
+      "targetCount": 100,
+      "unit": "reps",
+      "step": 10,
+      "quickSteps": [
+        1,
+        10,
+        20
+      ],
+      "color": "#00F5D4",
+      "notes": "full form",
+      "isNegative": false,
+      "createdAt": 1791522744026,
+      "startDate": "2026-10-09",
+      "backlog": 100,
+      "todayCount": 0,
+      "lastActiveDate": "2026-10-10",
+      "pastDaysCount": 1,
+      "pastTotalDid": 0,
+      "todayEvents": []
+    },
+    {
+      "id": "cnt-1791639651545",
+      "name": "Fasts",
+      "cadence": "weekly",
+      "targetCount": 3,
+      "unit": "saum",
+      "step": 1,
+      "quickSteps": [
+        1
+      ],
+      "color": "#00F5D4",
+      "isNegative": false,
+      "createdAt": 1791639651545,
+      "startDate": "2026-10-10",
+      "backlog": 0,
+      "todayCount": 0,
+      "lastActiveDate": "2026-10-10",
+      "pastDaysCount": 0,
+      "pastTotalDid": 0,
+      "todayEvents": []
+    }
+  ],
+  "lifePlans": [
+    {
+      "id": "1790679925600",
+      "name": "Lyricalove",
+      "content": "Ya ALLAH SWT I ask you for a beautiful pious noble compassionate calm well-mannered loyal loving wife that will take care of my Pyaru MummyPappa and my upcoming family to please YOU and follow the footsteps of my beloved Rasoolullah SAW.\n\nYa ALLAH SWT I ask you for someone who is either a sincere believing \n\n- revert\n- alone\n- haafizah aalimah e khair\n\n\nYa ALLAH SWT I ask you to unite me with Preethi if she is better for me, my Pyaru MummyPappa for our dunya and akhirah and grant us all closeness to YOU and our beloved Rasoolullah SAW Aameen.\n\n---\n\nhttps://x.com/evelynpreethi\n\nPhlush\n\nMarry me and be the Queen of my life, the jewel of my heart, the mother of our kids, the only recipient of my loyal passionate love my better half in this life and the next.\n\nNo stress, just waiting for your yes !\nSweet heart !\n\n--- \n\nYour soothing voice, I can hear it all lifelong\n\nI could walk you by, and tell without a thought\n\nYou'd be mine, Would you mind if I asked your hand for life?\n\nKnow that you're all I want as my wife\n\nI imagine we fell in love, I'll nap under moonlit skies with you\n\nI'll just picture us, you with the waves\n\nAnd oceans colours on your face\n\nI'll leave my heart with your air, so let me fly with you\n\nWill you be forever with me?\n\n---\n\nAlhamdulillah, in this world and in the next\n\nOur story's gonna go down one of the best\n\nOnce you'd be mine, Would you mind if I asked your hand for life\n\nKnow that you're all I want as my love\n\nI'll imagine we fell in love\n\nI'll nap under moonlit skies with you\n\nI'll just hold you right by my side, through the thin and thick of our lives\n\nI'll be the best you could ever get, once you show me how\n\nWill you hold me together with you, forever more!\n\n\n\n\n\n",
+      "folderId": null,
+      "createdAt": "2026-09-29T11:05:25.600Z",
+      "isLife": true
+    }
+  ],
+  "lifeFolders": [],
+  "currency": "INR",
+  "quotes": [
+    {
+      "id": "1",
+      "text": "Get up. Discipline is how ambition turns into money."
+    },
+    {
+      "id": "2",
+      "text": "Consistency is boring, but it pays rent and freedom."
+    },
+    {
+      "id": "3",
+      "text": "Your habits are literally designing your bank account."
+    },
+    {
+      "id": "4",
+      "text": "Stand up and act like the disciplined routine of you."
+    },
+    {
+      "id": "5",
+      "text": "One focused action today builds tomorrow's income."
+    },
+    {
+      "id": "6",
+      "text": "Discipline beats motivation, especially on lazy days."
+    },
+    {
+      "id": "7",
+      "text": "Do the small habit now. Let compounding cook."
+    },
+    {
+      "id": "8",
+      "text": "Your identity decides your income, move accordingly."
+    },
+    {
+      "id": "9",
+      "text": "Lock in daily. Success loves predictable effort."
+    },
+    {
+      "id": "10",
+      "text": "Consistency is how underachievers turn unstoppable."
+    },
+    {
+      "id": "11",
+      "text": "Build habits that make success automatic."
+    },
+    {
+      "id": "12",
+      "text": "Focus is currency, stop spending it on nothing."
+    },
+    {
+      "id": "13",
+      "text": "Act broke in effort, rich in discipline."
+    },
+    {
+      "id": "14",
+      "text": "You don't feel disciplined. You act disciplined."
+    },
+    {
+      "id": "15",
+      "text": "Your routine is your wealth strategy."
+    },
+    {
+      "id": "16",
+      "text": "Show up tired. Consistency still counts."
+    },
+    {
+      "id": "17",
+      "text": "Discipline today funds freedom tomorrow."
+    },
+    {
+      "id": "18",
+      "text": "Stack disciplined days. Watch money follow."
+    },
+    {
+      "id": "19",
+      "text": "Habits don't ask how you feel. Neither should you."
+    },
+    {
+      "id": "20",
+      "text": "Get up. Become the person who doesn't quit."
+    }
+  ],
+  "aiConfig": {
+    "activeProfileId": "default",
+    "profiles": [
+      {
+        "id": "default",
+        "name": "Default Profile",
+        "provider": "openai",
+        "model": "gpt-4o",
+        "apiKey": "",
+        "customEndpoint": ""
+      }
+    ]
+  },
+  "milestones": {
+    "2027-01-28": "**@50 Fasts** - **Complete the 50 fasts**\n\n**@Victory Vacay** - **Vacay Yay!**  \nGoing to a blessed trip with my Pyaru MummyPappa as we completed the 100 days of Dream Protocol\n- Arrange all the money and itenary",
+    "2027-08-15": "**@Debt Clearance** - **Debt Free Alhamdulillah**  \n- Alhamdulillah by the Fazl of ALLAH SWT me, my MummyPappa and our entire generations are debt free so we can take care of the Ummah better.",
+    "2027-09-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 1st Instalment (20L)**  \n- First Hajj Instalment of 20L\n- Covers Private Booking",
+    "2027-12-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 2nd Instalment (20L)**  \n- Second Hajj Instalment of 20L\n- Covers Travelling and Stay",
+    "2028-03-01": "**@Hajj Mabroor Maqbool Mubarak** - **Alhamdulillah 3rd Instalment (20L)**  \n- Third Hajj Instalment of 20L\n- Covers All Alhamdulillah",
+    "2029-01-01": "**@Build Masjid Fee Sabeelillah** - **Masjid Init**  \n- Alhamdulillah by the Fazl of ALLAH SWT me, my Pyaru MummyPappa and family will start building the masajid fee sabeelillah",
+    "2027-03-15": "**@Qur'an Hafidh** - **Hifz 15, 16, 29, 30**  \nStrongly place juz 15, 16, 29, 30 in your heart by the Fazl of ALLAH SWT",
+    "2027-01-08": "**@Ramadhaan Umrah 1** - **Umrah Paperwork**",
+    "2026-10-27": "**@Repay Amanullah Debt** - **Repay 60K**  \nThe map app must repay the debt by the Fazl of ALLAH SWT",
+    "2027-03-18": "**@Master LLD** - **LLDone - Alpha**  \nthe LLDone cruxmapped version is up for grabs in alpha phase",
+    "2027-04-01": "**@Master LLD** - **LLDone release - Cohort**  \nStart Personal LLDone training cohort",
+    "2026-12-21": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment",
+    "2026-12-26": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment",
+    "2026-12-31": "**@Pyarus Healthy** - **Buy Gym Memberships**  \n- Purchase all the memberships for Pyarus Salaamati by the Fazl of ALLAH SWT Aameen\n- Gym\n- Fitness Program\n- Equipment\n\n**@Build a Community** - **2K Community**\n\n**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2027-01-30": "**@DSA x300** - **DSA 300 🎉**  \n- Completed the 300 questions on a streak\n- 3qpd",
+    "2026-11-13": "**@Pyarus Phones** - **Pixel Coupons**",
+    "2026-10-15": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-10-22": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-10-29": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-11-05": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-11-12": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-11-19": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-11-26": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-12-03": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-12-10": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-12-17": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-12-24": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2027-01-07": "**@xmfclub** - **xmfclub transform (13)**  \n- Post transformations\n- Health (trains)\n- Code (biz)",
+    "2026-10-31": "**@Lisan App Cohort** - **Cohort Invite**  \n- Spoken to 4 doctors\n- Daily invite reels for 12 participants for 6 weeks",
+    "2026-10-26": "**@Lisan App Cohort** - **Bade Ammi Deploy**  \n- Speak to 4 doctors\n- Prepare for invite"
+  }
+}
