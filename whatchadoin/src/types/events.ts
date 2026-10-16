@@ -13,6 +13,7 @@ export type AppEventType =
     | 'fab:add-life-goal'
     | 'fab:add-money-goal'
     | 'fab:add-coins'
+    | 'fab:add-counter'
     | 'myday-add-habit-mobile'
     | 'open-settings'
     | 'toggle-ai-dock'

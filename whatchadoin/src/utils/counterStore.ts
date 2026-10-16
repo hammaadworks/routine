@@ -102,6 +102,18 @@ export function getTargetForDate(counter: CounterItem, dateStr: string): number 
  * Backlog(Day N) = Backlog(Day N - 1) + Target(Day N) - Did(Day N).
  */
 export function rolloverCounterIfNeeded(counter: CounterItem, todayStr: string): CounterItem {
+    if (counter.cadence === 'total') {
+        return {
+            ...counter,
+            lastActiveDate: counter.lastActiveDate || todayStr,
+            todayCount: counter.todayCount || 0,
+            backlog: 0,
+            pastDaysCount: counter.pastDaysCount || 0,
+            pastTotalDid: counter.pastTotalDid || 0,
+            todayEvents: counter.todayEvents || []
+        };
+    }
+
     if (!counter.lastActiveDate) {
         return {
             ...counter,
@@ -209,7 +221,8 @@ export function loadCounters(): CounterItem[] {
                 const updated = parsed.map((item: CounterItem) => {
                     const normalized: CounterItem = {
                         ...item,
-                        backlog: typeof item.backlog === 'number' ? item.backlog : 0,
+                        cadence: item.cadence === 'weekly' ? 'weekly' : item.cadence === 'total' ? 'total' : 'daily',
+                        backlog: item.cadence === 'total' ? 0 : (typeof item.backlog === 'number' ? item.backlog : 0),
                         todayCount: typeof item.todayCount === 'number' ? item.todayCount : 0,
                         lastActiveDate: item.lastActiveDate || todayStr,
                         pastDaysCount: item.pastDaysCount || 0,
@@ -264,6 +277,15 @@ export function updateCounterTarget(
     const updated = counters.map(item => {
         if (item.id !== counterId) return item;
 
+        if (item.cadence === 'total') {
+            return {
+                ...item,
+                targetCount: newTarget,
+                targetHistory: [],
+                backlog: 0
+            };
+        }
+
         if (scope === 'all') {
             const pastCount = item.pastDaysCount || 0;
             const pastDid = item.pastTotalDid || 0;
@@ -310,7 +332,9 @@ export function recordCounterDelta(
 
         // Rollover if needed
         const rolled = rolloverCounterIfNeeded(item, todayStr);
-        const newCount = Math.max(0, (rolled.todayCount || 0) + delta);
+        // Round to 4 decimal places to prevent floating-point precision artifacts (e.g. 0.1 + 0.2 = 0.30000000000000004)
+        const rawNew = (rolled.todayCount || 0) + delta;
+        const newCount = Math.max(0, Math.round(rawNew * 10000) / 10000);
 
         const now = new Date();
         const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -375,6 +399,7 @@ export interface CounterStats {
     percentage: number;
     weekTotal: number;
     avg7Days: number;
+    dailyPace?: number;
     events: CounterEvent[];
 }
 
@@ -398,16 +423,49 @@ export function calculateCounterStats(
     counter: CounterItem,
     dateStr: string
 ): CounterStats {
+    if (counter.cadence === 'total') {
+        const target = counter.targetCount;
+        const currentCount = counter.todayCount || 0;
+        const remaining = Math.max(0, target - currentCount);
+        let isMet = false;
+        let percentage = 0;
+
+        if (counter.isNegative) {
+            isMet = currentCount <= target;
+            percentage = target > 0 ? Math.min(100, Math.round((currentCount / target) * 100)) : (currentCount === 0 ? 100 : 0);
+        } else {
+            isMet = currentCount >= target;
+            percentage = target > 0 ? Math.min(100, Math.round((currentCount / target) * 100)) : 100;
+        }
+
+        return {
+            effectiveTarget: target,
+            todayTarget: target,
+            todayCount: currentCount,
+            backlog: 0,
+            totalTargetSoFar: target,
+            totalDidSoFar: currentCount,
+            targetToday: target,
+            remainingToday: remaining,
+            isMet,
+            percentage,
+            weekTotal: currentCount,
+            avg7Days: currentCount,
+            events: counter.todayEvents || []
+        };
+    }
+
     const effectiveTarget = getTargetForDate(counter, dateStr);
     const todayCount = counter.todayCount || 0;
 
     let targetToday = effectiveTarget;
-    let remainingToday = Math.max(0, effectiveTarget - todayCount);
+    let remainingToday = Math.max(0, Math.round((effectiveTarget - todayCount) * 10000) / 10000);
     let isMet = false;
     let percentage = 0;
     let weekTotal = todayCount;
+    let dailyPace: number | undefined = undefined;
 
-    let backlog = (counter.backlog || 0) + (effectiveTarget - todayCount);
+    let backlog = Math.round(((counter.backlog || 0) + (effectiveTarget - todayCount)) * 10000) / 10000;
 
     if (counter.cadence === 'daily') {
         targetToday = effectiveTarget;
@@ -426,10 +484,12 @@ export function calculateCounterStats(
         const dayIdx = new Date(y, m - 1, d).getDay(); // 0 is Sunday, 6 is Saturday
         const daysRemaining = 7 - dayIdx; // includes today
         const neededForWeek = Math.max(0, effectiveTarget - todayCount);
-        targetToday = daysRemaining > 0 ? Math.ceil(neededForWeek / daysRemaining) : 0;
-        remainingToday = Math.max(0, targetToday - todayCount);
+        dailyPace = daysRemaining > 0 ? Math.ceil(neededForWeek / daysRemaining) : 0;
 
-        backlog = (counter.backlog || 0) + (effectiveTarget - todayCount);
+        targetToday = effectiveTarget;
+        remainingToday = Math.max(0, Math.round((effectiveTarget - todayCount) * 10000) / 10000);
+
+        backlog = Math.round(((counter.backlog || 0) + (effectiveTarget - todayCount)) * 10000) / 10000;
 
         if (counter.isNegative) {
             isMet = todayCount <= effectiveTarget;
@@ -462,6 +522,7 @@ export function calculateCounterStats(
         percentage,
         weekTotal,
         avg7Days,
+        dailyPace,
         events: counter.todayEvents || []
     };
 }

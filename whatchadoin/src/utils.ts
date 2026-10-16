@@ -295,10 +295,10 @@ export function sanitizeAllStorage(): void {
                     .map((c: any) => ({
                         ...c,
                         name: c.name.trim(),
-                        cadence: c.cadence === 'weekly' ? 'weekly' : 'daily',
+                        cadence: c.cadence === 'weekly' ? 'weekly' : c.cadence === 'total' ? 'total' : 'daily',
                         targetCount: typeof c.targetCount === 'number' && !isNaN(c.targetCount) ? c.targetCount : 1,
                         targetHistory: Array.isArray(c.targetHistory) ? c.targetHistory : [],
-                        backlog: typeof c.backlog === 'number' && !isNaN(c.backlog) ? c.backlog : 0,
+                        backlog: c.cadence === 'total' ? 0 : (typeof c.backlog === 'number' && !isNaN(c.backlog) ? c.backlog : 0),
                         todayCount: typeof c.todayCount === 'number' && !isNaN(c.todayCount) ? c.todayCount : 0,
                         lastActiveDate: typeof c.lastActiveDate === 'string' ? c.lastActiveDate : '',
                         pastDaysCount: typeof c.pastDaysCount === 'number' && !isNaN(c.pastDaysCount) ? c.pastDaysCount : 0,

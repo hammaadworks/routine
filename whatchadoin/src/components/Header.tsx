@@ -44,7 +44,7 @@ export default function Header({
     onCounterClick: _onCounterClick,
     onOpenDispatch
 }: HeaderProps) {
-    const {formatCurrency} = useCurrency();
+    const {formatCurrency, currencySymbol} = useCurrency();
     const syncState = useSyncStatus();
 
     const [dispatchMetrics, setDispatchMetrics] = useState(() => {
@@ -128,7 +128,7 @@ export default function Header({
 
                     {/* Entry Point: Content Dispatch & Daily Quota */}
                     <button
-                        className="header-dispatch-btn"
+                        className={`header-dispatch-btn ${_activeCenterTab === 'dispatch' ? 'active' : ''}`}
                         onClick={onOpenDispatch}
                         title={`Content Dispatch: ${dispatchMetrics.completed}/${dispatchMetrics.total} Completed (${dispatchMetrics.remaining} Left Today)`}
                     >
@@ -185,15 +185,28 @@ export default function Header({
                                 fontSize: '12.5px',
                                 flexShrink: 0
                             }}
-                            title="Wallet Goal"
+                            title={`Wallet Goal: ${formatCurrency(walletTotal, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: walletTotal % 1 === 0 ? 0 : 2
+                            })}`}
                         >
-                            <Wallet size={15}/>
+                            <Wallet size={15} style={{ flexShrink: 0 }} />
                             <span className="header-btn-text">Wallet Goal:</span>
-                            <span>
+                            <span className="header-wallet-amount-full">
                                 {formatCurrency(walletTotal, {
                                     minimumFractionDigits: 0,
                                     maximumFractionDigits: walletTotal % 1 === 0 ? 0 : 2
                                 })}
+                            </span>
+                            <span className="header-wallet-amount-compact">
+                                {walletTotal >= 1000000
+                                    ? `${currencySymbol}${(walletTotal / 1000000).toFixed(walletTotal % 1000000 === 0 ? 0 : 1)}M`
+                                    : walletTotal >= 10000
+                                        ? `${currencySymbol}${(walletTotal / 1000).toFixed(walletTotal % 1000 === 0 ? 0 : 1)}k`
+                                        : formatCurrency(walletTotal, {
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: walletTotal % 1 === 0 ? 0 : 2
+                                        })}
                             </span>
                         </button>
                     )}

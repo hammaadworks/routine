@@ -235,6 +235,14 @@ body {
     white-space: nowrap;
 }
 
+.header-wallet-amount-compact {
+    display: none;
+}
+
+.header-wallet-amount-full {
+    display: inline;
+}
+
 .header-dispatch-btn {
     display: inline-flex;
     align-items: center;
@@ -255,6 +263,13 @@ body {
 .header-dispatch-btn:hover {
     background: rgba(255, 255, 255, 0.07);
     border-color: var(--accent);
+}
+
+.header-dispatch-btn.active {
+    background: rgba(201, 162, 39, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px rgba(201, 162, 39, 0.25);
 }
 
 .header-dispatch-btn .header-dispatch-icon {
@@ -580,6 +595,25 @@ body {
         display: none !important;
     }
 
+    .header-wallet-btn {
+        padding: 5px 8px !important;
+        font-size: 11.5px !important;
+        max-width: 140px;
+    }
+
+    .header-wallet-amount-full {
+        display: none !important;
+    }
+
+    .header-wallet-amount-compact {
+        display: inline !important;
+        white-space: nowrap !important;
+    }
+
+    .header-mode-btn {
+        padding: 5px 8px !important;
+    }
+
     .header-center-wrapper {
         position: static !important;
         transform: none !important;
@@ -604,6 +638,16 @@ body {
 
     .header-wordmark {
         font-size: 16px !important;
+    }
+
+    .header-wallet-btn {
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+        max-width: 110px !important;
+    }
+
+    .header-mode-btn {
+        padding: 4px 6px !important;
     }
 }
 
@@ -2328,4 +2372,61 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+.counter-card {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.counter-card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.counter-card.is-met {
+    border-color: rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 14px rgba(16, 185, 129, 0.1);
+}
+
+.counter-card.is-met:hover {
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.18);
+}
+
+.counter-btn-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.counter-btn-row button.secondary {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--panel-border);
+    color: #fff;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.counter-btn-row button.secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.counter-btn-row button.secondary:active:not(:disabled) {
+    transform: translateY(0);
+}
+
 

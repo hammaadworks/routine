@@ -11,7 +11,8 @@ import {
     Maximize2,
     RotateCcw,
     MessageSquare,
-    Hash
+    Hash,
+    Copy
 } from 'lucide-react';
 import type { CounterItem, CounterCadence } from '../types/counter';
 import BaseModal from './BaseModal';
@@ -55,6 +56,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         name: string;
         cadence: CounterCadence;
         targetCount: number;
+        currentCount: number;
         unit: string;
         step: number;
         quickSteps: string;
@@ -66,6 +68,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         name: '',
         cadence: 'daily',
         targetCount: 100,
+        currentCount: 0,
         unit: 'reps',
         step: 1,
         quickSteps: '1, 5, 10, 25',
@@ -111,12 +114,17 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                 setCounters(loadCounters());
             }
         };
+        const handleFabAdd = () => {
+            handleOpenAddCounter();
+        };
 
         window.addEventListener('whatchadoin_counters_updated', handleCountersUpdate);
         window.addEventListener('storage', handleStorage);
+        window.addEventListener('fab:add-counter', handleFabAdd);
         return () => {
             window.removeEventListener('whatchadoin_counters_updated', handleCountersUpdate);
             window.removeEventListener('storage', handleStorage);
+            window.removeEventListener('fab:add-counter', handleFabAdd);
         };
     }, []);
 
@@ -180,7 +188,10 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
     // Reset Day
     const handleResetDay = (counter: CounterItem) => {
-        if (window.confirm(`Reset ${counter.name} count to 0 for today?`)) {
+        const msg = counter.cadence === 'total'
+            ? `Reset ${counter.name} count to 0?`
+            : `Reset ${counter.name} count to 0 for today?`;
+        if (window.confirm(msg)) {
             const updated = resetCounterDay(counters, counter.id);
             setCounters(updated);
         }
@@ -195,6 +206,26 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         }
     };
 
+    // Duplicate Counter
+    const handleDuplicateCounter = (counter: CounterItem) => {
+        const today = getTodayDateStr();
+        const duplicated: CounterItem = {
+            ...counter,
+            id: `cnt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: `${counter.name} (Copy)`,
+            createdAt: Date.now(),
+            todayCount: 0,
+            backlog: 0,
+            lastActiveDate: today,
+            todayEvents: [],
+            pastDaysCount: 0,
+            pastTotalDid: 0
+        };
+        const updated = [...counters, duplicated];
+        setCounters(updated);
+        saveCounters(updated);
+    };
+
     // Open Counter Create / Edit Modal
     const handleOpenAddCounter = () => {
         setEditingCounter(null);
@@ -202,8 +233,9 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             name: '',
             cadence: 'daily',
             targetCount: 100,
+            currentCount: 0,
             unit: 'reps',
-            step: 10,
+            step: 1,
             quickSteps: '1, 5, 10, 25',
             color: COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)] || '#00F5D4',
             notes: '',
@@ -218,9 +250,10 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
         setCounterForm({
             name: counter.name,
             cadence: counter.cadence,
-            targetCount: getTargetForDate(counter, selectedDate),
+            targetCount: counter.cadence === 'total' ? counter.targetCount : getTargetForDate(counter, selectedDate),
+            currentCount: counter.todayCount || 0,
             unit: counter.unit || 'reps',
-            step: counter.step || 1,
+            step: counter.step !== undefined && counter.step > 0 ? counter.step : 1,
             quickSteps: (counter.quickSteps || [1, 5, 10]).join(', '),
             color: counter.color || '#00F5D4',
             notes: counter.notes || '',
@@ -239,18 +272,23 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             .map(s => Number(s.trim()))
             .filter(n => !isNaN(n) && n > 0);
 
-        if (editingCounter) {
-            const oldTarget = getTargetForDate(editingCounter, selectedDate);
-            const targetChanged = counterForm.targetCount !== oldTarget;
+        const validatedStep = Number(counterForm.step) > 0 ? Number(counterForm.step) : 1;
+        const validatedTarget = Number(counterForm.targetCount) > 0 ? Number(counterForm.targetCount) : 1;
 
-            if (targetChanged) {
-                // If target changed, prompt user with Target Scope Modal
+        if (editingCounter) {
+            const isTotal = counterForm.cadence === 'total';
+            const wasTotal = editingCounter.cadence === 'total';
+            const oldTarget = wasTotal ? editingCounter.targetCount : getTargetForDate(editingCounter, selectedDate);
+            const targetChanged = validatedTarget !== oldTarget;
+
+            if (!isTotal && !wasTotal && targetChanged) {
+                // If target changed on date-bound counter, prompt user with Target Scope Modal
                 const baseUpdated: CounterItem = {
                     ...editingCounter,
                     name: counterForm.name.trim(),
                     cadence: counterForm.cadence,
                     unit: counterForm.unit.trim() || undefined,
-                    step: Number(counterForm.step) || 1,
+                    step: validatedStep,
                     quickSteps: parsedQuickSteps.length > 0 ? parsedQuickSteps : [1, 5, 10],
                     color: counterForm.color,
                     notes: counterForm.notes.trim() || undefined,
@@ -261,7 +299,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                 setTargetChangeModal({
                     counter: baseUpdated,
                     prevTarget: oldTarget,
-                    newTarget: Number(counterForm.targetCount) || 1,
+                    newTarget: validatedTarget,
                     scope: 'from_today' // Default: Set from today!
                 });
                 return;
@@ -274,13 +312,16 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                         ...c,
                         name: counterForm.name.trim(),
                         cadence: counterForm.cadence,
+                        targetCount: validatedTarget,
+                        targetHistory: isTotal ? [] : (c.targetHistory || []),
                         unit: counterForm.unit.trim() || undefined,
-                        step: Number(counterForm.step) || 1,
+                        step: validatedStep,
                         quickSteps: parsedQuickSteps.length > 0 ? parsedQuickSteps : [1, 5, 10],
                         color: counterForm.color,
                         notes: counterForm.notes.trim() || undefined,
                         isNegative: counterForm.isNegative,
-                        backlog: Number(counterForm.backlog) || 0
+                        todayCount: isTotal ? (Number(counterForm.currentCount) || 0) : c.todayCount,
+                        backlog: isTotal ? 0 : (Number(counterForm.backlog) || 0)
                     };
                 }
                 return c;
@@ -289,22 +330,23 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
             saveCounters(updated);
         } else {
             // New counter
+            const isTotal = counterForm.cadence === 'total';
             const todayStr = getTodayDateStr();
             const newCounter: CounterItem = {
                 id: `cnt-${Date.now()}`,
                 name: counterForm.name.trim(),
                 cadence: counterForm.cadence,
-                targetCount: Number(counterForm.targetCount) || 100,
+                targetCount: validatedTarget,
                 unit: counterForm.unit.trim() || undefined,
-                step: Number(counterForm.step) || 1,
+                step: validatedStep,
                 quickSteps: parsedQuickSteps.length > 0 ? parsedQuickSteps : [1, 5, 10],
                 color: counterForm.color,
                 notes: counterForm.notes.trim() || undefined,
                 isNegative: counterForm.isNegative,
                 createdAt: Date.now(),
                 startDate: todayStr,
-                backlog: Number(counterForm.backlog) || 0,
-                todayCount: 0,
+                backlog: isTotal ? 0 : (Number(counterForm.backlog) || 0),
+                todayCount: isTotal ? (Number(counterForm.currentCount) || 0) : 0,
                 lastActiveDate: todayStr,
                 pastDaysCount: 0,
                 pastTotalDid: 0,
@@ -320,7 +362,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
     // Open Target Change Modal directly
     const handleOpenChangeTarget = (counter: CounterItem) => {
-        const prevTarget = getTargetForDate(counter, selectedDate);
+        const prevTarget = counter.cadence === 'total' ? counter.targetCount : getTargetForDate(counter, selectedDate);
         setTargetChangeModal({
             counter,
             prevTarget,
@@ -532,7 +574,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                         <Hash size={42} color="var(--accent)" style={{ opacity: 0.6 }} />
                         <h3 style={{ margin: 0, color: '#fff' }}>No Counters Yet</h3>
                         <p style={{ maxWidth: '400px', fontSize: '13px', lineHeight: 1.5 }}>
-                            Track daily pushups, zikr, or distractions like Instagram doomscrolling. Space-efficient backlog calculation keeps track of your overall target.
+                            Track daily/weekly routines with backlog pacing, or plain counters that count up to a target without dates or backlog.
                         </p>
                         <button className="primary" onClick={handleOpenAddCounter} style={{ padding: '8px 18px', borderRadius: '8px' }}>
                             <Plus size={16} /> Create Your First Counter
@@ -556,18 +598,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                             return (
                                 <div
                                     key={counter.id}
-                                    style={{
-                                        background: 'rgba(255, 255, 255, 0.03)',
-                                        border: `1px solid ${stats.isMet ? 'rgba(16, 185, 129, 0.4)' : 'var(--panel-border)'}`,
-                                        borderRadius: '14px',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '14px',
-                                        boxShadow: stats.isMet ? '0 0 12px rgba(16, 185, 129, 0.1)' : 'none',
-                                        transition: 'all 0.2s ease',
-                                        position: 'relative'
-                                    }}
+                                    className={`counter-card ${stats.isMet ? 'is-met' : ''}`}
                                 >
                                     {/* Card Header with OrderControls */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
@@ -580,12 +611,13 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                                 disabled={isReorderDisabled}
                                             />
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
                                                     <span style={{
-                                                        width: '10px',
-                                                        height: '10px',
+                                                        width: '9px',
+                                                        height: '9px',
                                                         borderRadius: '50%',
                                                         background: hexColor,
+                                                        boxShadow: `0 0 8px ${hexColor}88`,
                                                         flexShrink: 0
                                                     }} />
                                                     <h3 style={{
@@ -603,23 +635,25 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                                     <span style={{
-                                                        fontSize: '11px',
-                                                        fontWeight: '600',
+                                                        fontSize: '10px',
+                                                        fontWeight: '700',
+                                                        letterSpacing: '0.4px',
                                                         textTransform: 'uppercase',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '4px',
-                                                        background: 'rgba(255, 255, 255, 0.08)',
-                                                        color: 'var(--text-secondary)'
+                                                        padding: '2px 7px',
+                                                        borderRadius: '5px',
+                                                        background: counter.cadence === 'total' ? 'rgba(0, 245, 212, 0.12)' : 'rgba(255, 255, 255, 0.07)',
+                                                        color: counter.cadence === 'total' ? 'var(--accent)' : 'var(--text-secondary)'
                                                     }}>
-                                                        {counter.cadence}
+                                                        {counter.cadence === 'total' ? 'Plain Counter' : counter.cadence}
                                                     </span>
 
                                                     {counter.isNegative && (
                                                         <span style={{
-                                                            fontSize: '11px',
-                                                            fontWeight: '600',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '4px',
+                                                            fontSize: '10px',
+                                                            fontWeight: '700',
+                                                            letterSpacing: '0.4px',
+                                                            padding: '2px 7px',
+                                                            borderRadius: '5px',
                                                             background: 'rgba(239, 68, 68, 0.15)',
                                                             color: '#EF4444'
                                                         }}>
@@ -634,7 +668,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                                             whiteSpace: 'nowrap',
                                                             overflow: 'hidden',
                                                             textOverflow: 'ellipsis',
-                                                            maxWidth: '160px'
+                                                            maxWidth: '180px'
                                                         }}>
                                                             {counter.notes}
                                                         </span>
@@ -643,9 +677,10 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                             </div>
                                         </div>
 
-                                        {/* Actions: Edit, Focus, Delete */}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {/* Actions: Focus, Duplicate, Edit, Delete */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                             <button
+                                                type="button"
                                                 className="icon-btn"
                                                 onClick={() => setFocusClickerCounter(counter)}
                                                 title="Focus Fullscreen Clicker"
@@ -654,14 +689,25 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                                 <Maximize2 size={15} />
                                             </button>
                                             <button
+                                                type="button"
+                                                className="icon-btn"
+                                                onClick={() => handleDuplicateCounter(counter)}
+                                                title="Duplicate Counter"
+                                                style={{ padding: '6px', color: 'var(--text-secondary)' }}
+                                            >
+                                                <Copy size={15} />
+                                            </button>
+                                            <button
+                                                type="button"
                                                 className="icon-btn"
                                                 onClick={() => handleOpenEditCounter(counter)}
                                                 title="Edit Counter"
-                                                style={{ padding: '6px' }}
+                                                style={{ padding: '6px', color: 'var(--text-secondary)' }}
                                             >
                                                 <Pencil size={15} />
                                             </button>
                                             <button
+                                                type="button"
                                                 className="icon-btn"
                                                 onClick={() => handleDeleteCounter(counter.id)}
                                                 title="Delete Counter"
@@ -672,188 +718,212 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         </div>
                                     </div>
 
-                                    {/* Prominent Count & Status Display */}
+                                    {/* Prominent Unified Count & Pacing Card */}
                                     <div style={{
-                                        display: 'flex',
-                                        alignItems: 'baseline',
-                                        justifyContent: 'space-between',
                                         background: 'rgba(0, 0, 0, 0.25)',
-                                        borderRadius: '10px',
-                                        padding: '10px 14px',
-                                        border: '1px solid var(--panel-border)'
+                                        borderRadius: '12px',
+                                        padding: '12px 14px',
+                                        border: '1px solid var(--panel-border)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '10px'
                                     }}>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                                                <span style={{
-                                                    fontSize: '32px',
-                                                    fontWeight: '800',
-                                                    color: stats.isMet ? '#10B981' : hexColor,
-                                                    lineHeight: 1
-                                                }}>
-                                                    {stats.todayCount}
-                                                </span>
-                                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                                                    {counter.unit || 'reps'}
+                                        {/* Count & Status Row */}
+                                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                                                    <span style={{
+                                                        fontSize: '32px',
+                                                        fontWeight: '800',
+                                                        color: stats.isMet ? '#10B981' : hexColor,
+                                                        lineHeight: 1,
+                                                        fontVariantNumeric: 'tabular-nums'
+                                                    }}>
+                                                        {stats.todayCount}
+                                                    </span>
+                                                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                                                        {counter.unit || 'reps'}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                                    {counter.cadence === 'total'
+                                                        ? `Target: ${counter.targetCount} ${counter.unit || 'reps'}`
+                                                        : counter.cadence === 'weekly'
+                                                            ? 'Logged this week'
+                                                            : `Logged on ${formatDisplayDate(selectedDate)}`}
                                                 </span>
                                             </div>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                                Logged on {formatDisplayDate(selectedDate)}
-                                            </span>
+
+                                            <div style={{ textAlign: 'right' }}>
+                                                {stats.isMet ? (
+                                                    <div style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '5px',
+                                                        padding: '3px 9px',
+                                                        borderRadius: '20px',
+                                                        background: 'rgba(16, 185, 129, 0.15)',
+                                                        color: '#10B981',
+                                                        fontSize: '11px',
+                                                        fontWeight: '700'
+                                                    }}>
+                                                        <CheckCircle2 size={13} />
+                                                        <span>Target Met!</span>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        padding: '3px 9px',
+                                                        borderRadius: '20px',
+                                                        background: 'rgba(255, 255, 255, 0.06)',
+                                                        fontSize: '11px',
+                                                        fontWeight: '600'
+                                                    }}>
+                                                        <span style={{ color: '#fff', fontWeight: '700' }}>
+                                                            {stats.remainingToday}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>to go ({stats.percentage}%)</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        <div style={{ textAlign: 'right' }}>
-                                            {stats.isMet ? (
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px',
-                                                    color: '#10B981',
-                                                    fontWeight: '700',
-                                                    fontSize: '13px'
-                                                }}>
-                                                    <CheckCircle2 size={16} />
-                                                    <span>Target Met!</span>
-                                                </div>
-                                            ) : (
-                                                <div style={{
-                                                    fontSize: '13px',
-                                                    fontWeight: '600',
-                                                    color: 'var(--text-secondary)'
-                                                }}>
-                                                    <span style={{ color: '#fff', fontWeight: '700' }}>
-                                                        {stats.remainingToday}
-                                                    </span> to go
-                                                </div>
-                                            )}
-                                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                                {stats.percentage}% completed
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress Bar */}
-                                    <div style={{
-                                        width: '100%',
-                                        height: '6px',
-                                        borderRadius: '3px',
-                                        background: 'rgba(255, 255, 255, 0.1)',
-                                        overflow: 'hidden'
-                                    }}>
+                                        {/* Progress Bar */}
                                         <div style={{
-                                            width: `${Math.min(100, stats.percentage)}%`,
-                                            height: '100%',
-                                            background: stats.isMet ? '#10B981' : hexColor,
-                                            borderRadius: '3px',
-                                            transition: 'width 0.3s ease'
-                                        }} />
-                                    </div>
-
-                                    {/* Metrics Grid: Today Target & Backlog */}
-                                    <div style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(2, 1fr)',
-                                        gap: '10px',
-                                        background: 'rgba(255, 255, 255, 0.02)',
-                                        padding: '12px',
-                                        borderRadius: '10px',
-                                        border: '1px solid var(--panel-border)'
-                                    }}>
-                                        {/* Column 1: Today Target */}
-                                        <div>
+                                            width: '100%',
+                                            height: '6px',
+                                            borderRadius: '999px',
+                                            background: 'rgba(255, 255, 255, 0.08)',
+                                            overflow: 'hidden'
+                                        }}>
                                             <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                marginBottom: '3px'
-                                            }}>
-                                                <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: '600' }}>
-                                                    Today Target
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOpenChangeTarget(counter)}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: 'var(--accent)',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
-                                                        fontSize: '10px',
-                                                        fontWeight: '600',
-                                                        textDecoration: 'underline'
-                                                    }}
-                                                    title="Change Target (Prompt scope)"
-                                                >
-                                                    Change
-                                                </button>
-                                            </div>
-                                            <div style={{ fontWeight: '800', color: '#fff', fontSize: '15px' }}>
-                                                {stats.todayTarget} <span style={{ fontSize: '11px', fontWeight: '400', color: 'var(--text-secondary)' }}>{counter.unit || 'reps'}</span>
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                                                Did Today: <strong style={{ color: '#fff' }}>{stats.todayCount}</strong>
-                                            </div>
+                                                width: `${Math.min(100, stats.percentage)}%`,
+                                                height: '100%',
+                                                background: stats.isMet ? '#10B981' : hexColor,
+                                                borderRadius: '999px',
+                                                transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }} />
                                         </div>
 
-                                        {/* Column 2: Backlog */}
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-                                                <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: '600' }}>
-                                                    Backlog
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOpenEditBacklog(counter)}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: 'var(--accent)',
-                                                        cursor: 'pointer',
-                                                        padding: 0,
-                                                        fontSize: '10px',
-                                                        fontWeight: '600',
-                                                        textDecoration: 'underline'
-                                                    }}
-                                                    title="Edit or adjust backlog"
-                                                >
-                                                    Edit
-                                                </button>
-                                            </div>
-                                            <div style={{
-                                                fontWeight: '800',
-                                                fontSize: '15px',
-                                                color: stats.backlog > 0 ? '#FF9F1C' : (stats.backlog === 0 ? '#10B981' : '#00F5D4')
-                                            }}>
-                                                {stats.backlog > 0 ? `+${stats.backlog}` : stats.backlog} <span style={{ fontSize: '11px', fontWeight: '400' }}>{counter.unit || 'reps'}</span>
-                                            </div>
-                                            <div style={{
-                                                fontSize: '11px',
-                                                fontWeight: '600',
-                                                color: stats.backlog > 0 ? '#FF9F1C' : (stats.backlog === 0 ? '#10B981' : '#00F5D4'),
-                                                marginTop: '3px'
-                                            }}>
-                                                {stats.backlog > 0 ? 'Behind target' : (stats.backlog === 0 ? 'On track 🎯' : `Ahead by ${Math.abs(stats.backlog)} 🚀`)}
-                                            </div>
+                                        {/* Target & Backlog Footer Strip */}
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '8px',
+                                            fontSize: '11px',
+                                            paddingTop: '6px',
+                                            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                                            color: 'var(--text-secondary)',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {counter.cadence === 'total' ? (
+                                                <>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span>Target: <strong style={{ color: '#fff' }}>{counter.targetCount}</strong> <span style={{ opacity: 0.7 }}>{counter.unit || 'reps'}</span></span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenChangeTarget(counter)}
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: 'var(--accent)',
+                                                                cursor: 'pointer',
+                                                                padding: '0 2px',
+                                                                fontSize: '11px',
+                                                                fontWeight: '600',
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ color: stats.isMet ? '#10B981' : 'var(--text-secondary)', fontWeight: '600' }}>
+                                                        {stats.isMet ? 'Target reached! 🎯' : `${stats.percentage}% done`}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span>
+                                                            {counter.cadence === 'weekly' ? 'Week Target' : 'Target'}:{' '}
+                                                            <strong style={{ color: '#fff' }}>{stats.todayTarget}</strong>{' '}
+                                                            <span style={{ opacity: 0.7 }}>{counter.unit || 'reps'}</span>
+                                                            {counter.cadence === 'weekly' && stats.dailyPace ? (
+                                                                <span style={{ opacity: 0.6, fontSize: '10px', marginLeft: '3px' }}>
+                                                                    (~{stats.dailyPace}/d)
+                                                                </span>
+                                                            ) : null}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenChangeTarget(counter)}
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: 'var(--accent)',
+                                                                cursor: 'pointer',
+                                                                padding: '0 2px',
+                                                                fontSize: '11px',
+                                                                fontWeight: '600',
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                            title="Change Target (Prompt scope)"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span>
+                                                            Backlog:{' '}
+                                                            <strong style={{
+                                                                color: stats.backlog > 0 ? '#FF9F1C' : (stats.backlog === 0 ? '#10B981' : '#00F5D4')
+                                                            }}>
+                                                                {stats.backlog > 0 ? `+${stats.backlog}` : stats.backlog}
+                                                            </strong>
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenEditBacklog(counter)}
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: 'var(--accent)',
+                                                                cursor: 'pointer',
+                                                                padding: '0 2px',
+                                                                fontSize: '11px',
+                                                                fontWeight: '600',
+                                                                textDecoration: 'underline'
+                                                            }}
+                                                            title="Edit Backlog"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 
                                     {/* Quick Play Controls */}
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        flexWrap: 'wrap'
-                                    }}>
+                                    <div className="counter-btn-row">
                                         {/* Decrement Button */}
                                         <button
+                                            type="button"
                                             className="secondary"
                                             onClick={() => handleDelta(counter, -(counter.step || 1))}
                                             disabled={stats.todayCount <= 0}
                                             title={`Minus ${counter.step || 1}`}
                                             style={{
-                                                padding: '7px 10px',
+                                                width: '38px',
+                                                height: '38px',
                                                 borderRadius: '8px',
-                                                opacity: stats.todayCount <= 0 ? 0.4 : 1
+                                                opacity: stats.todayCount <= 0 ? 0.35 : 1,
+                                                cursor: stats.todayCount <= 0 ? 'not-allowed' : 'pointer',
+                                                flexShrink: 0
                                             }}
                                         >
                                             <Minus size={15} />
@@ -863,18 +933,17 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         {(counter.quickSteps || [1, 5, 10]).map(step => (
                                             <button
                                                 key={step}
+                                                type="button"
                                                 className="secondary"
                                                 onClick={() => handleDelta(counter, step)}
                                                 style={{
-                                                    padding: '7px 12px',
+                                                    flex: 1,
+                                                    minWidth: '44px',
+                                                    height: '38px',
                                                     borderRadius: '8px',
                                                     fontWeight: '700',
-                                                    fontSize: '12px',
-                                                    flex: 1,
-                                                    minWidth: '42px',
-                                                    background: 'rgba(255, 255, 255, 0.05)',
-                                                    border: '1px solid var(--panel-border)',
-                                                    color: '#fff'
+                                                    fontSize: '13px',
+                                                    cursor: 'pointer'
                                                 }}
                                             >
                                                 +{step}
@@ -883,26 +952,40 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
 
                                         {/* Distraction / Reason Log button */}
                                         <button
+                                            type="button"
                                             className="secondary"
                                             onClick={() => handleOpenReasonModal(counter, counter.step || 1)}
                                             title="Add with Reason (When & Why)"
                                             style={{
-                                                padding: '7px 10px',
+                                                width: '38px',
+                                                height: '38px',
                                                 borderRadius: '8px',
-                                                color: counter.isNegative ? '#EF4444' : 'var(--accent)'
+                                                color: counter.isNegative ? '#EF4444' : 'var(--accent)',
+                                                cursor: 'pointer',
+                                                flexShrink: 0
                                             }}
                                         >
-                                            <MessageSquare size={14} />
+                                            <MessageSquare size={15} />
                                         </button>
 
                                         {/* Reset Count Button */}
                                         <button
+                                            type="button"
                                             className="icon-btn"
                                             onClick={() => handleResetDay(counter)}
-                                            title="Reset Day's Count"
-                                            style={{ padding: '7px', opacity: 0.7 }}
+                                            title={counter.cadence === 'total' ? 'Reset count to 0' : 'Reset period count to 0'}
+                                            style={{
+                                                width: '36px',
+                                                height: '38px',
+                                                padding: '6px',
+                                                borderRadius: '8px',
+                                                color: 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                flexShrink: 0,
+                                                opacity: 0.8
+                                            }}
                                         >
-                                            <RotateCcw size={14} />
+                                            <RotateCcw size={15} />
                                         </button>
                                     </div>
 
@@ -910,8 +993,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'flex-start',
-                                        alignItems: 'center',
-                                        paddingTop: '2px'
+                                        alignItems: 'center'
                                     }}>
                                         <button
                                             type="button"
@@ -930,7 +1012,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         >
                                             <Clock size={12} />
                                             <span>
-                                                {stats.events.length} logs today {isExpanded ? '▲' : '▼'}
+                                                {stats.events.length} {stats.events.length === 1 ? 'log' : 'logs'}{counter.cadence === 'total' ? '' : counter.cadence === 'weekly' ? ' this week' : ' today'} {isExpanded ? '▲' : '▼'}
                                             </span>
                                         </button>
                                     </div>
@@ -949,7 +1031,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         }}>
                                             {stats.events.length === 0 ? (
                                                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                                    No entries recorded for this date.
+                                                    {counter.cadence === 'total' ? 'No entries recorded yet.' : counter.cadence === 'weekly' ? 'No entries recorded this week.' : 'No entries recorded for this date.'}
                                                 </span>
                                             ) : (
                                                 stats.events.map(ev => (
@@ -1031,16 +1113,18 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                 >
                                     <option value="daily">Daily Target</option>
                                     <option value="weekly">Weekly Target (Starts Sun)</option>
+                                    <option value="total">Plain Counter (No date bound / to target)</option>
                                 </select>
                             </div>
 
                             <div>
                                 <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
-                                    Target Count
+                                    {counterForm.cadence === 'total' ? 'Target to Reach' : counterForm.cadence === 'weekly' ? 'Weekly Target Count' : 'Daily Target Count'}
                                 </label>
                                 <input
                                     type="number"
-                                    min="0"
+                                    min="0.0001"
+                                    step="any"
                                     value={counterForm.targetCount}
                                     onChange={e => setCounterForm(prev => ({ ...prev, targetCount: Number(e.target.value) || 0 }))}
                                     style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
@@ -1057,7 +1141,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     type="text"
                                     value={counterForm.unit}
                                     onChange={e => setCounterForm(prev => ({ ...prev, unit: e.target.value }))}
-                                    placeholder="reps, zikr, glasses, times"
+                                    placeholder="reps, zikr, glasses, km, hours"
                                     style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
                                 />
                             </div>
@@ -1068,9 +1152,13 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                 </label>
                                 <input
                                     type="number"
-                                    min="1"
+                                    min="0.0001"
+                                    step="any"
                                     value={counterForm.step}
-                                    onChange={e => setCounterForm(prev => ({ ...prev, step: Number(e.target.value) || 1 }))}
+                                    onChange={e => {
+                                        const val = parseFloat(e.target.value);
+                                        setCounterForm(prev => ({ ...prev, step: !isNaN(val) ? val : 0 }));
+                                    }}
                                     style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
                                 />
                             </div>
@@ -1125,7 +1213,47 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                             />
                         </div>
 
-                        {editingCounter && (
+                        {counterForm.cadence === 'total' ? (
+                            <div style={{
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                padding: '12px',
+                                borderRadius: '10px',
+                                border: '1px solid var(--panel-border)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                        Current Count ({counterForm.unit || 'reps'})
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCounterForm(prev => ({ ...prev, currentCount: 0 }))}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            color: 'var(--accent)',
+                                            fontSize: '11px',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            fontWeight: '600',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        Reset to 0
+                                    </button>
+                                </div>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={counterForm.currentCount}
+                                    onChange={e => setCounterForm(prev => ({ ...prev, currentCount: Math.max(0, Number(e.target.value) || 0) }))}
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
+                                />
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                                    Current count towards target. Tap step buttons on the card or adjust the count directly here.
+                                </div>
+                            </div>
+                        ) : editingCounter && (
                             <div style={{
                                 background: 'rgba(255, 255, 255, 0.03)',
                                 padding: '12px',
@@ -1155,6 +1283,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                 </div>
                                 <input
                                     type="number"
+                                    step="any"
                                     value={counterForm.backlog}
                                     onChange={e => setCounterForm(prev => ({ ...prev, backlog: Number(e.target.value) || 0 }))}
                                     style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', fontSize: '14px' }}
@@ -1175,13 +1304,30 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                         </label>
                     </div>
 
-                    <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button type="button" className="secondary" onClick={() => setShowCounterModal(false)}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
-                            {editingCounter ? 'Update Counter' : 'Create Counter'}
-                        </button>
+                    <div className="modal-form-actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                        {editingCounter ? (
+                            <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => {
+                                    handleDuplicateCounter(editingCounter);
+                                    setShowCounterModal(false);
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                                title="Create a copy of this counter"
+                            >
+                                <Copy size={14} />
+                                <span>Duplicate</span>
+                            </button>
+                        ) : <div />}
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <button type="button" className="secondary" onClick={() => setShowCounterModal(false)}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="primary" style={{ padding: '8px 18px', borderRadius: '8px' }}>
+                                {editingCounter ? 'Update Counter' : 'Create Counter'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </BaseModal>
@@ -1212,7 +1358,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                         Previous Target
                                     </span>
                                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                        Active for {formatDisplayDate(selectedDate)}
+                                        {targetChangeModal.counter.cadence === 'total' ? 'Current Goal' : `Active for ${formatDisplayDate(selectedDate)}`}
                                     </div>
                                 </div>
                                 <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>
@@ -1227,7 +1373,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                 </label>
                                 <input
                                     type="number"
-                                    min="0"
+                                    min="0.0001"
+                                    step="any"
                                     value={targetChangeModal.newTarget}
                                     onChange={e => setTargetChangeModal(prev => prev ? { ...prev, newTarget: Number(e.target.value) || 0 } : null)}
                                     autoFocus
@@ -1244,69 +1391,84 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                 />
                             </div>
 
-                            {/* 3. Ask whether to set from today or change for all */}
-                            <div>
-                                <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-                                    Target Application Scope
-                                </label>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {/* Option 1: DEFAULT - Set from today */}
-                                    <label style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        gap: '10px',
-                                        padding: '12px',
-                                        borderRadius: '10px',
-                                        background: targetChangeModal.scope === 'from_today' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                                        border: `1px solid ${targetChangeModal.scope === 'from_today' ? 'var(--accent)' : 'var(--panel-border)'}`,
-                                        cursor: 'pointer'
-                                    }}>
-                                        <input
-                                            type="radio"
-                                            name="targetScope"
-                                            checked={targetChangeModal.scope === 'from_today'}
-                                            onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'from_today' } : null)}
-                                            style={{ marginTop: '3px' }}
-                                        />
-                                        <div>
-                                            <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
-                                                Set this target from today (Default) ⭐
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
-                                                Preserves previous target ({targetChangeModal.prevTarget}) for historical dates; applies {targetChangeModal.newTarget} from {formatDisplayDate(selectedDate)} onwards.
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    {/* Option 2: Change for all */}
-                                    <label style={{
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        gap: '10px',
-                                        padding: '12px',
-                                        borderRadius: '10px',
-                                        background: targetChangeModal.scope === 'all' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                                        border: `1px solid ${targetChangeModal.scope === 'all' ? 'var(--accent)' : 'var(--panel-border)'}`,
-                                        cursor: 'pointer'
-                                    }}>
-                                        <input
-                                            type="radio"
-                                            name="targetScope"
-                                            checked={targetChangeModal.scope === 'all'}
-                                            onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'all' } : null)}
-                                            style={{ marginTop: '3px' }}
-                                        />
-                                        <div>
-                                            <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
-                                                Change for all dates
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
-                                                Retroactively updates target to {targetChangeModal.newTarget} across all past, present, and future dates.
-                                            </div>
-                                        </div>
-                                    </label>
+                            {/* 3. Ask whether to set from today or change for all (Only for date-bound counters) */}
+                            {targetChangeModal.counter.cadence === 'total' ? (
+                                <div style={{
+                                    background: 'rgba(0, 245, 212, 0.08)',
+                                    border: '1px solid rgba(0, 245, 212, 0.25)',
+                                    borderRadius: '10px',
+                                    padding: '12px',
+                                    fontSize: '12px',
+                                    color: 'var(--text-secondary)',
+                                    lineHeight: 1.4
+                                }}>
+                                    <strong style={{ color: '#fff', display: 'block', marginBottom: '2px' }}>Plain Counter (No date bound)</strong>
+                                    This counter has no backlog or historical dates. Applying will directly update the target to {targetChangeModal.newTarget} {targetChangeModal.counter.unit || 'reps'}.
                                 </div>
-                            </div>
+                            ) : (
+                                <div>
+                                    <label style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+                                        Target Application Scope
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {/* Option 1: DEFAULT - Set from today */}
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '10px',
+                                            padding: '12px',
+                                            borderRadius: '10px',
+                                            background: targetChangeModal.scope === 'from_today' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                            border: `1px solid ${targetChangeModal.scope === 'from_today' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                            cursor: 'pointer'
+                                        }}>
+                                            <input
+                                                type="radio"
+                                                name="targetScope"
+                                                checked={targetChangeModal.scope === 'from_today'}
+                                                onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'from_today' } : null)}
+                                                style={{ marginTop: '3px' }}
+                                            />
+                                            <div>
+                                                <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
+                                                    Set this target from today (Default) ⭐
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
+                                                    Preserves previous target ({targetChangeModal.prevTarget}) for historical dates; applies {targetChangeModal.newTarget} from {formatDisplayDate(selectedDate)} onwards.
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        {/* Option 2: Change for all */}
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '10px',
+                                            padding: '12px',
+                                            borderRadius: '10px',
+                                            background: targetChangeModal.scope === 'all' ? 'rgba(0, 245, 212, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                            border: `1px solid ${targetChangeModal.scope === 'all' ? 'var(--accent)' : 'var(--panel-border)'}`,
+                                            cursor: 'pointer'
+                                        }}>
+                                            <input
+                                                type="radio"
+                                                name="targetScope"
+                                                checked={targetChangeModal.scope === 'all'}
+                                                onChange={() => setTargetChangeModal(prev => prev ? { ...prev, scope: 'all' } : null)}
+                                                style={{ marginTop: '3px' }}
+                                            />
+                                            <div>
+                                                <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>
+                                                    Change for all dates
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4 }}>
+                                                    Retroactively updates target to {targetChangeModal.newTarget} across all past, present, and future dates.
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="modal-form-actions" style={{ justifyContent: 'flex-end' }}>
@@ -1568,7 +1730,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px'
                                 }}>
-                                    {focusClickerCounter.cadence} Clicker
+                                    {focusClickerCounter.cadence === 'total' ? 'Plain Counter' : `${focusClickerCounter.cadence} Clicker`}
                                 </span>
                                 <button className="icon-btn" onClick={() => setFocusClickerCounter(null)}>
                                     <X size={20} />
@@ -1604,7 +1766,8 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     boxShadow: `0 0 30px ${stats.isMet ? 'rgba(16, 185, 129, 0.4)' : hexColor + '55'}`,
                                     transition: 'transform 0.1s ease',
                                     userSelect: 'none',
-                                    WebkitUserSelect: 'none'
+                                    WebkitUserSelect: 'none',
+                                    touchAction: 'manipulation'
                                 }}
                                 onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.96)')}
                                 onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
@@ -1627,7 +1790,7 @@ export default function CountersPane({ isPublicView: _isPublicView }: CountersPa
                                     </span>
                                 ) : (
                                     <span>
-                                        {stats.remainingToday} {focusClickerCounter.unit || 'reps'} remaining today
+                                        {stats.remainingToday} {focusClickerCounter.unit || 'reps'} remaining{focusClickerCounter.cadence === 'total' ? '' : ' today'}
                                     </span>
                                 )}
                             </div>

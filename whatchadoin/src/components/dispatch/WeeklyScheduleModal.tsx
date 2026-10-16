@@ -8,6 +8,7 @@ interface WeeklyScheduleModalProps {
     onClose: () => void;
     platform: PlatformConfig | null;
     personaName: string;
+    initialDayOfWeek?: number;
     onSaveSchedule: (platformId: string, updatedSchedule: Record<number, BaseSlotTemplate[]>) => void;
 }
 
@@ -26,9 +27,10 @@ export default function WeeklyScheduleModal({
     onClose,
     platform,
     personaName,
+    initialDayOfWeek,
     onSaveSchedule
 }: WeeklyScheduleModalProps) {
-    const [selectedDay, setSelectedDay] = useState<number>(() => new Date().getDay());
+    const [selectedDay, setSelectedDay] = useState<number>(() => initialDayOfWeek ?? new Date().getDay());
     const [scheduleState, setScheduleState] = useState<Record<number, BaseSlotTemplate[]>>({});
     const [newSlotTitle, setNewSlotTitle] = useState('');
 
@@ -36,7 +38,10 @@ export default function WeeklyScheduleModal({
         if (platform) {
             setScheduleState(JSON.parse(JSON.stringify(platform.weeklySchedule || {})));
         }
-    }, [platform]);
+        if (initialDayOfWeek !== undefined) {
+            setSelectedDay(initialDayOfWeek);
+        }
+    }, [platform, initialDayOfWeek, isOpen]);
 
     if (!isOpen || !platform) return null;
 
@@ -62,6 +67,21 @@ export default function WeeklyScheduleModal({
             [selectedDay]: currentSlots.filter(s => s.id !== slotId)
         };
         setScheduleState(updated);
+    };
+
+    const handleClearDay = () => {
+        setScheduleState(prev => ({
+            ...prev,
+            [selectedDay]: []
+        }));
+    };
+
+    const handleClearAllDays = () => {
+        if (window.confirm(`Clear all recurring rules across all days for ${platform.label}?`)) {
+            setScheduleState({
+                0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
+            });
+        }
     };
 
     const handleSave = () => {
@@ -138,6 +158,22 @@ export default function WeeklyScheduleModal({
                         <span style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--text-primary)' }}>
                             {DAYS_OF_WEEK.find(d => d.day === selectedDay)?.label} ({currentSlots.length} Target)
                         </span>
+                        {currentSlots.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={handleClearDay}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'var(--danger)',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                    padding: '2px 6px'
+                                }}
+                            >
+                                Clear day
+                            </button>
+                        )}
                     </div>
 
                     {currentSlots.length === 0 ? (
@@ -229,9 +265,28 @@ export default function WeeklyScheduleModal({
                 </div>
 
                 {/* Footer Controls */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
-                    <button
-                        onClick={onClose}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                    {Object.values(scheduleState).some(slots => (slots || []).length > 0) ? (
+                        <button
+                            type="button"
+                            onClick={handleClearAllDays}
+                            style={{
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                color: '#EF4444',
+                                fontSize: '11.5px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Clear All Rules
+                        </button>
+                    ) : <div />}
+
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={onClose}
                         style={{
                             padding: '8px 14px',
                             borderRadius: '6px',
@@ -259,6 +314,7 @@ export default function WeeklyScheduleModal({
                     >
                         Save Rules
                     </button>
+                    </div>
                 </div>
             </div>
         </BaseModal>

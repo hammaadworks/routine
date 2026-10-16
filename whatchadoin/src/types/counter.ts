@@ -1,4 +1,4 @@
-export type CounterCadence = 'daily' | 'weekly';
+export type CounterCadence = 'daily' | 'weekly' | 'total';
 
 export interface TargetHistoryEntry {
     effectiveDate: string; // 'YYYY-MM-DD'

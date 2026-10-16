@@ -1,4 +1,4 @@
-import {BookOpen, Calendar, Clock, ListTodo, LucideRepeat, Plus, Star, TrendingUp} from 'lucide-react';
+import {BookOpen, Calendar, Clock, Hash, ListTodo, LucideRepeat, Plus, Star, TrendingUp} from 'lucide-react';
 import type {CalendarSubTab} from '../types/ui';
 
 interface MobileTabBarProps {
@@ -20,11 +20,15 @@ export default function MobileTabBar({
                                          activeLeftTab,
                                          setCalendarSubTab
                                      }: MobileTabBarProps) {
-    const tabs = [{id: 'goals', icon: Star, label: 'Goals'}, {
-        id: 'tasks', icon: ListTodo, label: 'Tasks'
-    }, {id: 'myday', icon: Clock, label: 'MyDay', default: true}, {
-        id: 'calendar', icon: Calendar, label: 'Calendar'
-    }, {id: 'coins', icon: TrendingUp, label: 'Coins'}, {id: 'plans', icon: BookOpen, label: 'Plans'}];
+    const tabs = [
+        {id: 'goals', icon: Star, label: 'Goals'},
+        {id: 'tasks', icon: ListTodo, label: 'Tasks'},
+        {id: 'myday', icon: Clock, label: 'MyDay', default: true},
+        {id: 'calendar', icon: Calendar, label: 'Calendar'},
+        {id: 'counters', icon: Hash, label: 'Counters'},
+        {id: 'coins', icon: TrendingUp, label: 'Coins'},
+        {id: 'plans', icon: BookOpen, label: 'Plans'}
+    ];
 
     const handleFabClick = () => {
         if (isRoutineDrawerOpen) {
@@ -49,6 +53,10 @@ export default function MobileTabBar({
             window.dispatchEvent(new CustomEvent('fab:add-coins'));
             return;
         }
+        if (activeTab === 'counters') {
+            window.dispatchEvent(new CustomEvent('fab:add-counter'));
+            return;
+        }
         if (activeTab === 'plans') {
             window.dispatchEvent(new CustomEvent('fab:add-plan'));
             return;
@@ -67,7 +75,7 @@ export default function MobileTabBar({
         if (!isRoutineDrawerOpen) {
             if (activeTab === 'goals' || activeTab === 'myday') {
                 setCalendarSubTab?.('mark_goals');
-            } else if (activeTab === 'tasks' || activeTab === 'coins') {
+            } else if (activeTab === 'tasks' || activeTab === 'coins' || activeTab === 'counters') {
                 setCalendarSubTab?.('timelog');
             } else if (activeTab === 'plans') {
                 setCalendarSubTab?.('milestones');
@@ -76,9 +84,9 @@ export default function MobileTabBar({
         setIsRoutineDrawerOpen?.(!isRoutineDrawerOpen);
     };
 
-    // Habits drawer button: relevant for goals, tasks, myday, coins, plans.
+    // Habits drawer button: relevant for goals, tasks, myday, coins, plans, counters.
     // On calendar, HabitsPane is already embedded statically on mobile.
-    const canShowHabitsFab = ['goals', 'tasks', 'myday', 'coins', 'plans'].includes(activeTab);
+    const canShowHabitsFab = ['goals', 'tasks', 'myday', 'coins', 'plans', 'counters'].includes(activeTab);
 
     return (<>
         <div className="mobile-tab-bar">

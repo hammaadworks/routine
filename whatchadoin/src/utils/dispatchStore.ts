@@ -4,7 +4,8 @@ import type {
     PlatformConfig,
     ActiveSlot,
     DailyMetrics,
-    CompactDayRecord
+    CompactDayRecord,
+    BaseSlotTemplate
 } from '../types/dispatch';
 
 export const CONTENT_DISPATCH_STORAGE_KEY = 'whatchadoin_content_dispatch';
@@ -46,6 +47,10 @@ export function addDays(dateStr: string, days: number): string {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+export function getMinAllowedDateStr(referenceDateStr = getTodayDateStr()): string {
+    return addDays(referenceDateStr, -14);
+}
+
 export const DEFAULT_PERSONAS: CreatorPersona[] = [
     {
         id: 'persona_rawx',
@@ -60,15 +65,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'Instagram Reels',
                 composeUrl: 'https://www.instagram.com/',
                 color: '#E1306C',
-                weeklySchedule: {
-                    0: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }],
-                    1: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }],
-                    2: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }],
-                    3: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }],
-                    4: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }, { id: 'slot_ig_3', title: 'Boxing breakdown' }],
-                    5: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }],
-                    6: [{ id: 'slot_ig_1', title: 'Live stream clip' }, { id: 'slot_ig_2', title: 'xmfclub clip' }]
-                }
+                weeklySchedule: {}
             },
             {
                 id: 'plat_rawx_fb',
@@ -76,15 +73,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'Facebook Page',
                 composeUrl: 'https://www.facebook.com/',
                 color: '#1877F2',
-                weeklySchedule: {
-                    0: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    1: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    2: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    3: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    4: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    5: [{ id: 'slot_fb_1', title: 'Daily short clip' }],
-                    6: [{ id: 'slot_fb_1', title: 'Daily short clip' }]
-                }
+                weeklySchedule: {}
             }
         ]
     },
@@ -101,15 +90,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'YouTube Shorts',
                 composeUrl: 'https://studio.youtube.com/',
                 color: '#FF0000',
-                weeklySchedule: {
-                    0: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    1: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    2: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    3: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    4: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    5: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }],
-                    6: [{ id: 'slot_yt_1', title: 'Dev / Workflow insight' }]
-                }
+                weeklySchedule: {}
             },
             {
                 id: 'plat_works_x',
@@ -117,15 +98,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'X (Twitter)',
                 composeUrl: 'https://x.com/compose/post',
                 color: '#FFFFFF',
-                weeklySchedule: {
-                    0: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    1: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    2: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    3: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    4: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    5: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }],
-                    6: [{ id: 'slot_x_1', title: 'Tech tip / Build log' }]
-                }
+                weeklySchedule: {}
             },
             {
                 id: 'plat_works_li',
@@ -133,10 +106,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'LinkedIn',
                 composeUrl: 'https://www.linkedin.com/feed/',
                 color: '#0A66C2',
-                weeklySchedule: {
-                    1: [{ id: 'slot_li_1', title: 'Weekly professional recap' }],
-                    3: [{ id: 'slot_li_2', title: 'Engineering post' }]
-                }
+                weeklySchedule: {}
             }
         ]
     },
@@ -153,15 +123,7 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'Threads',
                 composeUrl: 'https://www.threads.net/',
                 color: '#EDE7D9',
-                weeklySchedule: {
-                    0: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    1: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    2: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    3: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    4: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    5: [{ id: 'slot_th_1', title: 'Daily thought / meme' }],
-                    6: [{ id: 'slot_th_1', title: 'Daily thought / meme' }]
-                }
+                weeklySchedule: {}
             },
             {
                 id: 'plat_ih_x',
@@ -169,23 +131,15 @@ export const DEFAULT_PERSONAS: CreatorPersona[] = [
                 label: 'X (ihsanity)',
                 composeUrl: 'https://x.com/compose/post',
                 color: '#FFFFFF',
-                weeklySchedule: {
-                    0: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    1: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    2: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    3: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    4: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    5: [{ id: 'slot_ih_x_1', title: 'Casual observation' }],
-                    6: [{ id: 'slot_ih_x_1', title: 'Casual observation' }]
-                }
+                weeklySchedule: {}
             }
         ]
     }
 ];
 
 export function pruneOldDays(data: ContentDispatchStorage, referenceDateStr = getTodayDateStr()): ContentDispatchStorage {
-    // Strictly rolling 7-day window: keep today + past 6 days
-    const cutoffDateStr = addDays(referenceDateStr, -7);
+    // Strictly rolling 14-day window: keep today + past 14 days and any future days
+    const cutoffDateStr = addDays(referenceDateStr, -14);
     const updatedDays: Record<string, CompactDayRecord> = {};
 
     for (const [dateStr, dayRecord] of Object.entries(data.days || {})) {
@@ -217,8 +171,9 @@ export function loadDispatchData(): ContentDispatchStorage {
             };
         }
         const parsed = JSON.parse(raw) as ContentDispatchStorage;
-        if (!parsed.personas || parsed.personas.length === 0) {
-            parsed.personas = DEFAULT_PERSONAS;
+        // Never overwrite with dummy data if the user explicitly deleted or has an empty array
+        if (!Array.isArray(parsed.personas)) {
+            parsed.personas = [];
         }
         if (!parsed.days) {
             parsed.days = {};
@@ -255,7 +210,7 @@ export function getResolvedPlatformSlots(
 
     const [y = 2026, m = 1, d = 1] = dateStr.split('-').map(Number);
     const dayOfWeek = new Date(y, m - 1, d).getDay();
-    const templateSlots = platform.weeklySchedule?.[dayOfWeek] || [];
+    const templateSlots: BaseSlotTemplate[] = platform.weeklySchedule?.[dayOfWeek] || (platform.weeklySchedule as any)?.[String(dayOfWeek)] || [];
 
     const resolvedTemplateSlots: ActiveSlot[] = templateSlots.map(t => ({
         id: t.id,
@@ -432,10 +387,78 @@ export function mergeDispatchData(
     }
 
     return {
-        personas: mergedPersonas.length > 0 ? mergedPersonas : DEFAULT_PERSONAS,
+        personas: mergedPersonas,
         days: mergedDays,
         selectedPersonaId: base.selectedPersonaId || incomingData.selectedPersonaId
     };
+}
+
+export function addOrUpdatePlatform(
+    data: ContentDispatchStorage,
+    personaId: string,
+    platform: PlatformConfig
+): ContentDispatchStorage {
+    const updatedPersonas = (data.personas || []).map(p => {
+        if (p.id !== personaId) return p;
+        const existingIdx = (p.platforms || []).findIndex(plat => plat.id === platform.id);
+        let updatedPlatforms = [...(p.platforms || [])];
+        if (existingIdx >= 0) {
+            updatedPlatforms[existingIdx] = platform;
+        } else {
+            updatedPlatforms.push(platform);
+        }
+        return { ...p, platforms: updatedPlatforms };
+    });
+    const updated = { ...data, personas: updatedPersonas };
+    saveDispatchData(updated);
+    return updated;
+}
+
+export function deletePlatform(
+    data: ContentDispatchStorage,
+    personaId: string,
+    platformId: string
+): ContentDispatchStorage {
+    const updatedPersonas = (data.personas || []).map(p => {
+        if (p.id !== personaId) return p;
+        return {
+            ...p,
+            platforms: (p.platforms || []).filter(plat => plat.id !== platformId)
+        };
+    });
+    const updated = { ...data, personas: updatedPersonas };
+    saveDispatchData(updated);
+    return updated;
+}
+
+export function addOrUpdatePersona(
+    data: ContentDispatchStorage,
+    persona: CreatorPersona
+): ContentDispatchStorage {
+    const existingIdx = (data.personas || []).findIndex(p => p.id === persona.id);
+    let updatedPersonas = [...(data.personas || [])];
+    if (existingIdx >= 0) {
+        updatedPersonas[existingIdx] = persona;
+    } else {
+        updatedPersonas.push(persona);
+    }
+    const updated = { ...data, personas: updatedPersonas };
+    saveDispatchData(updated);
+    return updated;
+}
+
+export function deletePersona(
+    data: ContentDispatchStorage,
+    personaId: string
+): ContentDispatchStorage {
+    const updatedPersonas = (data.personas || []).filter(p => p.id !== personaId);
+    const updated = {
+        ...data,
+        personas: updatedPersonas,
+        selectedPersonaId: data.selectedPersonaId === personaId ? 'all' : data.selectedPersonaId
+    };
+    saveDispatchData(updated);
+    return updated;
 }
 
 /**

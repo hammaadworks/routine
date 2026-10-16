@@ -86,7 +86,7 @@ const CountersPane = safeLazy(() => import('./components/CountersPane'));
 const WalletModal = safeLazy(() => import('./components/WalletModal'));
 const RoutineModal = safeLazy(() => import('./components/RoutineModal'));
 const SettingsModal = safeLazy(() => import('./components/SettingsModal'));
-const DispatchModal = safeLazy(() => import('./components/dispatch/DispatchModal'));
+const DispatchPane = safeLazy(() => import('./components/dispatch/DispatchPane'));
 import {mergeDispatchData} from './utils/dispatchStore';
 
 export default function App() {
@@ -199,13 +199,12 @@ export default function App() {
     }, []);
 
     const [activeCenterTab, setActiveCenterTab] = useState<string>('myday');
-    const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins'
+    const [mobileTab, setMobileTab] = useState<string>('myday'); // 'tasks' | 'goals' | 'myday' | 'calendar' | 'plans' | 'coins' | 'counters'
     const [activeLeftTab, setActiveLeftTab] = useState<string>('life');
     const [calendarSubTab, setCalendarSubTab] = useState<CalendarSubTab>('mark_goals');
     const [selectedTargetDate, setSelectedTargetDate] = useState<string | null>(null);
     const [isMobileCalendarOpen, setIsMobileCalendarOpen] = useState<boolean>(true);
     const [isMobileHabitsOpen, setIsMobileHabitsOpen] = useState<boolean>(true);
-    const [showDispatchModal, setShowDispatchModal] = useState<boolean>(false);
 
     const formatMobileCalendarDate = (dateStr: string | null) => {
         if (!dateStr) return '';
@@ -882,7 +881,10 @@ export default function App() {
                         window.dispatchEvent(new CustomEvent('open-wallet-view'));
                     }, 10);
                 }}
-                onOpenDispatch={() => setShowDispatchModal(true)}
+                onOpenDispatch={() => {
+                    setActiveCenterTab(prev => prev === 'dispatch' ? 'tasks' : 'dispatch');
+                    setMobileTab('myday');
+                }}
             />
 
             {/* Mobile Tab Bar */}
@@ -918,6 +920,10 @@ export default function App() {
                     }
                     if (tab === 'coins') {
                         setActiveCenterTab('coins');
+                        setIsRoutineDrawerOpen(false);
+                    }
+                    if (tab === 'counters') {
+                        setActiveCenterTab('counters');
                         setIsRoutineDrawerOpen(false);
                     }
                 }}
@@ -1204,7 +1210,11 @@ export default function App() {
                     <div className="mid-pane-content"
                          style={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0}}>
                         <TabErrorBoundary tabName={activeCenterTab}>
-                            {activeCenterTab === 'counters' ? (
+                            {activeCenterTab === 'dispatch' ? (
+                                <React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Dispatch...</div>}>
+                                    <DispatchPane />
+                                </React.Suspense>
+                            ) : activeCenterTab === 'counters' ? (
                                 <React.Suspense fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading Counters...</div>}>
                                     <CountersPane isPublicView={isPublicView} />
                                 </React.Suspense>
@@ -1348,13 +1358,6 @@ export default function App() {
                     setAiConfig={setAiConfig}
                     exportAllData={exportAllData}
                     fileInputRef={fileInputRef as any}
-                />
-            </React.Suspense>)}
-
-            {showDispatchModal && (<React.Suspense fallback={null}>
-                <DispatchModal
-                    isOpen={showDispatchModal}
-                    onClose={() => setShowDispatchModal(false)}
                 />
             </React.Suspense>)}
 
