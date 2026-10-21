@@ -1013,16 +1013,16 @@ export default function App() {
                                     Life
                                 </button>
                                 <button
-                                    className={`tab ${activeLeftTab === 'money' ? 'active' : ''}`}
-                                    onClick={() => setActiveLeftTab('money')}
-                                >
-                                    Money
-                                </button>
-                                <button
                                     className={`tab ${activeLeftTab === 'routine' ? 'active' : ''}`}
                                     onClick={() => setActiveLeftTab('routine')}
                                 >
                                     Routine
+                                </button>
+                                <button
+                                    className={`tab ${activeLeftTab === 'money' ? 'active' : ''}`}
+                                    onClick={() => setActiveLeftTab('money')}
+                                >
+                                    Money
                                 </button>
                             </div>);
 

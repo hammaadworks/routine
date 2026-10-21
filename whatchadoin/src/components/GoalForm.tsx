@@ -84,11 +84,16 @@ export default function GoalForm({
                     }}>Category</label>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
                         {([{key: 'life' as const, label: 'Life', icon: Star, color: '#eab308'}, {
+                            key: 'routine' as const,
+                            label: 'Routine',
+                            icon: Target,
+                            color: '#3b82f6'
+                        }, {
                             key: 'money' as const,
                             label: 'Money',
                             icon: Wallet,
                             color: '#10b981'
-                        }, {key: 'routine' as const, label: 'Routine', icon: Target, color: '#3b82f6'}]).map(cat => {
+                        }]).map(cat => {
                             const isSelected = targetCategory === cat.key;
                             return (<button
                                     key={cat.key}

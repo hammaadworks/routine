@@ -1656,24 +1656,6 @@ export default function HabitsPane({
                                         >
                                             All ({totalAvailable})
                                         </button>
-                                        {(routineGoals || []).length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'routine' ? 'all' : 'routine')}
-                                                style={{
-                                                    fontSize: '11px',
-                                                    padding: '3px 8px',
-                                                    borderRadius: '12px',
-                                                    background: goalCategoryFilter === 'routine' ? 'rgba(59, 130, 246, 0.25)' : 'var(--panel-bg)',
-                                                    color: goalCategoryFilter === 'routine' ? '#60a5fa' : 'var(--text-secondary)',
-                                                    border: `1px solid ${goalCategoryFilter === 'routine' ? '#3b82f6' : 'var(--panel-border)'}`,
-                                                    cursor: 'pointer',
-                                                    fontWeight: goalCategoryFilter === 'routine' ? 600 : 400
-                                                }}
-                                            >
-                                                🎯 Routine ({(routineGoals || []).length})
-                                            </button>
-                                        )}
                                         {(lifeGoals || []).length > 0 && (
                                             <button
                                                 type="button"
@@ -1690,6 +1672,24 @@ export default function HabitsPane({
                                                 }}
                                             >
                                                 ⭐ Life ({(lifeGoals || []).length})
+                                            </button>
+                                        )}
+                                        {(routineGoals || []).length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setGoalCategoryFilter(goalCategoryFilter === 'routine' ? 'all' : 'routine')}
+                                                style={{
+                                                    fontSize: '11px',
+                                                    padding: '3px 8px',
+                                                    borderRadius: '12px',
+                                                    background: goalCategoryFilter === 'routine' ? 'rgba(59, 130, 246, 0.25)' : 'var(--panel-bg)',
+                                                    color: goalCategoryFilter === 'routine' ? '#60a5fa' : 'var(--text-secondary)',
+                                                    border: `1px solid ${goalCategoryFilter === 'routine' ? '#3b82f6' : 'var(--panel-border)'}`,
+                                                    cursor: 'pointer',
+                                                    fontWeight: goalCategoryFilter === 'routine' ? 600 : 400
+                                                }}
+                                            >
+                                                🎯 Routine ({(routineGoals || []).length})
                                             </button>
                                         )}
                                         {(moneyGoals || []).length > 0 && (

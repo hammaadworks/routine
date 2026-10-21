@@ -36,10 +36,10 @@ export default function MobileTabBar({
             return;
         }
         if (activeTab === 'goals') {
-            if (activeLeftTab === 'money') {
-                window.dispatchEvent(new CustomEvent('fab:add-money'));
-            } else if (activeLeftTab === 'routine') {
+            if (activeLeftTab === 'routine') {
                 window.dispatchEvent(new CustomEvent('fab:add-routine-goal'));
+            } else if (activeLeftTab === 'money') {
+                window.dispatchEvent(new CustomEvent('fab:add-money'));
             } else {
                 window.dispatchEvent(new CustomEvent('fab:add-life-goal'));
             }
