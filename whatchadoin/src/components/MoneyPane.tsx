@@ -214,7 +214,7 @@ export default function MoneyPane({
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', flex: 1, padding: 0, overflow: 'hidden', minHeight: 0}}>
-            <div style={{
+            <div className="goals-pane-content" style={{
                 display: 'flex',
                 flexDirection: 'column',
                 flex: 1,

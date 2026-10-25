@@ -1362,7 +1362,7 @@ export default function App() {
             </React.Suspense>)}
 
             {/* Footer to convey end of scroll */}
-            <footer style={{
+            <footer className="app-footer" style={{
                 textAlign: 'center',
                 padding: '12px 0 0 0',
                 color: 'var(--text-secondary)',

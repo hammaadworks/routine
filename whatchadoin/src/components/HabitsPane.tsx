@@ -14,6 +14,7 @@ import {
     PanelRightClose,
     PanelRightOpen,
     Pencil,
+    PieChart as PieChartIcon,
     Plus,
     Sparkles,
     Target,
@@ -31,6 +32,7 @@ import {
     parseDuration
 } from '../utils';
 import HabitList from './habits/HabitList';
+import HabitWeeklyPieView from './habits/HabitWeeklyPieView';
 import MilestonesView from './habits/MilestonesView';
 import TimelogView from './habits/TimelogView';
 import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
@@ -109,7 +111,8 @@ export default function HabitsPane({
                                        isPcCollapsed,
                                        onTogglePcCollapse
                                    }: HabitsPaneProps) {
-        const [showAllMilestones, setShowAllMilestones] = useState(true);
+    const [habitViewMode, setHabitViewMode] = useState<'list' | 'pie'>('list');
+    const [showAllMilestones, setShowAllMilestones] = useState(true);
     const [showHabitModal, setShowHabitModal] = useState(false);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
@@ -1205,37 +1208,52 @@ export default function HabitsPane({
             </div>
 
             {calendarSubTab === 'mark_goals' && (
-    <HabitList
-        openAddHabit={openAddHabit}
-        isCalendarTab={isCalendarTab || false}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        sortByName={sortByName}
-        setSortByName={setSortByName}
-        habitFilterRoutineGoalId={habitFilterRoutineGoalId}
-        setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
-        habitFilterLifeGoalId={habitFilterLifeGoalId}
-        setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
-        effectiveDate={effectiveDate}
-        dailyLogs={dailyLogs}
-        displayedRoutineGoals={displayedRoutineGoals}
-        checkRoutineAddressed={checkRoutineAddressed}
-        routineGoals={routineGoals}
-        lifeGoals={lifeGoals}
-        moneyGoals={moneyGoals || []}
-        currentTemplate={currentTemplate}
-        goalCounts={goalCounts}
-        isRoutineDrawerOpen={isRoutineDrawerOpen}
-        handleDragStart={handleDragStart}
-        toggleDailyGoal={toggleDailyGoal}
-        duplicateHabit={duplicateHabit}
-        openEditHabit={openEditHabit}
-        setConfirmConfig={setConfirmConfig}
-        habits={habits}
-        setHabits={setHabits}
-        onCardClick={(habit) => setInfoHabitId(habit.id)}
-    />
-)}
+                habitViewMode === 'pie' ? (
+                    <HabitWeeklyPieView
+                        habits={habits}
+                        templates={templates}
+                        dayMapping={dayMapping}
+                        activeTemplateId={activeTemplateId}
+                        routineGoals={routineGoals}
+                        lifeGoals={lifeGoals}
+                        moneyGoals={moneyGoals}
+                        isPublicView={isPublicView}
+                        onBackToList={() => setHabitViewMode('list')}
+                        onCardClick={(habit) => setInfoHabitId(habit.id)}
+                    />
+                ) : (
+                    <HabitList
+                        openAddHabit={openAddHabit}
+                        isCalendarTab={isCalendarTab || false}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        sortByName={sortByName}
+                        setSortByName={setSortByName}
+                        habitFilterRoutineGoalId={habitFilterRoutineGoalId}
+                        setHabitFilterRoutineGoalId={setHabitFilterRoutineGoalId}
+                        habitFilterLifeGoalId={habitFilterLifeGoalId}
+                        setHabitFilterLifeGoalId={setHabitFilterLifeGoalId}
+                        effectiveDate={effectiveDate}
+                        dailyLogs={dailyLogs}
+                        displayedRoutineGoals={displayedRoutineGoals}
+                        checkRoutineAddressed={checkRoutineAddressed}
+                        routineGoals={routineGoals}
+                        lifeGoals={lifeGoals}
+                        moneyGoals={moneyGoals || []}
+                        currentTemplate={currentTemplate}
+                        goalCounts={goalCounts}
+                        isRoutineDrawerOpen={isRoutineDrawerOpen}
+                        handleDragStart={handleDragStart}
+                        toggleDailyGoal={toggleDailyGoal}
+                        duplicateHabit={duplicateHabit}
+                        openEditHabit={openEditHabit}
+                        setConfirmConfig={setConfirmConfig}
+                        habits={habits}
+                        setHabits={setHabits}
+                        onCardClick={(habit) => setInfoHabitId(habit.id)}
+                    />
+                )
+            )}
 {calendarSubTab === 'milestones' && (
     <MilestonesView
         effectiveDate={effectiveDate}
@@ -1279,8 +1297,8 @@ export default function HabitsPane({
             padding: '0 16px',
             minHeight: '44px',
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '8px'
         }}>
             <div style={{
@@ -1302,6 +1320,42 @@ export default function HabitsPane({
                         </>);
                     }
 
+                    if (habitViewMode === 'pie') {
+                        const safeTemplates = templates || [];
+                        const hasAnyDayMapping = Object.values(dayMapping || {}).some(val =>
+                            Boolean(val && safeTemplates.some(t => t.id === val))
+                        );
+                        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]'));
+
+                        const weeklyAllocatedCount = scopedHabits.filter(h => {
+                            let habitMins = 0;
+                            days.forEach((dayName, idx) => {
+                                const short = dayName.slice(0, 3);
+                                let tId = dayMapping?.[dayName] || dayMapping?.[dayName.toLowerCase()] || dayMapping?.[short] || dayMapping?.[idx] || dayMapping?.[String(idx)];
+                                if (!tId && !hasAnyDayMapping) {
+                                    tId = activeTemplateId || safeTemplates[0]?.id;
+                                }
+                                const t = safeTemplates.find(temp => temp.id === tId);
+                                if (t && t.blocks) {
+                                    t.blocks.forEach((b: any) => {
+                                        const matchId = b.routineGoalId && String(b.routineGoalId) === String(h.id);
+                                        const matchName = b.name && h.name && b.name.trim().toLowerCase() === h.name.trim().toLowerCase();
+                                        if (matchId || matchName) {
+                                            habitMins += (b.duration || 0);
+                                        }
+                                    });
+                                }
+                            });
+                            return habitMins > 0;
+                        }).length;
+
+                        return (<>
+                            <PieChartIcon size={14} color="var(--accent)"/>
+                            <span>Allocated Habits (Week) : {weeklyAllocatedCount} / {scopedHabits.length}</span>
+                        </>);
+                    }
+
                     let allocatedCount = 0;
                     const scopedHabits = (habits || []).filter(h => !isPublicView || h.isPublic || (h.name || '').includes('[public]')).filter(g =>
                         habitMatchesTemplate(g, currentTemplateId, defaultTemplateId, existingTemplateIds)
@@ -1315,6 +1369,42 @@ export default function HabitsPane({
                     </>);
                 })()}
             </div>
+
+            {calendarSubTab === 'mark_goals' && (
+                <button
+                    type="button"
+                    onClick={() => setHabitViewMode(prev => prev === 'pie' ? 'list' : 'pie')}
+                    className="see-pie-list-btn"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        color: habitViewMode === 'pie' ? 'var(--accent)' : 'var(--text-primary)',
+                        background: habitViewMode === 'pie' ? 'rgba(201, 162, 39, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${habitViewMode === 'pie' ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
+                    }}
+                    title={habitViewMode === 'pie' ? "Switch to standard Habit list" : "Switch to weekly allocation Pie Chart"}
+                >
+                    {habitViewMode === 'pie' ? (
+                        <>
+                            <ListTodo size={14} color="var(--accent)" />
+                            <span>See List</span>
+                        </>
+                    ) : (
+                        <>
+                            <PieChartIcon size={14} color="var(--accent)" />
+                            <span>See Pie</span>
+                        </>
+                    )}
+                </button>
+            )}
         </div>
         </>
         )}

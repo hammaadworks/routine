@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {DatabaseBackup, Import, Settings, CheckCircle2, AlertTriangle, RefreshCw, CloudOff, Loader2, ExternalLink} from 'lucide-react';
+import {DatabaseBackup, Import, Settings, CheckCircle2, AlertTriangle, RefreshCw, CloudOff, Loader2, ExternalLink, Clock} from 'lucide-react';
 import BaseModal from './BaseModal';
 import AIConfigEditor from './AIConfigEditor';
 import CopyBanner from './CopyBanner';
@@ -215,6 +215,8 @@ export default function SettingsModal({
                                 ? '1px solid rgba(239, 68, 68, 0.4)'
                                 : syncState.status === 'syncing'
                                 ? '1px solid rgba(59, 130, 246, 0.4)'
+                                : syncState.status === 'pending'
+                                ? '1px solid rgba(245, 158, 11, 0.4)'
                                 : syncState.status === 'idle'
                                 ? '1px solid rgba(16, 185, 129, 0.3)'
                                 : '1px solid var(--panel-border)',
@@ -223,6 +225,8 @@ export default function SettingsModal({
                                 ? 'rgba(239, 68, 68, 0.08)'
                                 : syncState.status === 'syncing'
                                 ? 'rgba(59, 130, 246, 0.08)'
+                                : syncState.status === 'pending'
+                                ? 'rgba(245, 158, 11, 0.08)'
                                 : syncState.status === 'idle'
                                 ? 'rgba(16, 185, 129, 0.06)'
                                 : 'rgba(255, 255, 255, 0.02)',
@@ -236,6 +240,8 @@ export default function SettingsModal({
                                     <AlertTriangle size={20} color="#EF4444" style={{flexShrink: 0}} />
                                 ) : syncState.status === 'syncing' ? (
                                     <Loader2 size={20} color="#3B82F6" className="spin" style={{flexShrink: 0}} />
+                                ) : syncState.status === 'pending' ? (
+                                    <Clock size={20} color="#F59E0B" style={{flexShrink: 0}} />
                                 ) : syncState.status === 'idle' ? (
                                     <CheckCircle2 size={20} color="#10B981" style={{flexShrink: 0}} />
                                 ) : (
@@ -250,12 +256,15 @@ export default function SettingsModal({
                                                 ? '#EF4444'
                                                 : syncState.status === 'syncing'
                                                 ? '#3B82F6'
+                                                : syncState.status === 'pending'
+                                                ? '#F59E0B'
                                                 : syncState.status === 'idle'
                                                 ? '#10B981'
                                                 : 'var(--text-primary)'
                                     }}>
                                         {syncState.status === 'error' && 'Sync Error'}
                                         {syncState.status === 'syncing' && 'Syncing with GitHub Gist...'}
+                                        {syncState.status === 'pending' && 'Unsaved Local Edits (Syncing soon...)'}
                                         {syncState.status === 'idle' && 'Connected & In Sync'}
                                         {syncState.status === 'unconfigured' && 'Cloud Sync Disconnected'}
                                     </div>
@@ -265,6 +274,7 @@ export default function SettingsModal({
                                                 ? `Last synced: ${new Date(syncState.lastSyncedAt).toLocaleTimeString()}`
                                                 : 'Ready and in sync'
                                         )}
+                                        {syncState.status === 'pending' && 'Local changes queued; will push to GitHub Gist shortly (or tap Sync Now).'}
                                         {syncState.status === 'syncing' && 'Transferring data with api.github.com...'}
                                         {syncState.status === 'error' && (syncState.lastError || 'Failed to sync with GitHub Gist')}
                                         {syncState.status === 'unconfigured' && 'Sync your routines, tasks, and goals across devices using a secret GitHub Gist.'}
@@ -302,7 +312,7 @@ export default function SettingsModal({
                         </div>
 
                         {/* Connected details row & quick actions */}
-                        {syncState.status === 'idle' && syncForm.id && (
+                        {(syncState.status === 'idle' || syncState.status === 'pending') && syncForm.id && (
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',

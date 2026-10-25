@@ -79,6 +79,9 @@ export default function Header({
         if (syncState.status === 'syncing') {
             return 'Cloud Sync: Syncing with GitHub Gist...';
         }
+        if (syncState.status === 'pending') {
+            return 'Cloud Sync: Unsaved changes (Syncing soon...)';
+        }
         if (syncState.status === 'idle') {
             const timeStr = syncState.lastSyncedAt ? ` (${new Date(syncState.lastSyncedAt).toLocaleTimeString([], {
                 hour: '2-digit',
@@ -113,10 +116,10 @@ export default function Header({
                                         width: '9px',
                                         height: '9px',
                                         borderRadius: '50%',
-                                        background: syncState.status === 'error' ? '#EF4444' : syncState.status === 'syncing' ? '#3B82F6' : '#10B981',
+                                        background: syncState.status === 'error' ? '#EF4444' : syncState.status === 'syncing' ? '#3B82F6' : syncState.status === 'pending' ? '#F59E0B' : '#10B981',
                                         border: '2px solid var(--panel-bg)',
-                                        boxShadow: syncState.status === 'error' ? '0 0 6px rgba(239, 68, 68, 0.9)' : syncState.status === 'syncing' ? '0 0 6px rgba(59, 130, 246, 0.8)' : undefined,
-                                        animation: syncState.status === 'syncing' ? 'syncPulse 1.2s infinite' : undefined
+                                        boxShadow: syncState.status === 'error' ? '0 0 6px rgba(239, 68, 68, 0.9)' : syncState.status === 'syncing' ? '0 0 6px rgba(59, 130, 246, 0.8)' : syncState.status === 'pending' ? '0 0 6px rgba(245, 158, 11, 0.8)' : undefined,
+                                        animation: (syncState.status === 'syncing' || syncState.status === 'pending') ? 'syncPulse 1.2s infinite' : undefined
                                     }}
                                 />
                             )}

@@ -509,8 +509,25 @@ body {
         gap: 8px !important;
     }
 
+    .app-footer,
     .main-app-wrapper > footer {
-        display: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 4px 8px 0 8px !important;
+        gap: 2px !important;
+        font-size: 11px !important;
+        flex-shrink: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        user-select: none;
+    }
+
+    .app-footer .quotes-widget,
+    .main-app-wrapper > footer .quotes-widget {
+        max-width: 100% !important;
+        font-size: 11px !important;
     }
 
     .ai-dock-container {
@@ -656,9 +673,13 @@ body {
         gap: 8px;
         padding-top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
         padding-right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
-        padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px)) !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
         padding-left: calc(env(safe-area-inset-left, 0px) + 8px) !important;
         box-sizing: border-box !important;
+    }
+
+    .goals-pane-content {
+        padding: 12px 14px 6px 14px !important;
     }
 
     .mobile-hidden {
@@ -717,9 +738,12 @@ body {
     padding: 24px;
     overflow-y: auto;
     flex: 1;
+    min-height: 0;
+    height: 100%;
     display: flex;
     flex-direction: column;
     background: transparent;
+    -webkit-overflow-scrolling: touch;
 }
 
 .coins-pane {
@@ -767,10 +791,12 @@ body {
     }
 
     .tasks-pane-container {
-        padding: 4px;
-        overflow: visible;
-        flex: none;
-        height: auto;
+        padding: 12px 14px 80px 14px;
+        overflow-y: auto;
+        flex: 1 1 0;
+        min-height: 0;
+        height: 100%;
+        -webkit-overflow-scrolling: touch;
     }
 }
 
@@ -2031,10 +2057,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         min-height: 0 !important;
     }
 
-    .main-app-wrapper:has(.main-content.mobile-tab-calendar) > footer,
-    .layout.mobile-layout-calendar .main-app-wrapper > footer {
-        display: none !important;
-    }
 
     .main-content.mobile-tab-calendar {
         display: flex !important;

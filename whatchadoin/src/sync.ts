@@ -1,6 +1,6 @@
 import {sanitizeAllStorage} from './utils';
 
-export type SyncStatus = 'idle' | 'syncing' | 'error' | 'unconfigured';
+export type SyncStatus = 'idle' | 'syncing' | 'pending' | 'error' | 'unconfigured';
 export type SyncErrorType = 'auth' | 'scope' | 'notFound' | 'network' | 'parse' | 'unknown';
 
 export interface SyncState {
@@ -13,6 +13,18 @@ export interface SyncState {
 type SyncStateListener = (state: SyncState) => void;
 const listeners = new Set<SyncStateListener>();
 
+const SYNC_METADATA_KEYS = new Set([
+    'whatchadoin_gist_token',
+    'whatchadoin_gist_id',
+    'whatchadoin_gist_filename',
+    'whatchadoin_force_sync_push',
+    'whatchadoin_last_synced_at',
+    'whatchadoin_last_sync_error',
+    'whatchadoin_has_unpushed_changes',
+    'whatchadoin_last_modified_at',
+]);
+export const isSyncMetadataKey = (key: string): boolean => SYNC_METADATA_KEYS.has(key);
+
 // Initial credentials from storage
 let gistToken = typeof localStorage !== 'undefined' ? localStorage.getItem('whatchadoin_gist_token') || '' : '';
 let gistId = typeof localStorage !== 'undefined' ? localStorage.getItem('whatchadoin_gist_id') || '' : '';
@@ -20,7 +32,11 @@ let gistFilename = typeof localStorage !== 'undefined' ? localStorage.getItem('w
 
 // In-memory sync state
 let syncState: SyncState = {
-    status: (!gistToken || !gistId) ? 'unconfigured' : (typeof localStorage !== 'undefined' && localStorage.getItem('whatchadoin_last_sync_error') ? 'error' : 'idle'),
+    status: (!gistToken || !gistId)
+        ? 'unconfigured'
+        : (typeof localStorage !== 'undefined' && localStorage.getItem('whatchadoin_has_unpushed_changes') === 'true')
+            ? 'pending'
+            : (typeof localStorage !== 'undefined' && localStorage.getItem('whatchadoin_last_sync_error') ? 'error' : 'idle'),
     lastSyncedAt: typeof localStorage !== 'undefined' ? localStorage.getItem('whatchadoin_last_synced_at') : null,
     lastError: typeof localStorage !== 'undefined' ? localStorage.getItem('whatchadoin_last_sync_error') : null,
     errorType: null,
@@ -29,6 +45,7 @@ let syncState: SyncState = {
 let lastSyncedStr = '';
 let syncTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
 let isSyncing = false;
+let syncQueuedWhileBusy = false;
 let isImporting = false;
 
 export const getSyncState = (): SyncState => ({...syncState});
@@ -228,7 +245,7 @@ export const exportLocalData = () => {
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key === null) continue;
-        if (key.startsWith('whatchadoin_') && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename' && key !== 'whatchadoin_force_sync_push' && key !== 'whatchadoin_last_synced_at' && key !== 'whatchadoin_last_sync_error') {
+        if (key.startsWith('whatchadoin_') && !isSyncMetadataKey(key)) {
             data[key] = localStorage.getItem(key);
         }
     }
@@ -251,7 +268,7 @@ export const importLocalData = (jsonStr: string) => {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key === null) continue;
-            if (key.startsWith('whatchadoin_') && key !== 'whatchadoin_gist_token' && key !== 'whatchadoin_gist_id' && key !== 'whatchadoin_gist_filename' && key !== 'whatchadoin_force_sync_push' && key !== 'whatchadoin_last_synced_at' && key !== 'whatchadoin_last_sync_error') {
+            if (key.startsWith('whatchadoin_') && !isSyncMetadataKey(key)) {
                 if (!data.hasOwnProperty(key)) {
                     keysToRemove.push(key);
                     changedKeys.add(key);
@@ -327,7 +344,7 @@ export const importLocalData = (jsonStr: string) => {
 };
 
 export const pullFromGist = async (targetToken = gistToken, targetId = gistId, targetFilename = gistFilename): Promise<{
-    data: string | null; error?: string; errorType?: SyncErrorType
+    data: string | null; error?: string; errorType?: SyncErrorType; remoteUpdatedAt?: string
 }> => {
     if (!targetToken || !targetId) {
         return {data: null, error: 'Token and Gist ID are required.', errorType: 'auth'};
@@ -337,9 +354,12 @@ export const pullFromGist = async (targetToken = gistToken, targetId = gistId, t
 
     try {
         const authHeader = targetToken.startsWith('Bearer ') ? targetToken : `Bearer ${targetToken}`;
-        const res = await fetch(`https://api.github.com/gists/${targetId}`, {
+        const url = `https://api.github.com/gists/${targetId}?_ts=${Date.now()}`;
+        const res = await fetch(url, {
             headers: {
-                Authorization: authHeader, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
+                Authorization: authHeader,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
             }
         });
 
@@ -353,8 +373,9 @@ export const pullFromGist = async (targetToken = gistToken, targetId = gistId, t
 
         const gist = await res.json();
         const content = gist.files?.[targetFilename]?.content ?? '';
+        const remoteUpdatedAt = gist.updated_at;
         logSync('info', `Retrieved Gist ${targetId.slice(0, 8)}: file "${targetFilename}" ${content ? `(${content.length} characters)` : 'is empty or not yet created'}`);
-        return {data: content};
+        return {data: content, remoteUpdatedAt};
     } catch (e: any) {
         const msg = e?.message || 'Network request failed';
         const errText = `Network error: ${msg}. Check internet connection or ad-blockers.`;
@@ -371,12 +392,15 @@ export const pushToGist = async (force = false, targetToken = gistToken, targetI
     }
 
     if (isSyncing) {
-        logSync('info', 'Push skipped: Sync operation already in progress.');
+        logSync('info', 'Push already in progress. Queueing follow-up sync.');
+        syncQueuedWhileBusy = true;
         return {success: true};
     }
 
     const currentStr = exportLocalData();
     if (!force && (currentStr === lastSyncedStr || isDataSemanticallyEquivalent(currentStr, lastSyncedStr))) {
+        localStorage.removeItem('whatchadoin_has_unpushed_changes');
+        updateSyncState({status: 'idle'});
         logSync('info', 'Push skipped: Local state is identical to last sync.');
         return {success: true};
     }
@@ -405,6 +429,8 @@ export const pushToGist = async (force = false, targetToken = gistToken, targetI
         if (res.ok) {
             lastSyncedStr = currentStr;
             const nowIso = new Date().toISOString();
+            localStorage.removeItem('whatchadoin_has_unpushed_changes');
+            localStorage.setItem('whatchadoin_last_synced_at', nowIso);
             updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null, errorType: null});
             logSync('success', `Synced to Gist successfully! File: "${targetFilename}" (${currentStr.length} bytes)`, {
                 gistId: targetId,
@@ -429,6 +455,12 @@ export const pushToGist = async (force = false, targetToken = gistToken, targetI
         return {success: false, error: errText, errorType: 'network'};
     } finally {
         isSyncing = false;
+        if (syncQueuedWhileBusy) {
+            syncQueuedWhileBusy = false;
+            setTimeout(() => {
+                pushToGist(false, targetToken, targetId, targetFilename).catch(console.error);
+            }, 100);
+        }
     }
 };
 
@@ -449,6 +481,12 @@ export const triggerManualSync = async (forcePush = false): Promise<{
     logSync('info', 'Manual Sync triggered: Checking remote Gist...');
     updateSyncState({status: 'syncing'});
 
+    // If local has unpushed changes, push local edits up instead of wiping!
+    if (localStorage.getItem('whatchadoin_has_unpushed_changes') === 'true') {
+        logSync('info', 'Manual Sync: Unpushed local changes detected. Pushing to Gist...');
+        return await pushToGist(true);
+    }
+
     const pullResult = await pullFromGist();
     if (pullResult.error) {
         updateSyncState({status: 'error', lastError: pullResult.error, errorType: pullResult.errorType});
@@ -460,12 +498,23 @@ export const triggerManualSync = async (forcePush = false): Promise<{
 
     if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
         if (!isDataSemanticallyEquivalent(remoteData, localData)) {
+            const localModified = localStorage.getItem('whatchadoin_last_modified_at');
+            const remoteModified = pullResult.remoteUpdatedAt;
+            const isLocalNewer = localModified && remoteModified && new Date(localModified).getTime() > new Date(remoteModified).getTime();
+
+            if (isLocalNewer) {
+                logSync('info', 'Manual Sync: Local data timestamp is newer than Gist. Pushing local changes...');
+                return await pushToGist(true);
+            }
+
             try {
                 JSON.parse(remoteData);
                 logSync('info', 'Remote data differs from local. Updating local state from Gist...');
                 importLocalData(remoteData);
                 lastSyncedStr = remoteData;
                 const nowIso = new Date().toISOString();
+                localStorage.removeItem('whatchadoin_has_unpushed_changes');
+                localStorage.setItem('whatchadoin_last_synced_at', nowIso);
                 updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null});
                 return {success: true};
             } catch {
@@ -476,6 +525,8 @@ export const triggerManualSync = async (forcePush = false): Promise<{
         } else {
             lastSyncedStr = localData;
             const nowIso = new Date().toISOString();
+            localStorage.removeItem('whatchadoin_has_unpushed_changes');
+            localStorage.setItem('whatchadoin_last_synced_at', nowIso);
             updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null});
             logSync('success', 'Local data is already completely in sync with remote Gist.');
             return {success: true};
@@ -499,10 +550,7 @@ export const saveSyncConfig = async (token: string, id: string, filename?: strin
 
     if (!cleanToken && !cleanId) {
         // Disconnect
-        localStorage.removeItem('whatchadoin_gist_token');
-        localStorage.removeItem('whatchadoin_gist_id');
-        localStorage.removeItem('whatchadoin_gist_filename');
-        localStorage.removeItem('whatchadoin_last_sync_error');
+        SYNC_METADATA_KEYS.forEach(k => localStorage.removeItem(k));
         gistToken = '';
         gistId = '';
         gistFilename = 'whatchadoin_data.json';
@@ -542,6 +590,8 @@ export const saveSyncConfig = async (token: string, id: string, filename?: strin
                 importLocalData(remoteData);
                 lastSyncedStr = remoteData;
                 const nowIso = new Date().toISOString();
+                localStorage.removeItem('whatchadoin_has_unpushed_changes');
+                localStorage.setItem('whatchadoin_last_synced_at', nowIso);
                 updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null, errorType: null});
                 logSync('success', 'Remote data successfully imported.');
                 return {success: true, action: 'imported', reloaded: true};
@@ -590,13 +640,27 @@ export const initSync = (onRemoteUpdate?: () => void) => {
             return;
         }
 
+        const hasUnpushedLocal = localStorage.getItem('whatchadoin_has_unpushed_changes') === 'true';
+        const localModified = localStorage.getItem('whatchadoin_last_modified_at');
+        const remoteModified = res.remoteUpdatedAt;
+        const isLocalNewer = localModified && remoteModified && new Date(localModified).getTime() > new Date(remoteModified).getTime();
+
         if (remoteData && remoteData !== '{}' && remoteData.trim() !== '') {
             const localData = exportLocalData();
             if (!isDataSemanticallyEquivalent(remoteData, localData)) {
+                // If local has unpushed edits newer than Gist, push up instead of wiping!
+                if (hasUnpushedLocal || isLocalNewer) {
+                    logSync('info', 'Local data has unpushed edits newer than Gist. Pushing local changes up...');
+                    pushToGist(true).catch(console.error);
+                    return;
+                }
+
                 const success = importLocalData(remoteData);
                 if (success) {
                     lastSyncedStr = remoteData;
                     const nowIso = new Date().toISOString();
+                    localStorage.removeItem('whatchadoin_has_unpushed_changes');
+                    localStorage.setItem('whatchadoin_last_synced_at', nowIso);
                     updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null});
                     logSync('success', 'Initial sync: Loaded remote data from Gist.');
                     if (onRemoteUpdate) onRemoteUpdate();
@@ -608,6 +672,8 @@ export const initSync = (onRemoteUpdate?: () => void) => {
             } else {
                 lastSyncedStr = localData;
                 const nowIso = new Date().toISOString();
+                localStorage.removeItem('whatchadoin_has_unpushed_changes');
+                localStorage.setItem('whatchadoin_last_synced_at', nowIso);
                 updateSyncState({status: 'idle', lastSyncedAt: nowIso, lastError: null});
                 logSync('success', 'Initial sync: Local data is up to date with remote Gist.');
             }
@@ -625,9 +691,14 @@ export const initSync = (onRemoteUpdate?: () => void) => {
     const handleStorageChange = (key: string) => {
         if (isImporting) return;
         if (!key.startsWith('whatchadoin_')) return;
-        if (key === 'whatchadoin_gist_token' || key === 'whatchadoin_gist_id' || key === 'whatchadoin_gist_filename' || key === 'whatchadoin_force_sync_push' || key === 'whatchadoin_last_synced_at' || key === 'whatchadoin_last_sync_error') return;
+        if (isSyncMetadataKey(key)) return;
 
-        // Debounce push
+        // Mark local changes as unpushed and set status to pending
+        localStorage.setItem('whatchadoin_has_unpushed_changes', 'true');
+        localStorage.setItem('whatchadoin_last_modified_at', new Date().toISOString());
+        updateSyncState({status: 'pending'});
+
+        // Debounce push: 5000ms safe interval avoids GitHub rate limits
         clearTimeout(syncTimeout);
         syncTimeout = setTimeout(() => {
             pushToGist().catch(console.error);
@@ -648,40 +719,22 @@ export const initSync = (onRemoteUpdate?: () => void) => {
     };
 
     // 3. Ensure sync happens if user closes tab before debounce fires
-    if (typeof document !== 'undefined') {
+    if (typeof window !== 'undefined') {
+        const flushPendingSync = () => {
+            if (localStorage.getItem('whatchadoin_has_unpushed_changes') === 'true' && gistToken && gistId && !isSyncing) {
+                clearTimeout(syncTimeout);
+                pushToGist().catch(console.error);
+            }
+        };
+
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
-                const currentStr = exportLocalData();
-                if (currentStr !== lastSyncedStr && gistToken && gistId) {
-                    const authHeader = gistToken.startsWith('Bearer ') ? gistToken : `Bearer ${gistToken}`;
-                    fetch(`https://api.github.com/gists/${gistId}`, {
-                        method: 'PATCH', headers: {
-                            Authorization: authHeader,
-                            Accept: 'application/vnd.github+json',
-                            'X-GitHub-Api-Version': '2022-11-28',
-                            'Content-Type': 'application/json',
-                        }, body: JSON.stringify({
-                            files: {
-                                [gistFilename]: {
-                                    content: currentStr
-                                }
-                            }
-                        }), keepalive: true
-                    }).then(async res => {
-                        if (res.ok) {
-                            lastSyncedStr = currentStr;
-                            updateSyncState({status: 'idle', lastSyncedAt: new Date().toISOString(), lastError: null});
-                            logSync('success', 'Background visibilitychange sync completed');
-                        } else {
-                            const err = await parseGitHubError(res);
-                            updateSyncState({status: 'error', lastError: err.message, errorType: err.type});
-                            logSync('error', `Background sync failed: ${err.message}`);
-                        }
-                    }).catch(e => {
-                        logSync('error', 'Background sync network error', e);
-                    });
-                }
+                flushPendingSync();
             }
+        });
+
+        window.addEventListener('pagehide', () => {
+            flushPendingSync();
         });
     }
 };
