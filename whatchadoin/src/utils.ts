@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type {Habit, QuickTask, Routine, RoutineGoal} from './types/routine';
+import type {Habit, QuickTask, Routine, RoutineGoal, TemplateBlock} from './types/routine';
 import type {LifeGoal, MoneyGoal, WalletGoal} from './types/goals';
 
 export function parseDuration(val: string | number | null | undefined): number {
@@ -156,10 +156,37 @@ export function sanitizeRoutine(routine: unknown): Routine {
                     delete cleanB['task'];
                     delete cleanB['text'];
                     delete cleanB['title'];
+                    if (cleanB['isBundle'] && Array.isArray(cleanB['subBlocks'])) {
+                        cleanB['subBlocks'] = (cleanB['subBlocks'] as any[]).map(sub => ({
+                            id: String(sub.id || ''),
+                            habitId: String(sub.habitId || ''),
+                            name: String(sub.name || ''),
+                            duration: Number(sub.duration) || 0,
+                            color: sub.color ? String(sub.color) : undefined,
+                            startTimeOffset: Number(sub.startTimeOffset) || 0,
+                            isPublic: sub.isPublic ?? undefined
+                        }));
+                    }
                     return cleanB as unknown as typeof b;
                 })
             };
         });
+    }
+    if (Array.isArray(clean.habitBundles)) {
+        clean.habitBundles = clean.habitBundles.map(bundle => ({
+            id: String(bundle.id || `bundle-${Date.now()}`),
+            name: String(bundle.name || 'Untitled Bundle'),
+            desc: bundle.desc ? String(bundle.desc) : undefined,
+            color: bundle.color ? String(bundle.color) : undefined,
+            items: Array.isArray(bundle.items) ? bundle.items.map(item => ({
+                id: String(item.id || `item-${Date.now()}`),
+                habitId: String(item.habitId || ''),
+                name: String(item.name || ''),
+                duration: Number(item.duration) || 0,
+                color: item.color ? String(item.color) : undefined,
+                isPublic: item.isPublic ?? undefined
+            })) : []
+        }));
     }
     if (clean.timeLogs && typeof clean.timeLogs === 'object') {
         clean.timeLogs = {...clean.timeLogs};
@@ -578,3 +605,109 @@ export const formatTime12h = (time24: string) => {
     if (h === 0) h = 12;
     return `${h}:${m} ${ampm}`;
 };
+
+export interface EffectiveHabitBlock {
+    id: string;
+    name: string;
+    startTime: number;
+    duration: number;
+    routineGoalId?: string;
+    color?: string;
+    bundleId?: string;
+    bundleName?: string;
+    isPublic?: boolean;
+    isBundleChild?: boolean;
+}
+
+export function getEffectiveHabitBlocks(blocks: TemplateBlock[]): EffectiveHabitBlock[] {
+    const result: EffectiveHabitBlock[] = [];
+    (blocks || []).forEach(b => {
+        if (b.isBundle && Array.isArray(b.subBlocks) && b.subBlocks.length > 0) {
+            b.subBlocks.forEach(sub => {
+                result.push({
+                    id: `${b.id}-${sub.id}`,
+                    name: sub.name,
+                    startTime: b.startTime + (sub.startTimeOffset || 0),
+                    duration: sub.duration,
+                    routineGoalId: sub.habitId,
+                    color: sub.color || b.color,
+                    bundleId: b.bundleId,
+                    bundleName: b.name,
+                    isPublic: sub.isPublic ?? b.isPublic,
+                    isBundleChild: true
+                });
+            });
+        } else {
+            result.push({
+                id: b.id,
+                name: b.name,
+                startTime: b.startTime,
+                duration: b.duration,
+                routineGoalId: b.routineGoalId,
+                color: b.color,
+                isPublic: b.isPublic
+            });
+        }
+    });
+    return result;
+}
+
+/**
+ * Calculates total duration of a bundle in minutes.
+ */
+export function getBundleTotalDuration(bundle: { items: Array<{ duration: number }> } | null | undefined): number {
+    if (!bundle || !Array.isArray(bundle.items)) return 0;
+    return bundle.items.reduce((acc, item) => acc + (Number(item.duration) || 0), 0);
+}
+
+/**
+ * Checks if a bundle is completed for an effective date based on its sub-habits.
+ * In accordance with requirements:
+ * If all habits in the bundle are marked completed -> bundle is completed.
+ */
+export function isBundleCompleted(
+    bundle: { items: Array<{ habitId: string }> },
+    dailyLogs: Record<string, Record<string, boolean>> | undefined,
+    effectiveDate: string | null | undefined,
+    habits: any[]
+): boolean {
+    if (!bundle || !Array.isArray(bundle.items) || bundle.items.length === 0) return false;
+    return bundle.items.every(item => {
+        if (effectiveDate && dailyLogs && dailyLogs[effectiveDate]) {
+            return !!dailyLogs[effectiveDate][item.habitId];
+        }
+        const found = habits.find(h => h.id === item.habitId);
+        return found ? !!found.completed : false;
+    });
+}
+
+/**
+ * Computes public visibility for a bundle according to the rule:
+ * - all habits private -> bundle is private
+ * - all habits public -> bundle is public
+ * - some private, some public -> bundle container is public (private sub-habits will be hidden)
+ */
+export function getBundleVisibility(
+    bundle: { items: Array<{ habitId: string; isPublic?: boolean; name?: string }> },
+    habits: any[]
+): { isContainerPublic: boolean; allPublic: boolean; allPrivate: boolean } {
+    if (!bundle || !Array.isArray(bundle.items) || bundle.items.length === 0) {
+        return { isContainerPublic: true, allPublic: true, allPrivate: false };
+    }
+    const habitMap = new Map((habits || []).map(h => [h.id, h]));
+    let publicCount = 0;
+    let privateCount = 0;
+    bundle.items.forEach(item => {
+        const h = habitMap.get(item.habitId);
+        const isPub = (h && (h.isPublic || (h.name || '').includes('[public]'))) ?? (item.isPublic || (item.name || '').includes('[public]'));
+        if (isPub) publicCount++;
+        else privateCount++;
+    });
+    const allPrivate = publicCount === 0;
+    const allPublic = privateCount === 0;
+    return {
+        isContainerPublic: !allPrivate,
+        allPublic,
+        allPrivate
+    };
+}

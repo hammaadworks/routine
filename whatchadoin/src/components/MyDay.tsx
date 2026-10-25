@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {useEffect, useState} from 'react';
-import {Clock, Target, X, ZoomIn, ZoomOut} from 'lucide-react';
+import {Clock, Target, X, ZoomIn, ZoomOut, Package, ChevronDown, ChevronUp, Check} from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import BaseModal from './BaseModal';
 import MyDayMaker from './MyDayMaker';
@@ -276,28 +276,51 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate})
             title="Edit start time (e.g. 11pm, 10:30am, 23:00). Arrow keys adjust hour."
         />
         <span style={{opacity: 0.6}}>-</span>
-        <input
-            name={`end_time_${block.id}`}
-            aria-label="End time"
-            type="text"
-            value={endVal}
-            draggable={false}
-            onDragStart={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-            }}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onFocus={() => {
-                isEditingRef.current = true;
-            }}
-            onChange={(e) => {
-                setEndVal(e.target.value);
-            }}
-            onBlur={(e) => {
-                handleCommitEnd(e.target.value);
-            }}
+        {block.isBundle ? (
+            <span
+                style={{
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '4px',
+                    color: 'inherit',
+                    fontSize: '10.5px',
+                    fontFamily: 'inherit',
+                    letterSpacing: '-0.2px',
+                    padding: '1px 4px',
+                    width: '70px',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    flexShrink: 0,
+                    opacity: 0.85,
+                    cursor: 'default'
+                }}
+                title={`Bundle duration is strictly set to ${actualDuration}m by its habits`}
+            >
+                {endVal}
+            </span>
+        ) : (
+            <input
+                name={`end_time_${block.id}`}
+                aria-label="End time"
+                type="text"
+                value={endVal}
+                draggable={false}
+                onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+                onFocus={() => {
+                    isEditingRef.current = true;
+                }}
+                onChange={(e) => {
+                    setEndVal(e.target.value);
+                }}
+                onBlur={(e) => {
+                    handleCommitEnd(e.target.value);
+                }}
             onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                     (e.target as HTMLInputElement).blur();
@@ -343,6 +366,7 @@ const BlockTimeInputs: React.FC<BlockTimeInputsProps> = ({block, hex, onUpdate})
             }}
             title="Edit end time (e.g. 11pm, 12am, 23:00). Arrow keys adjust hour."
         />
+        )}
     </div>);
 };
 
@@ -511,6 +535,7 @@ export interface MyDayProps {
     habits: Habit[];
     routineGoals?: any[];
     lifeGoals?: any[];
+    activeRoutine?: any;
 }
 
 
@@ -525,9 +550,11 @@ export default function MyDay({
                                   updateActiveRoutine,
                                   habits,
                                   routineGoals = [],
-                                  lifeGoals = []
+                                  lifeGoals = [],
+                                  activeRoutine
                               }: MyDayProps) {
     const [newTemplateName, setNewTemplateName] = useState('');
+    const [expandedBundleIds, setExpandedBundleIds] = useState<Record<string, boolean>>({});
     // Inline editing for blocks now, no block modal needed
 
     // Track scroll position of timeline container
@@ -817,6 +844,44 @@ export default function MyDay({
                         routineGoalId: routineGoalId,
                         isPublic: isPublicBlock
                     });
+                } else if (source === 'bundle') {
+                    const rawPayload = e.dataTransfer.getData('bundlePayload');
+                    if (rawPayload) {
+                        try {
+                            const bundleData = JSON.parse(rawPayload);
+                            let offset = 0;
+                            const subBlocks = (bundleData.items || []).map((item: any) => {
+                                const dur = Number(item.duration) || 0;
+                                const sub = {
+                                    id: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                                    habitId: item.habitId,
+                                    name: item.name,
+                                    duration: dur,
+                                    color: item.color,
+                                    startTimeOffset: offset,
+                                    isPublic: item.isPublic
+                                };
+                                offset += dur;
+                                return sub;
+                            });
+                            const totalDuration = offset;
+                            const isPublicBlock = e.dataTransfer.getData('isPublic') === 'true';
+
+                            newBlocks.push({
+                                id: Date.now().toString(),
+                                name: bundleData.name,
+                                startTime: startMinutes,
+                                duration: totalDuration,
+                                color: bundleData.color || subBlocks[0]?.color || '#eab308',
+                                isBundle: true,
+                                bundleId: bundleData.id,
+                                subBlocks: subBlocks,
+                                isPublic: isPublicBlock
+                            });
+                        } catch (err) {
+                            console.error('Failed to parse bundle drop', err);
+                        }
+                    }
                 } else if (source === 'timeline') {
                     const blockId = e.dataTransfer.getData('blockId');
                     const blockIndex = newBlocks.findIndex(b => b.id === blockId);
@@ -1042,13 +1107,43 @@ export default function MyDay({
                 {/* Overlapping GCal-style Blocks */}
                 {laidOutBlocks.map(block => {
                     const hex = block.color || '#ffffff';
-                    const linkedHabit = habits?.find((h: any) => h.id === block.routineGoalId);
-                    const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]') || linkedHabit?.isPublic || (linkedHabit?.name || '').includes('[public]');
-                    const isMasked = isPublicView && !isBlockPublic;
+                    const isBundleBlock = !!block.isBundle;
+                    const subBlocks = block.subBlocks || [];
+                    const isExpanded = isBundleBlock && !!expandedBundleIds[block.originalId || block.id];
+
+                    let isMasked = false;
+                    if (isPublicView) {
+                        if (isBundleBlock) {
+                            const hasPublicSubs = subBlocks.some((s: any) => s.isPublic || (s.name || '').includes('[public]'));
+                            isMasked = !hasPublicSubs && subBlocks.length > 0;
+                        } else {
+                            const linkedHabit = habits?.find((h: any) => h.id === block.routineGoalId);
+                            const isBlockPublic = (block as any).isPublic || block.name?.includes('[public]') || linkedHabit?.isPublic || (linkedHabit?.name || '').includes('[public]');
+                            isMasked = !isBlockPublic;
+                        }
+                    }
+
+                    // Build multi-colored gradient border for bundle container
+                    let borderImage = undefined;
+                    if (isBundleBlock && subBlocks.length > 1) {
+                        const totalDur = block.duration || 1;
+                        let accum = 0;
+                        const stops: string[] = [];
+                        subBlocks.forEach((sub: any) => {
+                            const subColor = sub.color || '#eab308';
+                            const startPct = ((accum / totalDur) * 100).toFixed(1);
+                            accum += (sub.duration || 0);
+                            const endPct = ((accum / totalDur) * 100).toFixed(1);
+                            stops.push(`${subColor} ${startPct}% ${endPct}%`);
+                        });
+                        borderImage = `linear-gradient(to bottom, ${stops.join(', ')}) 1 100%`;
+                    }
+
+                    const minH = isExpanded ? Math.max(block.duration * zoomLevel, 60 + subBlocks.length * 24) : (block.duration * zoomLevel);
 
                     return (<div
                         key={block.id}
-                        className="time-block"
+                        className={`time-block ${isBundleBlock ? 'bundle-container-block' : ''}`}
                         draggable={!isMasked}
                         onDragStart={isMasked ? undefined : (e) => {
                             e.dataTransfer.setData('source', 'timeline');
@@ -1057,43 +1152,173 @@ export default function MyDay({
                         }}
                         style={{
                             top: `${(block.startTime) * zoomLevel}px`,
-                            height: `${block.duration * zoomLevel}px`,
-                            left: `calc(10px + ${block.left}%)`, // Removed 0.9 scaling to fill the gap
+                            height: isExpanded ? 'auto' : `${block.duration * zoomLevel}px`,
+                            minHeight: `${minH}px`,
+                            left: `calc(10px + ${block.left}%)`,
                             width: `calc(${block.width}% - 14px)`,
-                            backgroundColor: `rgba(${hexToRgb(hex)}, 0.15)`,
-                            borderLeftColor: hex,
+                            backgroundColor: `rgba(${hexToRgb(hex)}, ${isBundleBlock ? '0.2' : '0.15'})`,
+                            borderLeftColor: borderImage ? 'transparent' : hex,
                             borderLeftWidth: '4px',
                             borderLeftStyle: 'solid',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            borderImage: borderImage,
+                            boxShadow: isExpanded ? '0 10px 28px rgba(0,0,0,0.45)' : '0 4px 12px rgba(0,0,0,0.1)',
                             position: 'absolute',
-                            padding: block.duration <= 30 ? '2px 26px 2px 6px' : '6px 22px 6px 8px',
+                            padding: (block.duration <= 30 && !isExpanded) ? '2px 26px 2px 6px' : '6px 22px 6px 8px',
                             borderRadius: '4px',
                             display: 'flex',
-                            flexDirection: block.duration <= 30 ? 'row' : 'column',
-                            alignItems: block.duration <= 30 ? 'center' : 'flex-start',
-                            justifyContent: block.duration <= 30 ? 'flex-start' : 'center',
-                            gap: block.duration <= 30 ? '6px' : '3px',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            justifyContent: 'flex-start',
+                            gap: '4px',
                             touchAction: 'pan-y',
-                            opacity: block.isWrapSecond ? 0.9 : 1
+                            opacity: block.isWrapSecond ? 0.9 : 1,
+                            zIndex: isExpanded ? 35 : (block.colIndex || 1)
                         }}
                     >
                         {!isMasked && (<>
-                            <div className="time-block-title" style={{
-                                color: hex,
-                                fontWeight: '600',
-                                fontSize: '13px',
-                                marginBottom: block.duration <= 30 ? '0' : '2px',
-                                paddingRight: block.duration <= 30 ? '0' : '16px',
-                                whiteSpace: block.duration <= 30 ? 'nowrap' : 'normal',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                flex: block.duration <= 30 ? 1 : 'none',
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                width: '100%',
+                                gap: '6px',
+                                flexWrap: (block.duration <= 30 && !isExpanded) ? 'nowrap' : 'wrap',
                                 minWidth: 0
-                            }}
-                            >
-                                {block.name}
+                            }}>
+                                <div className="time-block-title" style={{
+                                    color: hex,
+                                    fontWeight: '600',
+                                    fontSize: '13px',
+                                    marginBottom: '0',
+                                    paddingRight: '4px',
+                                    whiteSpace: (block.duration <= 30 && !isExpanded) ? 'nowrap' : 'normal',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    flex: (block.duration <= 30 && !isExpanded) ? 1 : 'none',
+                                    minWidth: 0
+                                }}>
+                                    {isBundleBlock && <Package size={13} style={{ color: hex, flexShrink: 0 }} />}
+                                    <span>{isBundleBlock ? `[${block.name}]` : block.name}</span>
+                                </div>
+
+                                {/* Accordion toggle for bundle */}
+                                {isBundleBlock && subBlocks.length > 0 && (
+                                    <button
+                                        type="button"
+                                        className="no-drag"
+                                        draggable={false}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onTouchStart={(e) => e.stopPropagation()}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const bId = block.originalId || block.id;
+                                            setExpandedBundleIds(prev => ({
+                                                ...prev,
+                                                [bId]: !prev[bId]
+                                            }));
+                                        }}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            background: isExpanded ? 'rgba(234, 179, 8, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                                            borderRadius: '10px',
+                                            padding: '1px 6px',
+                                            fontSize: '10px',
+                                            color: isExpanded ? 'var(--accent)' : 'inherit',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            transition: 'all 0.15s ease',
+                                            flexShrink: 0
+                                        }}
+                                        title={isExpanded ? "Collapse habits list" : "Show habits in bundle"}
+                                    >
+                                        {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                        <span>{isExpanded ? 'Hide' : `${subBlocks.length} habits`}</span>
+                                    </button>
+                                )}
+
+                                <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime}/>
                             </div>
-                            <BlockTimeInputs block={block} hex={hex} onUpdate={updateBlockTime}/>
+
+                            {/* YouTube Comments-Style Accordion Reveal */}
+                            {isBundleBlock && isExpanded && (
+                                <div
+                                    className="no-drag"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    style={{
+                                        marginTop: '4px',
+                                        paddingTop: '6px',
+                                        borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '4px',
+                                        width: '100%',
+                                        cursor: 'default',
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    {subBlocks.map((sub: any, sIdx: number) => {
+                                        if (isPublicView && !sub.isPublic && !(sub.name || '').includes('[public]')) {
+                                            return null;
+                                        }
+                                        const subStart = block.startTime + (sub.startTimeOffset || 0);
+                                        const subEnd = subStart + (sub.duration || 0);
+                                        const isSubCompleted = activeRoutine?.dailyLogs?.[activeRoutine?.start || '']?.[sub.habitId] || false;
+
+                                        return (
+                                            <div
+                                                key={sub.id || sIdx}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '11px',
+                                                    color: 'var(--text-secondary)',
+                                                    padding: '2px 0'
+                                                }}
+                                            >
+                                                <span style={{ opacity: 0.5, fontSize: '10px', fontFamily: 'monospace' }}>↳</span>
+                                                <span
+                                                    style={{
+                                                        width: '6px',
+                                                        height: '6px',
+                                                        borderRadius: '50%',
+                                                        background: sub.color || hex,
+                                                        flexShrink: 0
+                                                    }}
+                                                />
+                                                <span
+                                                    style={{
+                                                        color: isSubCompleted ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                                        fontWeight: 500,
+                                                        textDecoration: isSubCompleted ? 'line-through' : 'none',
+                                                        flex: 1,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}
+                                                >
+                                                    {sub.name}
+                                                </span>
+                                                <span style={{ opacity: 0.75, fontSize: '10px', whiteSpace: 'nowrap' }}>
+                                                    {sub.duration}m ({formatTime(subStart)} - {formatTime(subEnd)})
+                                                </span>
+                                                {isSubCompleted && (
+                                                    <Check size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
                             <button
                                 className="no-drag"
                                 aria-label="Delete time block"
@@ -1288,7 +1513,93 @@ export default function MyDay({
                     Tap to add to schedule, or drag if on desktop.
                 </p>
                 <div className="mobile-goals-grid">
-                    {sortedMobileGoals.length === 0 ? (<div style={{
+                    {/* Habit Bundles */}
+                    {(activeRoutine?.habitBundles || []).map((bundle: any) => {
+                        const totalDur = (bundle.items || []).reduce((acc: number, item: any) => acc + (Number(item.duration) || 0), 0);
+                        const bundleColor = bundle.color || (bundle.items && bundle.items[0]?.color) || '#eab308';
+                        return (
+                            <div
+                                key={bundle.id}
+                                draggable
+                                onDragStart={(e) => {
+                                    e.dataTransfer.setData('source', 'bundle');
+                                    e.dataTransfer.setData('bundlePayload', JSON.stringify(bundle));
+                                    e.dataTransfer.setData('task', bundle.name);
+                                    e.dataTransfer.setData('time', `${totalDur}m`);
+                                    e.dataTransfer.setData('color', bundleColor);
+                                    e.dataTransfer.setData('isPublic', 'true');
+                                    setTimeout(() => setShowMobileGoals(false), 0);
+                                }}
+                                onClick={() => {
+                                    if (!activeTemplateId) return;
+                                    let updatedTemplates = templates.map((t: Template) => {
+                                        if (t.id === activeTemplateId) {
+                                            let newBlocks = [...t.blocks];
+                                            const startMinutes = calculateNextStartTime(newBlocks);
+                                            let offset = 0;
+                                            const subBlocks = (bundle.items || []).map((item: any) => {
+                                                const dur = Number(item.duration) || 0;
+                                                const sub = {
+                                                    id: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                                                    habitId: item.habitId,
+                                                    name: item.name,
+                                                    duration: dur,
+                                                    color: item.color,
+                                                    startTimeOffset: offset,
+                                                    isPublic: item.isPublic
+                                                };
+                                                offset += dur;
+                                                return sub;
+                                            });
+
+                                            newBlocks.push({
+                                                id: Date.now().toString(),
+                                                name: bundle.name,
+                                                startTime: startMinutes,
+                                                duration: totalDur,
+                                                color: bundleColor,
+                                                isBundle: true,
+                                                bundleId: bundle.id,
+                                                subBlocks: subBlocks,
+                                                isPublic: true
+                                            });
+                                            return { ...t, blocks: newBlocks };
+                                        }
+                                        return t;
+                                    });
+                                    if (updateActiveRoutine) {
+                                        updateActiveRoutine({ templates: updatedTemplates });
+                                    } else {
+                                        setTemplates(updatedTemplates);
+                                    }
+                                    setShowMobileGoals(false);
+                                }}
+                                style={{
+                                    background: 'rgba(234, 179, 8, 0.08)',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    borderLeft: `4px solid ${bundleColor}`,
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    boxSizing: 'border-box'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Package size={14} style={{ color: bundleColor }} />
+                                    <span style={{ fontWeight: 600 }}>{bundle.name}</span>
+                                </div>
+                                <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}>
+                                    {totalDur}m ({(bundle.items || []).length} habits)
+                                </span>
+                            </div>
+                        );
+                    })}
+
+                    {sortedMobileGoals.length === 0 && (activeRoutine?.habitBundles || []).length === 0 ? (<div style={{
                         color: 'var(--text-secondary)',
                         fontSize: '12px',
                         textAlign: 'center',

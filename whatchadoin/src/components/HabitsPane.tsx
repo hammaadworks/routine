@@ -10,6 +10,8 @@ import {
     Globe,
     Layers,
     ListTodo,
+    Maximize2,
+    Minimize2,
     Palette,
     PanelRightClose,
     PanelRightOpen,
@@ -29,13 +31,19 @@ import {
     getAllGoalsForMention,
     getGoalColor,
     habitMatchesTemplate,
-    parseDuration
+    parseDuration,
+    getEffectiveHabitBlocks,
+    getBundleTotalDuration,
+    isBundleCompleted,
+    getBundleVisibility
 } from '../utils';
+import type { HabitBundle } from '../types/routine';
 import HabitList from './habits/HabitList';
 import HabitWeeklyPieView from './habits/HabitWeeklyPieView';
 import MilestonesView from './habits/MilestonesView';
 import TimelogView from './habits/TimelogView';
 import LinkedMilestonesSection from './habits/LinkedMilestonesSection';
+import BundleModal from './habits/BundleModal';
 import { addAppEventListener } from '../utils/events';
 
 
@@ -75,6 +83,8 @@ interface HabitsPaneProps {
     onToggleMobileAccordion?: () => void;
     isPcCollapsed?: boolean;
     onTogglePcCollapse?: () => void;
+    isPcExpanded?: boolean;
+    onTogglePcExpand?: () => void;
 }
 
 export default function HabitsPane({
@@ -109,11 +119,15 @@ export default function HabitsPane({
                                        isMobileAccordionOpen,
                                        onToggleMobileAccordion,
                                        isPcCollapsed,
-                                       onTogglePcCollapse
+                                       onTogglePcCollapse,
+                                       isPcExpanded,
+                                       onTogglePcExpand
                                    }: HabitsPaneProps) {
     const [habitViewMode, setHabitViewMode] = useState<'list' | 'pie'>('list');
     const [showAllMilestones, setShowAllMilestones] = useState(true);
     const [showHabitModal, setShowHabitModal] = useState(false);
+    const [showBundleModal, setShowBundleModal] = useState(false);
+    const [editingBundle, setEditingBundle] = useState<HabitBundle | null>(null);
     const [editingHabitId, setEditingHabitId] = useState<any>(null);
     const [habitForm, setHabitForm] = useState<{
         name: string;
@@ -933,19 +947,103 @@ export default function HabitsPane({
         e.dataTransfer.setData('isPublic', (goal.isPublic || (goal.name || '').includes('[public]')) ? 'true' : 'false');
     };
 
+    const habitBundles: HabitBundle[] = activeRoutine?.habitBundles || [];
+
+    const openAddBundle = () => {
+        setEditingBundle(null);
+        setShowBundleModal(true);
+    };
+
+    const openEditBundle = (bundle: HabitBundle) => {
+        setEditingBundle(bundle);
+        setShowBundleModal(true);
+    };
+
+    const handleSaveBundle = (savedBundle: HabitBundle) => {
+        const currentBundles = activeRoutine?.habitBundles || [];
+        const exists = currentBundles.some((b: HabitBundle) => b.id === savedBundle.id);
+        const next = exists
+            ? currentBundles.map((b: HabitBundle) => b.id === savedBundle.id ? savedBundle : b)
+            : [...currentBundles, savedBundle];
+
+        if (updateActiveRoutine) {
+            updateActiveRoutine({ habitBundles: next });
+        }
+        setShowBundleModal(false);
+        setEditingBundle(null);
+    };
+
+    const confirmDeleteBundle = (bundle: HabitBundle) => {
+        setConfirmConfig({
+            title: 'Delete Habit Bundle',
+            message: `Are you sure you want to delete bundle "${bundle.name}"? This will not remove the individual habits from your habit bank.`,
+            isDanger: true,
+            onConfirm: () => {
+                const currentBundles = activeRoutine?.habitBundles || [];
+                const next = currentBundles.filter((b: HabitBundle) => b.id !== bundle.id);
+                if (updateActiveRoutine) {
+                    updateActiveRoutine({ habitBundles: next });
+                }
+                setConfirmConfig(null);
+            },
+            onCancel: () => setConfirmConfig(null)
+        });
+    };
+
+    const toggleBundleCompletion = (bundle: HabitBundle) => {
+        if (!bundle || !Array.isArray(bundle.items)) return;
+        const isCurrentlyDone = isBundleCompleted(bundle, dailyLogs, effectiveDate, habits);
+        const targetDone = !isCurrentlyDone;
+
+        if (effectiveDate) {
+            const currentLogs = activeRoutine?.dailyLogs || {};
+            const dayLog = { ...(currentLogs[effectiveDate] || {}) };
+            bundle.items.forEach(item => {
+                dayLog[item.habitId] = targetDone;
+            });
+            if (updateActiveRoutine) {
+                updateActiveRoutine({
+                    dailyLogs: {
+                        ...currentLogs,
+                        [effectiveDate]: dayLog
+                    }
+                });
+            }
+        } else {
+            const updatedHabits = (habits || []).map(h => {
+                if (bundle.items.some(i => i.habitId === h.id)) {
+                    return { ...h, completed: targetDone };
+                }
+                return h;
+            });
+            setHabits(updatedHabits);
+        }
+    };
+
+    const handleDragStartBundle = (e: any, bundle: HabitBundle) => {
+        const totalDuration = getBundleTotalDuration(bundle);
+        const vis = getBundleVisibility(bundle, habits);
+
+        e.dataTransfer.setData('source', 'bundle');
+        e.dataTransfer.setData('bundlePayload', JSON.stringify(bundle));
+        e.dataTransfer.setData('task', bundle.name || '');
+        e.dataTransfer.setData('time', `${totalDuration}m`);
+        e.dataTransfer.setData('color', bundle.color || (bundle.items && bundle.items[0]?.color) || '#eab308');
+        e.dataTransfer.setData('isPublic', vis.isContainerPublic ? 'true' : 'false');
+    };
+
     const checkRoutineAddressed = (goal: any) => {
         if (!templates) return false;
 
-        // 1. Check explicit linking
-        const explicitlyReferenced = templates.some(t => t.blocks.some((b: any) => String(b.routineGoalId) === String(goal.id)));
-        if (explicitlyReferenced) return true;
-
-        // 2. Fallback to text matching
-        const txt = (goal.name || '').toLowerCase().trim();
-        if (!txt) return false;
-        return templates.some(t => t.blocks.some((b: any) => b.name.toLowerCase().trim() === txt));
+        return templates.some(t => {
+            const eff = getEffectiveHabitBlocks(t.blocks || []);
+            const explicitlyReferenced = eff.some((b: any) => String(b.routineGoalId) === String(goal.id));
+            if (explicitlyReferenced) return true;
+            const txt = (goal.name || '').toLowerCase().trim();
+            if (!txt) return false;
+            return eff.some((b: any) => b.name.toLowerCase().trim() === txt);
+        });
     };
-
 
     const confirmDeleteHabit = (id: string, taskName: string) => {
         setConfirmConfig({
@@ -959,9 +1057,39 @@ export default function HabitsPane({
                 // 2. Cascade delete blocks from the timeline
                 if (templates && setTemplates) {
                     const updatedTemplates = templates.map(t => ({
-                        ...t, blocks: t.blocks.filter((b: any) => b.routineGoalId !== id)
+                        ...t,
+                        blocks: (t.blocks || []).map((b: any) => {
+                            if (b.isBundle && Array.isArray(b.subBlocks)) {
+                                const remainingSubs = b.subBlocks.filter((sub: any) => sub.habitId !== id);
+                                if (remainingSubs.length === 0) return null;
+                                let offset = 0;
+                                const recomputedSubs = remainingSubs.map((sub: any) => {
+                                    const updated = { ...sub, startTimeOffset: offset };
+                                    offset += (sub.duration || 0);
+                                    return updated;
+                                });
+                                return {
+                                    ...b,
+                                    subBlocks: recomputedSubs,
+                                    duration: offset
+                                };
+                            }
+                            return b.routineGoalId === id ? null : b;
+                        }).filter(Boolean)
                     }));
                     setTemplates(updatedTemplates);
+                }
+
+                // 3. Cascade update bundles
+                const currentBundles: HabitBundle[] = activeRoutine?.habitBundles || [];
+                if (currentBundles.some(b => (b.items || []).some(i => i.habitId === id))) {
+                    const updatedBundles = currentBundles.map(b => ({
+                        ...b,
+                        items: (b.items || []).filter(i => i.habitId !== id)
+                    })).filter(b => b.items.length > 0);
+                    if (updateActiveRoutine) {
+                        updateActiveRoutine({ habitBundles: updatedBundles });
+                    }
                 }
 
                 setShowHabitModal(false);
@@ -971,11 +1099,10 @@ export default function HabitsPane({
         });
     };
 
-
     const currentTemplate = templates?.find(t => t.id === currentTemplateId);
     const goalCounts: Record<string, number> = {};
     if (currentTemplate) {
-        currentTemplate.blocks.forEach((b: any) => {
+        getEffectiveHabitBlocks(currentTemplate.blocks || []).forEach((b: any) => {
             if (b.routineGoalId) {
                 goalCounts[b.routineGoalId] = (goalCounts[b.routineGoalId] || 0) + 1;
             }
@@ -1150,6 +1277,25 @@ export default function HabitsPane({
                                 }}
                             />
                         </button>
+                        {onTogglePcExpand && (
+                            <button
+                                type="button"
+                                className="pc-pane-toggle-btn icon-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onTogglePcExpand();
+                                }}
+                                title={isPcExpanded ? "Compact Habits pane" : "Expand Habits pane (Wide mode)"}
+                                aria-label={isPcExpanded ? "Compact Habits pane" : "Expand Habits pane (Wide mode)"}
+                                style={isPcExpanded ? {
+                                    color: 'var(--accent)',
+                                    borderColor: 'var(--accent)',
+                                    background: 'rgba(201, 162, 39, 0.15)'
+                                } : undefined}
+                            >
+                                {isPcExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                            </button>
+                        )}
                         {onTogglePcCollapse && (
                             <button
                                 type="button"
@@ -1218,6 +1364,8 @@ export default function HabitsPane({
                         lifeGoals={lifeGoals}
                         moneyGoals={moneyGoals}
                         isPublicView={isPublicView}
+                        isPcExpanded={isPcExpanded}
+                        onTogglePcExpand={onTogglePcExpand}
                         onBackToList={() => setHabitViewMode('list')}
                         onCardClick={(habit) => setInfoHabitId(habit.id)}
                     />
@@ -1251,6 +1399,13 @@ export default function HabitsPane({
                         habits={habits}
                         setHabits={setHabits}
                         onCardClick={(habit) => setInfoHabitId(habit.id)}
+                        habitBundles={habitBundles}
+                        toggleBundleCompletion={toggleBundleCompletion}
+                        openEditBundle={openEditBundle}
+                        deleteBundle={confirmDeleteBundle}
+                        openAddBundle={openAddBundle}
+                        handleDragStartBundle={handleDragStartBundle}
+                        isPublicView={isPublicView}
                     />
                 )
             )}
@@ -2833,6 +2988,23 @@ export default function HabitsPane({
                 </BaseModal>
             );
         })()}
+
+        {/* Bundle Modal */}
+        {showBundleModal && (
+            <BundleModal
+                isOpen={showBundleModal}
+                onClose={() => {
+                    setShowBundleModal(false);
+                    setEditingBundle(null);
+                }}
+                bundleToEdit={editingBundle}
+                habits={habits || []}
+                routineGoals={routineGoals}
+                lifeGoals={lifeGoals}
+                moneyGoals={moneyGoals}
+                onSave={handleSaveBundle}
+            />
+        )}
 
         {/* Confirm Modal */}
         {confirmConfig && (<ConfirmModal

@@ -321,6 +321,7 @@ body {
 
 :root {
     --pane-side-width: clamp(300px, 24vw, 380px);
+    --pane-side-expanded-width: clamp(520px, 38vw, 680px);
     --pane-collapsed-width: 48px;
 }
 
@@ -359,6 +360,14 @@ body {
 
     .main-content.pc-left-collapsed.pc-right-collapsed {
         grid-template-columns: var(--pane-collapsed-width) 1fr var(--pane-collapsed-width);
+    }
+
+    .main-content.pc-right-expanded:not(.pc-left-collapsed) {
+        grid-template-columns: var(--pane-side-width) 1fr var(--pane-side-expanded-width);
+    }
+
+    .main-content.pc-right-expanded.pc-left-collapsed {
+        grid-template-columns: var(--pane-collapsed-width) 1fr var(--pane-side-expanded-width);
     }
 
     .main-content > .left-pane {

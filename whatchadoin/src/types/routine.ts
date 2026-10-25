@@ -1,3 +1,13 @@
+export interface TemplateSubBlock {
+    id: string;
+    habitId: string;
+    name: string;
+    duration: number;
+    color?: string;
+    startTimeOffset: number; // minutes from container start (e.g. 0, 5, 10)
+    isPublic?: boolean;
+}
+
 export interface TemplateBlock {
     id: string;
     name: string;
@@ -5,6 +15,27 @@ export interface TemplateBlock {
     duration: number; // in minutes
     color?: string;
     routineGoalId?: string;
+    isPublic?: boolean;
+    isBundle?: boolean;
+    bundleId?: string;
+    subBlocks?: TemplateSubBlock[];
+}
+
+export interface HabitBundleItem {
+    id: string;
+    habitId: string;
+    name: string;
+    duration: number;
+    color?: string;
+    isPublic?: boolean;
+}
+
+export interface HabitBundle {
+    id: string;
+    name: string;
+    desc?: string;
+    color?: string;
+    items: HabitBundleItem[];
 }
 
 export interface Template {
@@ -56,6 +87,7 @@ export interface Routine {
     activeTemplateId?: string;
     dayMapping?: DayMapping;
     routineGoals?: RoutineGoal[];
+    habitBundles?: HabitBundle[];
     dailyLogs?: Record<string, Record<string, boolean>>;
     timeLogs?: Record<string, Record<string, number>>;
     [key: string]: unknown;

@@ -290,6 +290,7 @@ export default function App() {
     const [isLeftPaneExpanded, setIsLeftPaneExpanded] = useState<boolean>(false);
     const [isLeftPaneCollapsed, setIsLeftPaneCollapsed] = useState<boolean>(false);
     const [isRightPaneCollapsed, setIsRightPaneCollapsed] = useState<boolean>(false);
+    const [isRightPaneExpanded, setIsRightPaneExpanded] = useState<boolean>(false);
     const [isRoutineDrawerOpen, setIsRoutineDrawerOpen] = useState<boolean>(false);
     const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
     const [aiDockState, setAiDockState] = useState<string>('closed'); // 'closed', 'right', 'bottom', 'popped_out'
@@ -299,6 +300,7 @@ export default function App() {
             if (window.innerWidth <= 1400) {
                 setIsLeftPaneCollapsed(false);
                 setIsRightPaneCollapsed(false);
+                setIsRightPaneExpanded(false);
             }
         };
         window.addEventListener('resize', handleResize);
@@ -934,7 +936,7 @@ export default function App() {
                 setCalendarSubTab={setCalendarSubTab}
             />
 
-            <main className={`main-content mobile-tab-${mobileTab} ${isLeftPaneCollapsed ? 'pc-left-collapsed' : ''} ${isRightPaneCollapsed ? 'pc-right-collapsed' : ''}`}>
+            <main className={`main-content mobile-tab-${mobileTab} ${isLeftPaneCollapsed ? 'pc-left-collapsed' : ''} ${isRightPaneCollapsed ? 'pc-right-collapsed' : ''} ${isRightPaneExpanded ? 'pc-right-expanded' : ''}`}>
                 <aside className={`panel pane left-pane ${isLeftPaneExpanded ? '' : 'mobile-collapsed'} ${isLeftPaneCollapsed ? 'pc-collapsed' : ''}`}
                        style={{display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', minHeight: 0}}>
                     {isLeftPaneCollapsed ? (
@@ -1230,6 +1232,7 @@ export default function App() {
                                 habits={habits}
                                 routineGoals={routineGoals}
                                 lifeGoals={lifeGoals}
+                                activeRoutine={activeRoutine}
                             />) : activeCenterTab === 'plans' ? (<React.Suspense
                                 fallback={<div style={{padding: '20px', textAlign: 'center'}}>Loading
                                     Plans...</div>}><PlansPane isPublicView={isPublicView}
@@ -1309,7 +1312,19 @@ export default function App() {
                                 isMobileAccordionOpen={mobileTab === 'calendar' ? isMobileHabitsOpen : undefined}
                                 onToggleMobileAccordion={mobileTab === 'calendar' ? () => setIsMobileHabitsOpen(!isMobileHabitsOpen) : undefined}
                                 isPcCollapsed={isRightPaneCollapsed}
-                                onTogglePcCollapse={() => setIsRightPaneCollapsed(prev => !prev)}
+                                onTogglePcCollapse={() => {
+                                    setIsRightPaneCollapsed(prev => {
+                                        if (!prev) setIsRightPaneExpanded(false);
+                                        return !prev;
+                                    });
+                                }}
+                                isPcExpanded={isRightPaneExpanded}
+                                onTogglePcExpand={() => {
+                                    setIsRightPaneExpanded(prev => {
+                                        if (!prev) setIsRightPaneCollapsed(false);
+                                        return !prev;
+                                    });
+                                }}
                     />
                 </React.Suspense>
             </main>

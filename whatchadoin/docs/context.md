@@ -49,6 +49,7 @@ The core operating theater. It features a vertical, minute-by-minute timeline ma
 This pane holds the atomic, daily executable actions (e.g., "Read 10 pages", "Workout for 45 mins"). 
 - **Logic:** Habits MUST be assigned a time duration (e.g., 45m). Without a duration, they cannot be accurately rendered on the middle Timeline.
 - **Markdown Support:** Descriptions support markdown. Typing `@` opens a mention menu to explicitly link a habit back to a broader Life Goal or Routine Goal.
+- **Habit Bundles:** Users can bundle multiple ordered habits together (e.g., Boxing 5m, FPV 5m, IMJD 20m) into a single 1-layer combo container. Bundles are draggable onto the timeline as rigid containers with YouTube comments-style accordion reveals and bi-directional completion sync. See [HABIT_BUNDLES.md](file:///Users/alhamdulillah/codespace/habits/whatchadoin/docs/HABIT_BUNDLES.md) for the complete specification.
 
 ---
 

@@ -1,9 +1,11 @@
 import * as React from 'react';
-import { Plus, CheckCircle2, Clock, Copy, Pencil, ListTodo } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Copy, Pencil, ListTodo, Package } from 'lucide-react';
 import SearchSortBar from '../SearchSortBar';
 import OrderControls from '../OrderControls';
+import BundlesSection from './BundlesSection';
+import type { HabitBundle } from '../../types/routine';
 import { moveItemRelativeTo } from '../../hooks/useDragReorder';
-import { getGoalColor, getCardBgStyle, parseDuration } from '@/utils.ts';
+import { getGoalColor, getCardBgStyle, parseDuration, getEffectiveHabitBlocks } from '@/utils.ts';
 
 interface HabitListProps {
     openAddHabit: () => void;
@@ -34,6 +36,13 @@ interface HabitListProps {
     habits: any[];
     setHabits: (h: any[]) => void;
     onCardClick?: (habit: any) => void;
+    habitBundles?: HabitBundle[];
+    toggleBundleCompletion?: (bundle: HabitBundle) => void;
+    openEditBundle?: (bundle: HabitBundle) => void;
+    deleteBundle?: (bundle: HabitBundle) => void;
+    openAddBundle?: () => void;
+    handleDragStartBundle?: (e: any, bundle: HabitBundle) => void;
+    isPublicView?: boolean;
 }
 
 export default function HabitList({
@@ -64,7 +73,14 @@ export default function HabitList({
     setConfirmConfig,
     habits,
     setHabits,
-    onCardClick
+    onCardClick,
+    habitBundles,
+    toggleBundleCompletion,
+    openEditBundle,
+    deleteBundle,
+    openAddBundle,
+    handleDragStartBundle,
+    isPublicView
 }: HabitListProps) {
     const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
     const activeGoals = displayedRoutineGoals.filter(g => !getIsCompleted(g));
@@ -79,7 +95,8 @@ export default function HabitList({
         const baseMins = typeof goal.duration === 'number' && goal.duration > 0 ? goal.duration : (goal.time ? parseDuration(goal.time) : 0);
         let scheduledMins = 0;
         if (currentTemplate) {
-            currentTemplate.blocks?.forEach((b: any) => {
+            const effBlocks = getEffectiveHabitBlocks(currentTemplate.blocks || []);
+            effBlocks.forEach((b: any) => {
                 if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
             });
         }
@@ -249,20 +266,36 @@ export default function HabitList({
 
     return (
         <>
-            <button
-                onClick={openAddHabit} className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
-                style={{
-                    width: '100%',
-                    flexShrink: 0,
-                    marginBottom: '16px',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '12px',
-                    borderStyle: 'dashed'
-                }}
-            >
-                <Plus size={16}/> Add Habit
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
+                <button
+                    onClick={openAddHabit} className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
+                    style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '10px',
+                        borderStyle: 'dashed'
+                    }}
+                >
+                    <Plus size={15}/> Add Habit
+                </button>
+                {openAddBundle && (
+                    <button
+                        onClick={openAddBundle} className={`secondary ${isCalendarTab ? '' : 'desktop-only-btn'}`}
+                        style={{
+                            flex: 1,
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '10px',
+                            borderStyle: 'dashed',
+                            borderColor: 'var(--accent)',
+                            color: 'var(--accent)'
+                        }}
+                    >
+                        <Package size={15}/> Add Bundle
+                    </button>
+                )}
+            </div>
 
             <SearchSortBar
                 searchQuery={searchQuery}
@@ -286,6 +319,21 @@ export default function HabitList({
                     flex: 1,
                     paddingRight: '4px'
                 }}>
+
+                {habitBundles && (
+                    <BundlesSection
+                        bundles={habitBundles}
+                        habits={habits}
+                        effectiveDate={effectiveDate}
+                        dailyLogs={dailyLogs}
+                        toggleBundleCompletion={toggleBundleCompletion || (() => {})}
+                        openEditBundle={openEditBundle || (() => {})}
+                        deleteBundle={deleteBundle || (() => {})}
+                        onDragStartBundle={handleDragStartBundle || (() => {})}
+                        isPublicView={isPublicView}
+                        openAddBundle={openAddBundle || (() => {})}
+                    />
+                )}
 
                 {activeGoals.map((g, idx) => renderGoal(g, idx, activeGoals))}
                 {completedGoals.length > 0 && (
