@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { Plus, CheckCircle2, Clock, Copy, Pencil, ListTodo, Package } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Copy, Pencil, ListTodo, Package, ChevronDown, Check, Info } from 'lucide-react';
 import SearchSortBar from '../SearchSortBar';
 import OrderControls from '../OrderControls';
 import BundlesSection from './BundlesSection';
 import type { HabitBundle } from '../../types/routine';
 import { moveItemRelativeTo } from '../../hooks/useDragReorder';
 import { getGoalColor, getCardBgStyle, parseDuration, getEffectiveHabitBlocks } from '@/utils.ts';
+import { formatTime } from '@/features/timeline/timeUtils';
 
 interface HabitListProps {
     openAddHabit: () => void;
@@ -43,6 +44,7 @@ interface HabitListProps {
     openAddBundle?: () => void;
     handleDragStartBundle?: (e: any, bundle: HabitBundle) => void;
     isPublicView?: boolean;
+    updateActiveRoutine?: (updates: any) => void;
 }
 
 export default function HabitList({
@@ -80,9 +82,167 @@ export default function HabitList({
     deleteBundle,
     openAddBundle,
     handleDragStartBundle,
-    isPublicView
+    isPublicView,
+    updateActiveRoutine
 }: HabitListProps) {
-    const getIsCompleted = (goal: any) => effectiveDate ? ((dailyLogs as any)?.[effectiveDate as string]?.[goal.id] || false) : (goal.completed || false);
+    const [expandedHabitIds, setExpandedHabitIds] = React.useState<Record<string, boolean>>({});
+
+    const toggleExpanded = (habitId: string) => {
+        setExpandedHabitIds(prev => ({
+            ...prev,
+            [habitId]: !prev[habitId]
+        }));
+    };
+
+    const matchingBlocksMap = React.useMemo(() => {
+        if (!currentTemplate) return {};
+        const eff = getEffectiveHabitBlocks(currentTemplate.blocks || []);
+        const map: Record<string, any[]> = {};
+        eff.forEach((b: any) => {
+            if (!b.routineGoalId) return;
+            const gId = String(b.routineGoalId);
+            if (!map[gId]) map[gId] = [];
+            map[gId].push(b);
+        });
+        Object.keys(map).forEach(gId => {
+            map[gId]?.sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
+        });
+        return map;
+    }, [currentTemplate]);
+
+    const getInstanceKey = (b: any, index: number) => {
+        return b.id ? `instance_${b.id}` : `instance_idx_${index}_${b.startTime}`;
+    };
+
+    const isInstanceCompleted = (b: any, index: number, goalId: string) => {
+        if (!effectiveDate) return false;
+        const dayLog = (dailyLogs as any)?.[effectiveDate as string] || {};
+        if (dayLog[goalId] === true) return true;
+        const key = getInstanceKey(b, index);
+        return !!dayLog[key];
+    };
+
+    const getHabitProgress = (goalId: string, blocks: any[]) => {
+        const total = blocks.length;
+        if (total <= 1) {
+            const isDone = effectiveDate ? !!((dailyLogs as any)?.[effectiveDate as string]?.[goalId]) : false;
+            return { total, completed: isDone ? total : 0, remaining: isDone ? 0 : total, isComplete: isDone };
+        }
+        const dayLog = (dailyLogs as any)?.[effectiveDate as string] || {};
+        if (dayLog[goalId] === true) {
+            return { total, completed: total, remaining: 0, isComplete: true };
+        }
+        const completed = blocks.filter((b: any, idx: number) => !!dayLog[getInstanceKey(b, idx)]).length;
+        const remaining = Math.max(0, total - completed);
+        return {
+            total,
+            completed,
+            remaining,
+            isComplete: completed === total && total > 0
+        };
+    };
+
+    const getIsCompleted = React.useCallback((goal: any) => {
+        if (!effectiveDate) return !!goal.completed;
+        const dayLog = (dailyLogs as any)?.[effectiveDate as string] || {};
+        if (dayLog[goal.id] === true) return true;
+        const blocks = matchingBlocksMap[String(goal.id)] || [];
+        if (blocks.length > 1) {
+            return blocks.every((b: any, idx: number) => !!dayLog[getInstanceKey(b, idx)]);
+        }
+        return !!dayLog[goal.id];
+    }, [effectiveDate, dailyLogs, matchingBlocksMap]);
+
+    const handleMasterToggle = (goal: any, blocks: any[]) => {
+        if (!effectiveDate) return;
+
+        if (blocks.length <= 1) {
+            toggleDailyGoal(effectiveDate, goal.id);
+            return;
+        }
+
+        if (updateActiveRoutine) {
+            updateActiveRoutine({
+                dailyLogs: (prevLogs: any) => {
+                    const currentLogs = prevLogs || {};
+                    const dayLog = { ...(currentLogs[effectiveDate] || {}) };
+                    const isCurrentlyComplete = dayLog[goal.id] === true || (blocks.length > 1 && blocks.every((b: any, idx: number) => !!dayLog[getInstanceKey(b, idx)]));
+                    const targetState = !isCurrentlyComplete;
+
+                    if (targetState) {
+                        dayLog[goal.id] = true;
+                        blocks.forEach((b: any, idx: number) => {
+                            dayLog[getInstanceKey(b, idx)] = true;
+                        });
+                    } else {
+                        delete dayLog[goal.id];
+                        blocks.forEach((b: any, idx: number) => {
+                            delete dayLog[getInstanceKey(b, idx)];
+                        });
+                    }
+
+                    return {
+                        ...currentLogs,
+                        [effectiveDate]: dayLog
+                    };
+                }
+            });
+        } else {
+            toggleDailyGoal(effectiveDate, goal.id);
+        }
+    };
+
+    const toggleInstance = (dateStr: string, goalId: string, targetBlock: any, targetIndex: number, blocks: any[]) => {
+        if (updateActiveRoutine) {
+            updateActiveRoutine({
+                dailyLogs: (prevLogs: any) => {
+                    const currentLogs = prevLogs || {};
+                    const dayLog = { ...(currentLogs[dateStr] || {}) };
+                    const targetKey = getInstanceKey(targetBlock, targetIndex);
+
+                    const wasGoalComplete = dayLog[goalId] === true;
+                    const wasInstanceComplete = wasGoalComplete || !!dayLog[targetKey];
+                    const willBeInstanceComplete = !wasInstanceComplete;
+
+                    if (wasGoalComplete) {
+                        delete dayLog[goalId];
+                        blocks.forEach((b: any, idx: number) => {
+                            const key = getInstanceKey(b, idx);
+                            if (key === targetKey) {
+                                delete dayLog[key];
+                            } else {
+                                dayLog[key] = true;
+                            }
+                        });
+                    } else {
+                        if (willBeInstanceComplete) {
+                            dayLog[targetKey] = true;
+                        } else {
+                            delete dayLog[targetKey];
+                        }
+
+                        const allDone = blocks.length > 0 && blocks.every((b: any, idx: number) => {
+                            const key = getInstanceKey(b, idx);
+                            if (key === targetKey) return willBeInstanceComplete;
+                            return !!dayLog[key];
+                        });
+
+                        if (allDone) {
+                            dayLog[goalId] = true;
+                        } else {
+                            delete dayLog[goalId];
+                        }
+                    }
+
+                    return {
+                        ...currentLogs,
+                        [dateStr]: dayLog
+                    };
+                }
+            });
+        }
+    };
+
     const activeGoals = displayedRoutineGoals.filter(g => !getIsCompleted(g));
     const completedGoals = displayedRoutineGoals.filter(g => getIsCompleted(g));
 
@@ -92,42 +252,51 @@ export default function HabitList({
         const hasColor = !!goal.color;
         const bgStyle = getCardBgStyle(hexes, hasColor);
 
+        const blocks = matchingBlocksMap[String(goal.id)] || [];
         const baseMins = typeof goal.duration === 'number' && goal.duration > 0 ? goal.duration : (goal.time ? parseDuration(goal.time) : 0);
         let scheduledMins = 0;
-        if (currentTemplate) {
-            const effBlocks = getEffectiveHabitBlocks(currentTemplate.blocks || []);
-            effBlocks.forEach((b: any) => {
-                if (String(b.routineGoalId) === String(goal.id)) scheduledMins += b.duration;
-            });
-        }
-        const count = goalCounts[goal.id] || 0;
-        const timeDiff = count > 0 ? (scheduledMins - (baseMins * count)) : 0;
+        blocks.forEach((b: any) => {
+            scheduledMins += (b.duration || 0);
+        });
+
+        const totalInstances = Math.max(blocks.length, goalCounts[goal.id] || 0);
+        const hasMultipleInstances = totalInstances > 1;
+        const isMultiInstance = !!effectiveDate && hasMultipleInstances;
+        const timeDiff = totalInstances > 0 ? (scheduledMins - (baseMins * totalInstances)) : 0;
 
         const isCompletedForView = getIsCompleted(goal);
         const isReorderable = !searchQuery && !sortByName;
+        const isExpanded = isMultiInstance && !!expandedHabitIds[goal.id];
+        const progress = getHabitProgress(goal.id, blocks);
 
         return (
             <div
                 key={goal.id}
-                className={`item-card ${isCompletedForView ? 'scratched' : ''}`}
+                className={`item-card ${isCompletedForView ? 'scratched' : ''} ${isExpanded ? 'is-expanded' : ''}`}
                 draggable={!effectiveDate}
                 onDragStart={!effectiveDate ? (e) => handleDragStart(e, goal) : undefined}
                 style={{
                     position: 'relative',
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: 'column',
+                    justifyContent: isExpanded ? 'flex-start' : 'center',
                     minHeight: '52px',
+                    height: 'auto',
                     padding: '8px 12px',
-                    transition: 'background-color 0.2s, border-color 0.2s',
+                    boxSizing: 'border-box',
+                    flexShrink: 0,
+                    transition: 'background-color 0.2s, border-color 0.2s, box-shadow 0.2s',
                     ...bgStyle
                 }}
                 title={goal.desc ? `${goal.name}\n\n${goal.desc}` : goal.name}
             >
+                {/* Main Card Header Row */}
                 <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    width: '100%'
+                    width: '100%',
+                    gap: '8px'
                 }}>
                     <div style={{
                         display: 'flex', gap: '8px', alignItems: 'center', flex: 1, minWidth: 0
@@ -139,38 +308,49 @@ export default function HabitList({
                             onMoveDown={() => setHabits(moveItemRelativeTo(habits, goal, list[idx + 1], 'after'))}
                             disabled={!isReorderable}
                         />
+
                         {effectiveDate ? (
                             <input
                                 name="auto_field_28"
                                 type="checkbox"
                                 className="checkbox-square"
                                 style={{
-                                    flexShrink: 0, '--accent': hexes[0] || '#ffffff'
+                                    flexShrink: 0, '--accent': hexes[0] || '#ffffff', cursor: 'pointer'
                                 } as React.CSSProperties}
                                 checked={isCompletedForView}
-                                onChange={() => toggleDailyGoal(effectiveDate as string, goal.id)}
+                                onChange={() => handleMasterToggle(goal, blocks)}
+                                title={isMultiInstance ? (isCompletedForView ? 'Mark all undone' : 'Mark all complete') : undefined}
                             />
                         ) : null}
+
+                        {/* Title and details column - in mark habits toggles accordion/master; in habits view opens info modal */}
                         <div
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (onCardClick) onCardClick(goal);
+                                if (isMultiInstance) {
+                                    toggleExpanded(goal.id);
+                                } else if (!effectiveDate) {
+                                    if (onCardClick) onCardClick(goal);
+                                } else {
+                                    handleMasterToggle(goal, blocks);
+                                }
                             }}
                             style={{
                                 flex: 1,
                                 minWidth: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '2px',
+                                gap: '3px',
                                 justifyContent: 'center',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                userSelect: 'none'
                             }}
                         >
-                            <div style={{display: 'flex', alignItems: 'flex-start', gap: '6px'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0}}>
                                 <span className="item-title" style={{
                                     wordBreak: 'break-word',
                                     whiteSpace: 'pre-wrap',
-                                    lineHeight: 1.4,
+                                    lineHeight: 1.3,
                                     color: '#fff',
                                     fontSize: '13px',
                                     fontWeight: '600'
@@ -181,7 +361,7 @@ export default function HabitList({
                                     <CheckCircle2
                                         size={12}
                                         color={hexes[0] || '#ffffff'}
-                                        style={{ flexShrink: 0, marginTop: '2px' }}
+                                        style={{ flexShrink: 0 }}
                                     />
                                 )}
                             </div>
@@ -205,30 +385,82 @@ export default function HabitList({
                                         <Clock size={10}/> {goal.time || (typeof goal.duration === 'number' ? `${goal.duration}m` : goal.duration)}
                                     </div>
                                 )}
-                                {(goalCounts[goal.id] || 0) > 1 && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '2px 6px',
-                                        background: 'rgba(255,255,255,0.1)',
-                                        borderRadius: '4px',
-                                        color: 'var(--text-secondary)',
-                                        fontSize: '10px',
-                                        fontWeight: 'bold'
-                                    }}>
-                                        x{goalCounts[goal.id] || 0}
-                                    </div>
+
+                                {hasMultipleInstances && (
+                                    effectiveDate ? (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleExpanded(goal.id);
+                                            }}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '3px',
+                                                padding: '1px 6px',
+                                                background: progress.completed > 0 
+                                                    ? (progress.remaining === 0 ? 'rgba(34, 197, 94, 0.22)' : 'rgba(16, 185, 129, 0.18)')
+                                                    : 'rgba(255, 255, 255, 0.08)',
+                                                border: `1px solid ${progress.completed > 0 
+                                                    ? (progress.remaining === 0 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(16, 185, 129, 0.35)')
+                                                    : 'rgba(255, 255, 255, 0.12)'}`,
+                                                borderRadius: '10px',
+                                                color: progress.completed > 0 ? '#6ee7b7' : 'var(--text-secondary)',
+                                                fontSize: '10px',
+                                                fontWeight: 'bold',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                            title={`Accordion: ${progress.completed}/${totalInstances} completed (${progress.remaining} left)`}
+                                        >
+                                            <span>
+                                                x{progress.remaining > 0 ? progress.remaining : totalInstances}
+                                            </span>
+                                            {progress.remaining === 0 ? (
+                                                <Check size={9} strokeWidth={3} />
+                                            ) : (
+                                                <span style={{ fontSize: '9px', opacity: 0.8, fontWeight: 'normal' }}>
+                                                    left
+                                                </span>
+                                            )}
+                                        </button>
+                                    ) : (
+                                        <div
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onCardClick) onCardClick(goal);
+                                            }}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                padding: '1px 6px',
+                                                background: 'rgba(255, 255, 255, 0.08)',
+                                                border: '1px solid rgba(255, 255, 255, 0.12)',
+                                                borderRadius: '10px',
+                                                color: 'var(--text-secondary)',
+                                                fontSize: '10px',
+                                                fontWeight: 'bold',
+                                                cursor: onCardClick ? 'pointer' : 'default'
+                                            }}
+                                            title={`${totalInstances} scheduled instances in template`}
+                                        >
+                                            x{totalInstances}
+                                        </div>
+                                    )
                                 )}
+
                                 {timeDiff !== 0 && (
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        padding: '2px 6px',
+                                        padding: '1px 5px',
                                         background: timeDiff > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                         borderRadius: '4px',
                                         color: timeDiff > 0 ? '#4ade80' : '#f87171',
                                         fontSize: '10px',
-                                        fontWeight: 'bold'
+                                        fontWeight: 'bold',
+                                        whiteSpace: 'nowrap'
                                     }}>
                                         {timeDiff > 0 ? '+' : ''}{timeDiff}m
                                     </div>
@@ -237,29 +469,245 @@ export default function HabitList({
                         </div>
                     </div>
 
+                    {/* Actions and Accordion Chevron on the Right */}
                     <div style={{
                         display: 'flex',
-                        gap: '6px',
+                        gap: '4px',
                         flexShrink: 0,
-                        marginLeft: '6px',
                         alignItems: 'center'
                     }}>
-                        <button className="icon-btn" onClick={(e) => {
+                        {/* Dedicated Accordion Chevron for multi-instance habits */}
+                        {isMultiInstance && (
+                            <button
+                                type="button"
+                                className="icon-btn accordion-toggle-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpanded(goal.id);
+                                }}
+                                style={{
+                                    width: '26px',
+                                    height: '26px',
+                                    borderRadius: '5px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: isExpanded ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    cursor: 'pointer',
+                                    color: isExpanded ? '#fff' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s ease',
+                                    padding: 0
+                                }}
+                                title={isExpanded ? "Collapse instances" : `Expand ${totalInstances} instances`}
+                            >
+                                <ChevronDown
+                                    size={15}
+                                    style={{
+                                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                                    }}
+                                />
+                            </button>
+                        )}
+
+                        {onCardClick && !effectiveDate && (
+                            <button
+                                className="icon-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onCardClick(goal);
+                                }}
+                                style={{padding: '5px', cursor: 'pointer'}}
+                                title="View details"
+                            >
+                                <Info size={13}/>
+                            </button>
+                        )}
+
+                        <button className="icon-btn desktop-only-btn" onClick={(e) => {
                             e.stopPropagation();
                             duplicateHabit(goal);
-                        }} style={{padding: '6px', cursor: 'pointer'}} title="Duplicate habit">
-                            <Copy size={14}/>
+                        }} style={{padding: '5px', cursor: 'pointer'}} title="Duplicate habit">
+                            <Copy size={13}/>
                         </button>
                         <button className="icon-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     openEditHabit(goal);
                                 }}
-                                style={{padding: '6px', cursor: 'pointer'}} title="Edit habit">
-                            <Pencil size={14}/>
+                                style={{padding: '5px', cursor: 'pointer'}} title="Edit habit">
+                            <Pencil size={13}/>
                         </button>
                     </div>
                 </div>
+
+                {/* Accordion Drawer Content */}
+                {isExpanded && isMultiInstance && (
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            marginTop: '10px',
+                            padding: '10px 12px',
+                            background: '#161c23',
+                            border: '1px solid rgba(255, 255, 255, 0.12)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '6px',
+                            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25)',
+                            position: 'relative',
+                            zIndex: 2
+                        }}
+                    >
+                        {/* Drawer Header with Progress Bar */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '4px',
+                            paddingBottom: '6px',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontSize: '11px',
+                                color: 'var(--text-secondary)',
+                                fontWeight: 600,
+                                letterSpacing: '0.2px',
+                                textTransform: 'uppercase'
+                            }}>
+                                <Clock size={11} style={{ opacity: 0.7 }} />
+                                <span>Instances ({progress.completed}/{totalInstances})</span>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{
+                                    width: '45px',
+                                    height: '5px',
+                                    borderRadius: '3px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{
+                                        width: `${totalInstances > 0 ? (progress.completed / totalInstances) * 100 : 0}%`,
+                                        height: '100%',
+                                        background: progress.completed === totalInstances ? '#22c55e' : (hexes[0] || 'var(--accent)'),
+                                        transition: 'width 0.25s ease'
+                                    }} />
+                                </div>
+                                <span style={{
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: progress.remaining > 0 ? '#34d399' : 'var(--text-secondary)'
+                                }}>
+                                    {progress.remaining > 0 ? `${progress.remaining} left` : 'All Done ✓'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* List of Instance Blocks */}
+                        {blocks.map((b: any, bIdx: number) => {
+                            const isInstDone = isInstanceCompleted(b, bIdx, goal.id);
+                            const startStr = formatTime(b.startTime);
+                            const endStr = formatTime((b.startTime + b.duration) % 1440);
+
+                            return (
+                                <div
+                                    key={b.id ? `inst-${b.id}` : `inst-${bIdx}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (effectiveDate) {
+                                            toggleInstance(effectiveDate, goal.id, b, bIdx, blocks);
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '7px 10px',
+                                        borderRadius: '6px',
+                                        background: isInstDone ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.05)',
+                                        border: `1px solid ${isInstDone ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.07)'}`,
+                                        cursor: effectiveDate ? 'pointer' : 'default',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                                        {effectiveDate && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    toggleInstance(effectiveDate, goal.id, b, bIdx, blocks);
+                                                }}
+                                                style={{
+                                                    width: '18px',
+                                                    height: '18px',
+                                                    borderRadius: '4px',
+                                                    border: `1.5px solid ${isInstDone ? (hexes[0] || 'var(--accent)') : 'rgba(255, 255, 255, 0.3)'}`,
+                                                    background: isInstDone ? (hexes[0] || 'var(--accent)') : 'transparent',
+                                                    color: isInstDone ? '#000' : 'transparent',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    flexShrink: 0,
+                                                    transition: 'all 0.15s ease'
+                                                }}
+                                                title={isInstDone ? "Mark incomplete" : "Mark instance complete"}
+                                            >
+                                                <Check size={12} strokeWidth={3} />
+                                            </button>
+                                        )}
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'wrap' }}>
+                                            <span style={{
+                                                fontSize: '12px',
+                                                color: isInstDone ? 'var(--text-secondary)' : '#ffffff',
+                                                textDecoration: isInstDone ? 'line-through' : 'none',
+                                                fontWeight: isInstDone ? 'normal' : '500',
+                                                opacity: isInstDone ? 0.65 : 1
+                                            }}>
+                                                {startStr} – {endStr}
+                                            </span>
+
+                                            {b.bundleName && (
+                                                <span style={{
+                                                    fontSize: '10px',
+                                                    padding: '1px 5px',
+                                                    borderRadius: '3px',
+                                                    background: 'rgba(255,255,255,0.08)',
+                                                    color: 'var(--text-secondary)',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {b.bundleName}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                        <span style={{
+                                            fontSize: '11px',
+                                            color: 'var(--text-secondary)',
+                                            padding: '1px 5px',
+                                            borderRadius: '3px',
+                                            background: 'rgba(255,255,255,0.04)'
+                                        }}>
+                                            {b.duration}m
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         );
     };
@@ -317,6 +765,7 @@ export default function HabitList({
                     gap: '12px',
                     overflowY: 'auto',
                     flex: 1,
+                    minHeight: 0,
                     paddingRight: '4px'
                 }}>
 

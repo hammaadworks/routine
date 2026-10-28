@@ -1406,6 +1406,7 @@ export default function HabitsPane({
                         openAddBundle={openAddBundle}
                         handleDragStartBundle={handleDragStartBundle}
                         isPublicView={isPublicView}
+                        updateActiveRoutine={updateActiveRoutine}
                     />
                 )
             )}
