@@ -1,6 +1,22 @@
 import {useCallback} from 'react';
 import {useWebMCP} from 'use-webmcp-tool';
 import {getAllWalletGoals, parseDuration, sanitizeEntities} from '../utils';
+import {
+    loadCounters,
+    saveCounters,
+    getTodayDateStr,
+    recordCounterDelta,
+    resetCounterDay,
+    calculateCounterStats
+} from '../utils/counterStore';
+import {
+    loadDispatchData,
+    getResolvedPlatformSlots,
+    toggleSlotCompletion,
+    addAdHocSlot,
+    calculateDailyMetrics
+} from '../utils/dispatchStore';
+import type { CounterItem, CounterCadence } from '../types/counter';
 
 export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -84,6 +100,40 @@ const createPlanSchema = getToolSchema('create_plan');
 const readPlansSchema = getToolSchema('read_plans');
 const readQuotesSchema = getToolSchema('read_quotes');
 const addQuoteSchema = getToolSchema('add_quote');
+const toggleQuickTaskSchema = getToolSchema('toggle_quick_task');
+const deleteQuickTaskSchema = getToolSchema('delete_quick_task');
+const clearCompletedTasksSchema = getToolSchema('clear_completed_tasks');
+const toggleGoalSchema = getToolSchema('toggle_goal');
+const deleteGoalSchema = getToolSchema('delete_goal');
+const editGoalSchema = getToolSchema('edit_goal');
+const deleteHabitSchema = getToolSchema('delete_habit');
+const editHabitSchema = getToolSchema('edit_habit');
+const toggleHabitLogSchema = getToolSchema('toggle_habit_log');
+const deleteTemplateSchema = getToolSchema('delete_template');
+const editRoutineSchema = getToolSchema('edit_routine');
+const deleteRoutineSchema = getToolSchema('delete_routine');
+const editPlanSchema = getToolSchema('edit_plan');
+const deletePlanSchema = getToolSchema('delete_plan');
+const deleteQuoteSchema = getToolSchema('delete_quote');
+const deleteCoinsEntrySchema = getToolSchema('delete_coins_entry');
+const setCoinsTargetSchema = getToolSchema('set_coins_target');
+const readCountersSchema = getToolSchema('read_counters');
+const updateCounterSchema = getToolSchema('update_counter');
+const resetCounterSchema = getToolSchema('reset_counter');
+const addCounterSchema = getToolSchema('add_counter');
+const deleteCounterSchema = getToolSchema('delete_counter');
+const readMilestonesSchema = getToolSchema('read_milestones');
+const setMilestoneSchema = getToolSchema('set_milestone');
+const deleteMilestoneSchema = getToolSchema('delete_milestone');
+const readTimelogsSchema = getToolSchema('read_timelogs');
+const addTimelogSchema = getToolSchema('add_timelog');
+const deleteTimelogSchema = getToolSchema('delete_timelog');
+const readHabitBundlesSchema = getToolSchema('read_habit_bundles');
+const toggleHabitBundleSchema = getToolSchema('toggle_habit_bundle');
+const readDispatchSchema = getToolSchema('read_dispatch');
+const toggleDispatchSlotSchema = getToolSchema('toggle_dispatch_slot');
+const addDispatchSlotSchema = getToolSchema('add_dispatch_slot');
+const setCurrencySchema = getToolSchema('set_currency');
 
 export function useWebMCPIntegration({
                                          setLifeGoals,
@@ -161,6 +211,13 @@ export function useWebMCPIntegration({
         try {
             quickTasks = JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]');
         } catch {}
+        const counters = loadCounters();
+        let milestones = {};
+        try {
+            milestones = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
+        } catch {}
+        const currency = localStorage.getItem('whatchadoin_currency') || 'USD';
+        const habitBundles = Array.isArray(activeRoutine?.habitBundles) ? activeRoutine.habitBundles : [];
 
         return {
             coins: { entries: coinsEntries, targets: coinsTargets },
@@ -249,7 +306,11 @@ export function useWebMCPIntegration({
                 completed: g.completed,
                 category: g.category,
                 isPublic: Boolean(g.isPublic)
-            }))
+            })),
+            counters,
+            milestones,
+            habitBundles,
+            currency
         };
     }, [activeRoutine, lifeGoals, moneyGoals, routines]);
 
@@ -1032,7 +1093,7 @@ export function useWebMCPIntegration({
                 setIsLeftPaneExpanded(true);
             }
             if (!inputs.centerTab) {
-                setMobileTab('goals');
+                setMobileTab(inputs.leftTab === 'habits' ? 'habits' : 'goals');
             }
         }
         return {
@@ -1043,7 +1104,7 @@ export function useWebMCPIntegration({
 
     useWebMCP({
         name: 'navigate_app',
-        description: 'Switch between different tabs and views: centerTab (myday, tasks, calendar, plans, coins) and leftTab (life, money, routine).',
+        description: 'Switch between different tabs and views: centerTab (myday, tasks, calendar, plans, coins, counters, dispatch) and leftTab (life, money, routine, habits).',
         inputSchema: navigateAppSchema,
         execute: handleNavigate,
         annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
@@ -1059,7 +1120,10 @@ export function useWebMCPIntegration({
             tasks: tasks.map((t: any) => ({
                 id: t.id,
                 name: t.name,
-                completed: Boolean(t.completed)
+                completed: Boolean(t.completed),
+                createdAt: t.createdAt,
+                completedAt: t.completedAt,
+                isPublic: Boolean(t.isPublic)
             }))
         };
     }, []);
@@ -1207,6 +1271,1232 @@ export function useWebMCPIntegration({
         annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
     });
 
+    // 18. Toggle Quick Task / Todo
+    const handleToggleQuickTask = useCallback(async (inputs: any) => {
+        let tasks: any[] = [];
+        try {
+            tasks = sanitizeEntities(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
+        } catch {}
+
+        let taskIndex = -1;
+        if (inputs.taskId) {
+            taskIndex = tasks.findIndex((t: any) => t.id === inputs.taskId);
+        }
+        if (taskIndex === -1 && inputs.name) {
+            const query = inputs.name.toLowerCase().trim();
+            taskIndex = tasks.findIndex((t: any) => t.name && t.name.toLowerCase().includes(query));
+        }
+
+        if (taskIndex === -1) {
+            throw new Error(`Task '${inputs.taskId || inputs.name || 'unspecified'}' not found in quick tasks inbox.`);
+        }
+
+        const task = tasks[taskIndex];
+        const newCompleted = inputs.completed !== undefined ? Boolean(inputs.completed) : !task.completed;
+        const now = new Date().toISOString();
+        const updatedTask = {
+            ...task,
+            completed: newCompleted,
+            completedAt: newCompleted ? (task.completedAt || now) : undefined
+        };
+
+        const updated = [...tasks];
+        updated[taskIndex] = updatedTask;
+        localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+
+        return {
+            success: true,
+            task: updatedTask,
+            message: `Task '${updatedTask.name}' marked as ${newCompleted ? 'completed' : 'incomplete'}.`
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'toggle_quick_task',
+        description: 'Marks a quick task/todo complete or incomplete (toggles if completed not specified).',
+        inputSchema: toggleQuickTaskSchema,
+        execute: handleToggleQuickTask,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 19. Delete Quick Task
+    const handleDeleteQuickTask = useCallback(async (inputs: any) => {
+        let tasks: any[] = [];
+        try {
+            tasks = sanitizeEntities(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
+        } catch {}
+
+        let taskIndex = -1;
+        if (inputs.taskId) {
+            taskIndex = tasks.findIndex((t: any) => t.id === inputs.taskId);
+        }
+        if (taskIndex === -1 && inputs.name) {
+            const query = inputs.name.toLowerCase().trim();
+            taskIndex = tasks.findIndex((t: any) => t.name && t.name.toLowerCase().includes(query));
+        }
+
+        if (taskIndex === -1) {
+            throw new Error(`Task '${inputs.taskId || inputs.name || 'unspecified'}' not found in quick tasks inbox.`);
+        }
+
+        const deletedName = tasks[taskIndex].name;
+        const updated = tasks.filter((_, idx) => idx !== taskIndex);
+        localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+
+        return { success: true, message: `Task '${deletedName}' deleted.` };
+    }, []);
+
+    useWebMCP({
+        name: 'delete_quick_task',
+        description: 'Deletes a task from the quick tasks inbox.',
+        inputSchema: deleteQuickTaskSchema,
+        execute: handleDeleteQuickTask,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 20. Clear Completed Quick Tasks
+    const handleClearCompletedTasks = useCallback(async () => {
+        let tasks: any[] = [];
+        try {
+            tasks = sanitizeEntities(JSON.parse(localStorage.getItem('whatchadoin_quick_tasks') || '[]'));
+        } catch {}
+
+        const activeTasks = tasks.filter((t: any) => !t.completed);
+        const deletedCount = tasks.length - activeTasks.length;
+        localStorage.setItem('whatchadoin_quick_tasks', JSON.stringify(activeTasks));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quick_tasks_updated'));
+
+        return { success: true, deletedCount, message: `Cleared ${deletedCount} completed tasks.` };
+    }, []);
+
+    useWebMCP({
+        name: 'clear_completed_tasks',
+        description: 'Deletes all completed quick tasks from the inbox.',
+        inputSchema: clearCompletedTasksSchema,
+        execute: handleClearCompletedTasks,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 21. Toggle Goal
+    const handleToggleGoal = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const goalId = inputs.goalId;
+        const searchType = inputs.type || 'any';
+        const now = new Date().toISOString();
+
+        if (searchType === 'any' || searchType === 'routine') {
+            const rGoals = Array.isArray(activeRoutine?.routineGoals) ? activeRoutine.routineGoals : [];
+            const rIdx = rGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (rIdx !== -1) {
+                const target = rGoals[rIdx];
+                const newCompleted = inputs.completed !== undefined ? Boolean(inputs.completed) : !target.completed;
+                const updatedTarget = {
+                    ...target,
+                    completed: newCompleted,
+                    completedAt: newCompleted ? (target.completedAt || now) : undefined
+                };
+                const updatedList = [...rGoals];
+                updatedList[rIdx] = updatedTarget;
+                updateActiveRoutine({ routineGoals: updatedList });
+                return {
+                    success: true,
+                    goalName: target.name,
+                    completed: newCompleted,
+                    type: 'routine',
+                    message: `Routine goal '${target.name}' marked as ${newCompleted ? 'completed' : 'incomplete'}.`
+                };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'life') {
+            const lGoals = Array.isArray(lifeGoals) ? lifeGoals : [];
+            const lIdx = lGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (lIdx !== -1) {
+                const target = lGoals[lIdx];
+                const newCompleted = inputs.completed !== undefined ? Boolean(inputs.completed) : !target.completed;
+                const updatedTarget = {
+                    ...target,
+                    completed: newCompleted,
+                    completedAt: newCompleted ? (target.completedAt || now) : undefined
+                };
+                const updatedList = [...lGoals];
+                updatedList[lIdx] = updatedTarget;
+                if (setLifeGoals) setLifeGoals(updatedList);
+                return {
+                    success: true,
+                    goalName: target.name,
+                    completed: newCompleted,
+                    type: 'life',
+                    message: `Life goal '${target.name}' marked as ${newCompleted ? 'completed' : 'incomplete'}.`
+                };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'money') {
+            const mGoals = Array.isArray(moneyGoals) ? moneyGoals : [];
+            const mIdx = mGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (mIdx !== -1) {
+                const target = mGoals[mIdx];
+                const newCompleted = inputs.completed !== undefined ? Boolean(inputs.completed) : !target.completed;
+                const updatedTarget = {
+                    ...target,
+                    completed: newCompleted,
+                    completedAt: newCompleted ? (target.completedAt || now) : undefined
+                };
+                const updatedList = [...mGoals];
+                updatedList[mIdx] = updatedTarget;
+                if (setMoneyGoals) setMoneyGoals(updatedList);
+                return {
+                    success: true,
+                    goalName: target.name,
+                    completed: newCompleted,
+                    type: 'money',
+                    message: `Money goal '${target.name}' marked as ${newCompleted ? 'completed' : 'incomplete'}.`
+                };
+            }
+        }
+
+        throw new Error(`Goal '${goalId || inputs.name}' not found.`);
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, setLifeGoals, moneyGoals, setMoneyGoals]);
+
+    useWebMCP({
+        name: 'toggle_goal',
+        description: 'Marks a goal complete or incomplete across routine, life, or money goals.',
+        inputSchema: toggleGoalSchema,
+        execute: handleToggleGoal,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 22. Delete Goal
+    const handleDeleteGoal = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const goalId = inputs.goalId;
+        const searchType = inputs.type || 'any';
+
+        if (searchType === 'any' || searchType === 'routine') {
+            const rGoals = Array.isArray(activeRoutine?.routineGoals) ? activeRoutine.routineGoals : [];
+            const match = rGoals.find((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (match) {
+                const updatedList = rGoals.filter((g: any) => g.id !== match.id);
+                updateActiveRoutine({ routineGoals: updatedList });
+                return { success: true, message: `Routine goal '${match.name}' deleted.` };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'life') {
+            const lGoals = Array.isArray(lifeGoals) ? lifeGoals : [];
+            const match = lGoals.find((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (match) {
+                const updatedList = lGoals.filter((g: any) => g.id !== match.id);
+                if (setLifeGoals) setLifeGoals(updatedList);
+                return { success: true, message: `Life goal '${match.name}' deleted.` };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'money') {
+            const mGoals = Array.isArray(moneyGoals) ? moneyGoals : [];
+            const match = mGoals.find((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (match) {
+                const updatedList = mGoals.filter((g: any) => g.id !== match.id);
+                if (setMoneyGoals) setMoneyGoals(updatedList);
+                return { success: true, message: `Money goal '${match.name}' deleted.` };
+            }
+        }
+
+        throw new Error(`Goal '${goalId || inputs.name}' not found.`);
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, setLifeGoals, moneyGoals, setMoneyGoals]);
+
+    useWebMCP({
+        name: 'delete_goal',
+        description: 'Deletes a goal from routine goals, life goals, or money goals.',
+        inputSchema: deleteGoalSchema,
+        execute: handleDeleteGoal,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 23. Edit Goal
+    const handleEditGoal = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const goalId = inputs.goalId;
+        const searchType = inputs.type || 'any';
+
+        const applyEdits = (g: any) => ({
+            ...g,
+            name: inputs.newName ? inputs.newName.trim() : g.name,
+            cost: inputs.cost !== undefined ? Number(inputs.cost) : g.cost,
+            desc: inputs.desc !== undefined ? inputs.desc : g.desc,
+            color: inputs.color !== undefined ? inputs.color : g.color
+        });
+
+        if (searchType === 'any' || searchType === 'routine') {
+            const rGoals = Array.isArray(activeRoutine?.routineGoals) ? activeRoutine.routineGoals : [];
+            const idx = rGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (idx !== -1) {
+                const updated = [...rGoals];
+                updated[idx] = applyEdits(updated[idx]);
+                updateActiveRoutine({ routineGoals: updated });
+                return { success: true, message: `Routine goal '${updated[idx].name}' updated.` };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'life') {
+            const lGoals = Array.isArray(lifeGoals) ? lifeGoals : [];
+            const idx = lGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (idx !== -1) {
+                const updated = [...lGoals];
+                updated[idx] = applyEdits(updated[idx]);
+                if (setLifeGoals) setLifeGoals(updated);
+                return { success: true, message: `Life goal '${updated[idx].name}' updated.` };
+            }
+        }
+
+        if (searchType === 'any' || searchType === 'money') {
+            const mGoals = Array.isArray(moneyGoals) ? moneyGoals : [];
+            const idx = mGoals.findIndex((g: any) => g.id === goalId || (query && g.name && g.name.toLowerCase().includes(query)));
+            if (idx !== -1) {
+                const updated = [...mGoals];
+                updated[idx] = applyEdits(updated[idx]);
+                if (setMoneyGoals) setMoneyGoals(updated);
+                return { success: true, message: `Money goal '${updated[idx].name}' updated.` };
+            }
+        }
+
+        throw new Error(`Goal '${goalId || inputs.name}' not found.`);
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, setLifeGoals, moneyGoals, setMoneyGoals]);
+
+    useWebMCP({
+        name: 'edit_goal',
+        description: "Edits an existing goal's name, cost, description, or color.",
+        inputSchema: editGoalSchema,
+        execute: handleEditGoal,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 24. Delete Habit
+    const handleDeleteHabit = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const habitId = inputs.habitId;
+        const currentHabits = activeRoutine?.habits || [];
+
+        if (Array.isArray(currentHabits)) {
+            const match = currentHabits.find((h: any) => h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query)));
+            if (!match) throw new Error(`Habit '${habitId || inputs.name}' not found.`);
+            const updated = currentHabits.filter((h: any) => h.id !== match.id);
+            updateActiveRoutine({ habits: updated });
+            return { success: true, message: `Habit '${match.name}' deleted.` };
+        } else {
+            const daily = (currentHabits.daily || []).filter((h: any) => !(h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query))));
+            const weekly = (currentHabits.weekly || []).filter((h: any) => !(h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query))));
+            updateActiveRoutine({ habits: { daily, weekly } });
+            return { success: true, message: `Habit deleted.` };
+        }
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'delete_habit',
+        description: 'Deletes a habit from the Habits bank in the active routine.',
+        inputSchema: deleteHabitSchema,
+        execute: handleDeleteHabit,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 25. Edit Habit
+    const handleEditHabit = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const habitId = inputs.habitId;
+        const currentHabits = activeRoutine?.habits || [];
+
+        const applyEdits = (h: any) => {
+            const durMin = inputs.duration ? parseDuration(inputs.duration) : (inputs.time ? parseDuration(inputs.time) : h.duration);
+            const timeStr = inputs.time || (inputs.duration ? String(inputs.duration) : h.time);
+            return {
+                ...h,
+                name: inputs.newName ? inputs.newName.trim() : h.name,
+                duration: durMin,
+                time: timeStr,
+                desc: inputs.desc !== undefined ? inputs.desc : h.desc,
+                color: inputs.color !== undefined ? inputs.color : h.color,
+                type: inputs.type || h.type
+            };
+        };
+
+        if (Array.isArray(currentHabits)) {
+            const idx = currentHabits.findIndex((h: any) => h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query)));
+            if (idx === -1) throw new Error(`Habit '${habitId || inputs.name}' not found.`);
+            const updated = [...currentHabits];
+            updated[idx] = applyEdits(updated[idx]);
+            updateActiveRoutine({ habits: updated });
+            return { success: true, message: `Habit '${updated[idx].name}' updated.` };
+        } else {
+            let found = false;
+            const daily = (currentHabits.daily || []).map((h: any) => {
+                if (h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query))) {
+                    found = true;
+                    return applyEdits(h);
+                }
+                return h;
+            });
+            const weekly = (currentHabits.weekly || []).map((h: any) => {
+                if (h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query))) {
+                    found = true;
+                    return applyEdits(h);
+                }
+                return h;
+            });
+            if (!found) throw new Error(`Habit '${habitId || inputs.name}' not found.`);
+            updateActiveRoutine({ habits: { daily, weekly } });
+            return { success: true, message: `Habit updated.` };
+        }
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'edit_habit',
+        description: "Edits an existing habit's name, duration, description, color, or type in the active routine.",
+        inputSchema: editHabitSchema,
+        execute: handleEditHabit,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 26. Toggle Habit Log
+    const handleToggleHabitLog = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const habitId = inputs.habitId;
+        const currentHabits = Array.isArray(activeRoutine?.habits)
+            ? activeRoutine.habits
+            : [...(activeRoutine?.habits?.daily || []), ...(activeRoutine?.habits?.weekly || [])];
+
+        const habit = currentHabits.find((h: any) => h.id === habitId || (query && h.name && h.name.toLowerCase().includes(query)));
+        if (!habit) throw new Error(`Habit '${habitId || inputs.name}' not found.`);
+
+        const dateStr = inputs.date || getTodayDateStr();
+        const currentLogs = activeRoutine?.dailyLogs || {};
+        const dayLog = currentLogs[dateStr] || {};
+        const isCompleted = inputs.completed !== undefined ? Boolean(inputs.completed) : !(dayLog[habit.id] || false);
+
+        updateActiveRoutine({
+            dailyLogs: {
+                ...currentLogs,
+                [dateStr]: {
+                    ...dayLog,
+                    [habit.id]: isCompleted
+                }
+            }
+        });
+
+        return {
+            success: true,
+            habitName: habit.name,
+            date: dateStr,
+            completed: isCompleted,
+            message: `Habit '${habit.name}' marked ${isCompleted ? 'done' : 'not done'} for ${dateStr}.`
+        };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'toggle_habit_log',
+        description: 'Checks or unchecks a habit for a given date in the daily log (defaults to today).',
+        inputSchema: toggleHabitLogSchema,
+        execute: handleToggleHabitLog,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 27. Delete Template
+    const handleDeleteTemplate = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const templateId = inputs.templateId;
+        const currentTemplates = Array.isArray(activeRoutine?.templates) ? activeRoutine.templates : [];
+
+        const target = currentTemplates.find((t: any) => t.id === templateId || (query && t.name && t.name.toLowerCase().includes(query)));
+        if (!target) throw new Error(`Template '${templateId || inputs.name}' not found.`);
+
+        if (currentTemplates.length <= 1) {
+            throw new Error(`Cannot delete the only template in routine '${activeRoutine?.name}'.`);
+        }
+
+        const updatedTemplates = currentTemplates.filter((t: any) => t.id !== target.id);
+        const dayMapping = { ...(activeRoutine?.dayMapping || {}) };
+        for (const d of Object.keys(dayMapping)) {
+            if (dayMapping[d] === target.id) {
+                dayMapping[d] = '';
+            }
+        }
+        const activeTemplateId = activeRoutine?.activeTemplateId === target.id ? updatedTemplates[0].id : activeRoutine?.activeTemplateId;
+
+        updateActiveRoutine({
+            templates: updatedTemplates,
+            dayMapping,
+            activeTemplateId
+        });
+
+        return { success: true, message: `Template '${target.name}' deleted.` };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'delete_template',
+        description: 'Deletes a daily template from the active routine.',
+        inputSchema: deleteTemplateSchema,
+        execute: handleDeleteTemplate,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 28. Edit Routine
+    const handleEditRoutine = useCallback(async (inputs: any) => {
+        const targetId = inputs.routineId || activeRoutine?.id;
+        const currentRoutines = Array.isArray(routines) ? routines : [];
+        const idx = currentRoutines.findIndex((r: any) => r.id === targetId);
+        if (idx === -1) throw new Error(`Routine with ID '${targetId}' not found.`);
+
+        const updatedRoutine = {
+            ...currentRoutines[idx],
+            name: inputs.name ? inputs.name.trim() : currentRoutines[idx].name,
+            desc: inputs.desc !== undefined ? inputs.desc : currentRoutines[idx].desc,
+            start: inputs.start !== undefined ? inputs.start : currentRoutines[idx].start,
+            end: inputs.end !== undefined ? inputs.end : currentRoutines[idx].end
+        };
+
+        const updated = [...currentRoutines];
+        updated[idx] = updatedRoutine;
+        if (setRoutines) setRoutines(updated);
+        if (targetId === activeRoutine?.id) {
+            updateActiveRoutine({
+                name: updatedRoutine.name,
+                desc: updatedRoutine.desc,
+                start: updatedRoutine.start,
+                end: updatedRoutine.end
+            });
+        }
+
+        return { success: true, message: `Routine '${updatedRoutine.name}' updated.` };
+    }, [routines, setRoutines, activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'edit_routine',
+        description: 'Edits routine metadata (name, description, start date, end date). Defaults to active routine.',
+        inputSchema: editRoutineSchema,
+        execute: handleEditRoutine,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 29. Delete Routine
+    const handleDeleteRoutine = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const routineId = inputs.routineId;
+        const currentRoutines = Array.isArray(routines) ? routines : [];
+
+        if (currentRoutines.length <= 1) {
+            throw new Error("Cannot delete the only routine.");
+        }
+
+        const match = currentRoutines.find((r: any) => r.id === routineId || (query && r.name && r.name.toLowerCase().includes(query)));
+        if (!match) throw new Error(`Routine '${routineId || inputs.name}' not found.`);
+
+        const updated = currentRoutines.filter((r: any) => r.id !== match.id);
+        if (setRoutines) setRoutines(updated);
+        if (activeRoutine?.id === match.id) {
+            const nextActive = updated[0];
+            if (setActiveRoutineId) setActiveRoutineId(nextActive.id);
+        }
+
+        return { success: true, message: `Routine '${match.name}' deleted.` };
+    }, [routines, setRoutines, activeRoutine, setActiveRoutineId]);
+
+    useWebMCP({
+        name: 'delete_routine',
+        description: 'Deletes a routine by routineId or name. Cannot delete if it is the only routine.',
+        inputSchema: deleteRoutineSchema,
+        execute: handleDeleteRoutine,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 30. Edit Plan
+    const handleEditPlan = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const planId = inputs.planId;
+        const isLife = inputs.isLife;
+
+        const tryUpdate = (storageKey: string, lifeFlag: boolean) => {
+            let notes: any[] = [];
+            try {
+                notes = sanitizeEntities(JSON.parse(localStorage.getItem(storageKey) || '[]'));
+            } catch {}
+            const idx = notes.findIndex((n: any) => n.id === planId || (query && n.name && n.name.toLowerCase().includes(query)));
+            if (idx !== -1) {
+                const target = notes[idx];
+                const updatedTarget = {
+                    ...target,
+                    name: inputs.newName ? inputs.newName.trim() : target.name,
+                    content: inputs.content !== undefined ? inputs.content : target.content
+                };
+                notes[idx] = updatedTarget;
+                localStorage.setItem(storageKey, JSON.stringify(notes));
+                window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+                return { success: true, message: `Plan '${updatedTarget.name}' updated in ${lifeFlag ? 'Life Plans' : 'Routine Plans'}.` };
+            }
+            return null;
+        };
+
+        if (isLife === true) {
+            const res = tryUpdate('whatchadoin_life_plans', true);
+            if (res) return res;
+        } else if (isLife === false) {
+            const res = tryUpdate(`whatchadoin_plans_${activeRoutine?.id}`, false);
+            if (res) return res;
+        } else {
+            const resR = tryUpdate(`whatchadoin_plans_${activeRoutine?.id}`, false);
+            if (resR) return resR;
+            const resL = tryUpdate('whatchadoin_life_plans', true);
+            if (resL) return resL;
+        }
+
+        throw new Error(`Plan '${planId || inputs.name}' not found.`);
+    }, [activeRoutine?.id]);
+
+    useWebMCP({
+        name: 'edit_plan',
+        description: 'Edits the name or markdown content of an existing plan document.',
+        inputSchema: editPlanSchema,
+        execute: handleEditPlan,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 31. Delete Plan
+    const handleDeletePlan = useCallback(async (inputs: any) => {
+        const query = (inputs.name || '').toLowerCase().trim();
+        const planId = inputs.planId;
+        const isLife = inputs.isLife;
+
+        const tryDelete = (storageKey: string, lifeFlag: boolean) => {
+            let notes: any[] = [];
+            try {
+                notes = sanitizeEntities(JSON.parse(localStorage.getItem(storageKey) || '[]'));
+            } catch {}
+            const idx = notes.findIndex((n: any) => n.id === planId || (query && n.name && n.name.toLowerCase().includes(query)));
+            if (idx !== -1) {
+                const deletedName = notes[idx].name;
+                notes.splice(idx, 1);
+                localStorage.setItem(storageKey, JSON.stringify(notes));
+                window.dispatchEvent(new CustomEvent('whatchadoin_plans_updated'));
+                return { success: true, message: `Plan '${deletedName}' deleted from ${lifeFlag ? 'Life Plans' : 'Routine Plans'}.` };
+            }
+            return null;
+        };
+
+        if (isLife === true) {
+            const res = tryDelete('whatchadoin_life_plans', true);
+            if (res) return res;
+        } else if (isLife === false) {
+            const res = tryDelete(`whatchadoin_plans_${activeRoutine?.id}`, false);
+            if (res) return res;
+        } else {
+            const resR = tryDelete(`whatchadoin_plans_${activeRoutine?.id}`, false);
+            if (resR) return resR;
+            const resL = tryDelete('whatchadoin_life_plans', true);
+            if (resL) return resL;
+        }
+
+        throw new Error(`Plan '${planId || inputs.name}' not found.`);
+    }, [activeRoutine?.id]);
+
+    useWebMCP({
+        name: 'delete_plan',
+        description: 'Deletes a plan document by ID or name.',
+        inputSchema: deletePlanSchema,
+        execute: handleDeletePlan,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 32. Delete Quote
+    const handleDeleteQuote = useCallback(async (inputs: any) => {
+        let quotes: any[] = [];
+        try {
+            quotes = JSON.parse(localStorage.getItem('whatchadoin_quotes') || '[]');
+        } catch {}
+
+        const query = (inputs.text || '').toLowerCase().trim();
+        const quoteId = inputs.quoteId;
+
+        const idx = quotes.findIndex((q: any) => q.id === quoteId || (query && q.text && q.text.toLowerCase().includes(query)));
+        if (idx === -1) throw new Error(`Quote not found.`);
+
+        const deleted = quotes[idx];
+        quotes.splice(idx, 1);
+        localStorage.setItem('whatchadoin_quotes', JSON.stringify(quotes));
+        window.dispatchEvent(new CustomEvent('whatchadoin_quotes_updated'));
+
+        return { success: true, message: `Quote "${deleted.text}" deleted.` };
+    }, []);
+
+    useWebMCP({
+        name: 'delete_quote',
+        description: 'Deletes a motivational quote by ID or quote text.',
+        inputSchema: deleteQuoteSchema,
+        execute: handleDeleteQuote,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 33. Delete Coins Entry
+    const handleDeleteCoinsEntry = useCallback(async (inputs: any) => {
+        let entries: any[] = [];
+        try {
+            entries = JSON.parse(localStorage.getItem('whatchadoin_coins_entries') || '[]');
+        } catch {}
+
+        const entryId = inputs.entryId;
+        const year = inputs.year ? Number(inputs.year) : undefined;
+        const month = inputs.month ? Number(inputs.month) : undefined;
+        const sourceQuery = (inputs.source || '').toLowerCase().trim();
+
+        const idx = entries.findIndex((e: any) => {
+            if (entryId) return e.id === entryId;
+            if (year !== undefined && e.year !== year) return false;
+            if (month !== undefined && e.month !== month) return false;
+            if (sourceQuery && (!e.source || !e.source.toLowerCase().includes(sourceQuery))) return false;
+            return true;
+        });
+
+        if (idx === -1) throw new Error("Coins entry not found.");
+
+        const deleted = entries[idx];
+        entries.splice(idx, 1);
+        localStorage.setItem('whatchadoin_coins_entries', JSON.stringify(entries));
+        window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+
+        return { success: true, message: `Deleted entry for ${deleted.year}-${deleted.month} (${deleted.source}: ${deleted.amount}).` };
+    }, []);
+
+    useWebMCP({
+        name: 'delete_coins_entry',
+        description: 'Deletes an earnings record from the Coins earnings ledger.',
+        inputSchema: deleteCoinsEntrySchema,
+        execute: handleDeleteCoinsEntry,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 34. Set Coins Target
+    const handleSetCoinsTarget = useCallback(async (inputs: any) => {
+        if (!inputs.year || inputs.target === undefined) {
+            throw new Error("Invalid parameters: year and target are required.");
+        }
+        let targets: Record<string, number> = {};
+        try {
+            targets = JSON.parse(localStorage.getItem('whatchadoin_coins_targets') || '{}');
+        } catch {}
+
+        targets[String(inputs.year)] = Number(inputs.target);
+        localStorage.setItem('whatchadoin_coins_targets', JSON.stringify(targets));
+        window.dispatchEvent(new CustomEvent('whatchadoin_coins_updated'));
+
+        return { success: true, message: `Coins annual target for ${inputs.year} set to ${inputs.target}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'set_coins_target',
+        description: 'Sets the annual financial target amount for a given year in Coins.',
+        inputSchema: setCoinsTargetSchema,
+        execute: handleSetCoinsTarget,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 35. Read Counters
+    const handleReadCounters = useCallback(async () => {
+        const counters = loadCounters();
+        const dateStr = getTodayDateStr();
+        const enriched = counters.map(c => {
+            const stats = calculateCounterStats(c, dateStr);
+            return {
+                id: c.id,
+                name: c.name,
+                cadence: c.cadence,
+                todayCount: c.todayCount,
+                targetToday: stats.targetToday,
+                remainingToday: stats.remainingToday,
+                isMet: stats.isMet,
+                backlog: c.backlog,
+                unit: c.unit,
+                step: c.step,
+                color: c.color,
+                notes: c.notes
+            };
+        });
+        return {
+            totalCounters: counters.length,
+            counters: enriched
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_counters',
+        description: 'Reads all counters with their cadence, today count, target, and backlog.',
+        inputSchema: readCountersSchema,
+        execute: handleReadCounters,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 36. Update Counter (delta)
+    const handleUpdateCounter = useCallback(async (inputs: any) => {
+        if (inputs.delta === undefined) throw new Error("Invalid parameters: delta is required.");
+        const delta = Number(inputs.delta);
+        const counters = loadCounters();
+        const query = (inputs.name || '').toLowerCase().trim();
+        const counterId = inputs.counterId;
+
+        const target = counters.find(c => c.id === counterId || (query && c.name.toLowerCase().includes(query)));
+        if (!target) throw new Error(`Counter '${counterId || inputs.name}' not found.`);
+
+        const updated = recordCounterDelta(counters, target.id, delta, inputs.why);
+        const updatedTarget = updated.find(c => c.id === target.id);
+
+        return {
+            success: true,
+            counterName: target.name,
+            delta,
+            todayCount: updatedTarget?.todayCount,
+            message: `Counter '${target.name}' updated by ${delta > 0 ? `+${delta}` : delta} (today: ${updatedTarget?.todayCount} ${target.unit || 'reps'}).`
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'update_counter',
+        description: 'Records an increment or decrement (delta) on a counter by ID or name.',
+        inputSchema: updateCounterSchema,
+        execute: handleUpdateCounter,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 37. Reset Counter
+    const handleResetCounter = useCallback(async (inputs: any) => {
+        const counters = loadCounters();
+        const query = (inputs.name || '').toLowerCase().trim();
+        const counterId = inputs.counterId;
+
+        const target = counters.find(c => c.id === counterId || (query && c.name.toLowerCase().includes(query)));
+        if (!target) throw new Error(`Counter '${counterId || inputs.name}' not found.`);
+
+        resetCounterDay(counters, target.id);
+        return { success: true, message: `Reset today's count for counter '${target.name}'.` };
+    }, []);
+
+    useWebMCP({
+        name: 'reset_counter',
+        description: "Resets today's count for a counter to zero.",
+        inputSchema: resetCounterSchema,
+        execute: handleResetCounter,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 38. Add Counter
+    const handleAddCounter = useCallback(async (inputs: any) => {
+        if (!inputs.name) throw new Error("Invalid parameters: name is required.");
+        const counters = loadCounters();
+        const newCounter: CounterItem = {
+            id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: inputs.name.trim(),
+            cadence: (inputs.cadence || 'daily') as CounterCadence,
+            targetCount: Number(inputs.targetCount) || 100,
+            unit: inputs.unit || 'reps',
+            step: Number(inputs.step) || 1,
+            quickSteps: [1, 5, 10, 25],
+            color: inputs.color || '#00F5D4',
+            notes: inputs.notes || '',
+            createdAt: Date.now(),
+            todayCount: 0,
+            backlog: 0,
+            lastActiveDate: getTodayDateStr(),
+            pastDaysCount: 0,
+            pastTotalDid: 0,
+            todayEvents: []
+        };
+        const updated = [...counters, newCounter];
+        saveCounters(updated);
+        return { success: true, counter: newCounter, message: `Counter '${newCounter.name}' created.` };
+    }, []);
+
+    useWebMCP({
+        name: 'add_counter',
+        description: 'Creates a new counter (daily, weekly, or total) with target and step.',
+        inputSchema: addCounterSchema,
+        execute: handleAddCounter,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 39. Delete Counter
+    const handleDeleteCounter = useCallback(async (inputs: any) => {
+        const counters = loadCounters();
+        const query = (inputs.name || '').toLowerCase().trim();
+        const counterId = inputs.counterId;
+
+        const target = counters.find(c => c.id === counterId || (query && c.name.toLowerCase().includes(query)));
+        if (!target) throw new Error(`Counter '${counterId || inputs.name}' not found.`);
+
+        const updated = counters.filter(c => c.id !== target.id);
+        saveCounters(updated);
+        return { success: true, message: `Counter '${target.name}' deleted.` };
+    }, []);
+
+    useWebMCP({
+        name: 'delete_counter',
+        description: 'Deletes a counter by ID or name.',
+        inputSchema: deleteCounterSchema,
+        execute: handleDeleteCounter,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 40. Read Milestones
+    const handleReadMilestones = useCallback(async (inputs: any) => {
+        let milestones: Record<string, string> = {};
+        try {
+            milestones = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
+        } catch {}
+
+        if (inputs?.date) {
+            return {
+                date: inputs.date,
+                content: milestones[inputs.date] || null
+            };
+        }
+
+        const filter = (inputs?.filter || '').toLowerCase().trim();
+        const entries = Object.entries(milestones)
+            .filter(([date, text]) => !filter || date.includes(filter) || text.toLowerCase().includes(filter))
+            .map(([date, text]) => ({ date, text }));
+
+        return {
+            totalEntries: entries.length,
+            milestones: entries
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_milestones',
+        description: 'Reads calendar milestones and events across all dates or for a specific date.',
+        inputSchema: readMilestonesSchema,
+        execute: handleReadMilestones,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 41. Set Milestone
+    const handleSetMilestone = useCallback(async (inputs: any) => {
+        if (!inputs.date || !inputs.name) {
+            throw new Error("Invalid parameters: date and name are required.");
+        }
+        let milestones: Record<string, string> = {};
+        try {
+            milestones = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
+        } catch {}
+
+        let newBlock = inputs.tag ? `**@${inputs.tag}** - **${inputs.name}**` : `**${inputs.name}**`;
+        if (inputs.desc) {
+            newBlock += `\n${inputs.desc}`;
+        }
+
+        const existing = milestones[inputs.date];
+        milestones[inputs.date] = existing ? `${existing}\n\n${newBlock}` : newBlock;
+
+        localStorage.setItem('whatchadoin_milestones', JSON.stringify(milestones));
+        window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated', { detail: milestones }));
+
+        return { success: true, date: inputs.date, message: `Milestone added for ${inputs.date}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'set_milestone',
+        description: 'Adds or sets a milestone for a specific date (YYYY-MM-DD).',
+        inputSchema: setMilestoneSchema,
+        execute: handleSetMilestone,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 42. Delete Milestone
+    const handleDeleteMilestone = useCallback(async (inputs: any) => {
+        if (!inputs.date) throw new Error("Invalid parameters: date is required.");
+        let milestones: Record<string, string> = {};
+        try {
+            milestones = JSON.parse(localStorage.getItem('whatchadoin_milestones') || '{}');
+        } catch {}
+
+        const existing = milestones[inputs.date];
+        if (!existing) throw new Error(`No milestones found on ${inputs.date}.`);
+
+        if (inputs.name) {
+            const query = inputs.name.toLowerCase().trim();
+            const blocks = existing.split('\n\n');
+            const remaining = blocks.filter(b => !b.toLowerCase().includes(query));
+            if (remaining.length === blocks.length) {
+                throw new Error(`Milestone '${inputs.name}' not found on ${inputs.date}.`);
+            }
+            if (remaining.length > 0) {
+                milestones[inputs.date] = remaining.join('\n\n');
+            } else {
+                delete milestones[inputs.date];
+            }
+        } else {
+            delete milestones[inputs.date];
+        }
+
+        localStorage.setItem('whatchadoin_milestones', JSON.stringify(milestones));
+        window.dispatchEvent(new CustomEvent('whatchadoin_milestones_updated', { detail: milestones }));
+
+        return { success: true, message: `Milestone(s) deleted for ${inputs.date}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'delete_milestone',
+        description: 'Deletes a milestone on a specific calendar date (YYYY-MM-DD).',
+        inputSchema: deleteMilestoneSchema,
+        execute: handleDeleteMilestone,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 43. Read Timelogs
+    const handleReadTimelogs = useCallback(async (inputs: any) => {
+        const dateStr = inputs?.date || getTodayDateStr();
+        const logs = (activeRoutine?.timeLogs && activeRoutine.timeLogs[dateStr]) || [];
+        return {
+            date: dateStr,
+            totalLogs: logs.length,
+            timeLogs: logs
+        };
+    }, [activeRoutine?.timeLogs]);
+
+    useWebMCP({
+        name: 'read_timelogs',
+        description: 'Reads time log entries for a specific date (defaults to today).',
+        inputSchema: readTimelogsSchema,
+        execute: handleReadTimelogs,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 44. Add Timelog
+    const handleAddTimelog = useCallback(async (inputs: any) => {
+        if (!inputs.startTime || !inputs.endTime) {
+            throw new Error("Invalid parameters: startTime and endTime are required.");
+        }
+        const dateStr = inputs.date || getTodayDateStr();
+        const currentLogs = { ...(activeRoutine?.timeLogs || {}) };
+        const dayLogs = [...(currentLogs[dateStr] || [])];
+
+        const startMin = parseTimeStringToMinutes(inputs.startTime);
+        const endMin = parseTimeStringToMinutes(inputs.endTime);
+        const durMin = endMin >= startMin ? endMin - startMin : (1440 - startMin + endMin);
+
+        let tagName: string | undefined = undefined;
+        let tagType: string | undefined = undefined;
+        let color: string | undefined = undefined;
+
+        if (inputs.tagGoalId) {
+            const allGoals = getAllWalletGoals(lifeGoals, activeRoutine?.routineGoals, moneyGoals);
+            const query = inputs.tagGoalId.toLowerCase().trim();
+            const matchedGoal = allGoals.find(g => String(g.id) === String(inputs.tagGoalId) || g.name.toLowerCase().includes(query));
+            if (matchedGoal) {
+                tagName = matchedGoal.name;
+                tagType = matchedGoal.category;
+                color = (matchedGoal as any).color;
+            }
+        }
+
+        const newLog = {
+            id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            startTime: inputs.startTime,
+            endTime: inputs.endTime,
+            duration: durMin,
+            desc: inputs.desc || '',
+            tagGoalId: inputs.tagGoalId || '',
+            tagName,
+            tagType,
+            color
+        };
+
+        dayLogs.push(newLog);
+        currentLogs[dateStr] = dayLogs;
+        updateActiveRoutine({ timeLogs: currentLogs });
+
+        return {
+            success: true,
+            log: newLog,
+            message: `Logged time for ${dateStr}: ${inputs.startTime} - ${inputs.endTime} (${durMin} min).`
+        };
+    }, [activeRoutine, updateActiveRoutine, lifeGoals, moneyGoals]);
+
+    useWebMCP({
+        name: 'add_timelog',
+        description: 'Adds a time tracking log entry to the active routine.',
+        inputSchema: addTimelogSchema,
+        execute: handleAddTimelog,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 45. Delete Timelog
+    const handleDeleteTimelog = useCallback(async (inputs: any) => {
+        const dateStr = inputs.date || getTodayDateStr();
+        const currentLogs = { ...(activeRoutine?.timeLogs || {}) };
+        const dayLogs = [...(currentLogs[dateStr] || [])];
+
+        const targetIndex = dayLogs.findIndex((l: any) => l.id === inputs.logId || (inputs.startTime && l.startTime === inputs.startTime));
+        if (targetIndex === -1) {
+            throw new Error(`Timelog not found for ${dateStr}.`);
+        }
+
+        dayLogs.splice(targetIndex, 1);
+        currentLogs[dateStr] = dayLogs;
+        updateActiveRoutine({ timeLogs: currentLogs });
+
+        return { success: true, message: `Timelog deleted for ${dateStr}.` };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'delete_timelog',
+        description: 'Deletes a time log entry by ID or date/time.',
+        inputSchema: deleteTimelogSchema,
+        execute: handleDeleteTimelog,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: true}
+    });
+
+    // 46. Read Habit Bundles
+    const handleReadHabitBundles = useCallback(async () => {
+        const bundles = Array.isArray(activeRoutine?.habitBundles) ? activeRoutine.habitBundles : [];
+        return {
+            totalBundles: bundles.length,
+            habitBundles: bundles
+        };
+    }, [activeRoutine?.habitBundles]);
+
+    useWebMCP({
+        name: 'read_habit_bundles',
+        description: 'Reads all habit bundles configured in the active routine.',
+        inputSchema: readHabitBundlesSchema,
+        execute: handleReadHabitBundles,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 47. Toggle Habit Bundle
+    const handleToggleHabitBundle = useCallback(async (inputs: any) => {
+        const bundles = Array.isArray(activeRoutine?.habitBundles) ? activeRoutine.habitBundles : [];
+        const query = (inputs.name || '').toLowerCase().trim();
+        const bundle = bundles.find((b: any) => b.id === inputs.bundleId || (query && b.name.toLowerCase().includes(query)));
+        if (!bundle || !Array.isArray(bundle.items) || bundle.items.length === 0) {
+            throw new Error(`Habit bundle '${inputs.bundleId || inputs.name}' not found.`);
+        }
+
+        const dateStr = inputs.date || getTodayDateStr();
+        const currentLogs = { ...(activeRoutine?.dailyLogs || {}) };
+        const dayLog = { ...(currentLogs[dateStr] || {}) };
+
+        const isCurrentlyDone = bundle.items.every((item: any) => Boolean(dayLog[item.habitId]));
+        const targetDone = inputs.completed !== undefined ? Boolean(inputs.completed) : !isCurrentlyDone;
+
+        bundle.items.forEach((item: any) => {
+            dayLog[item.habitId] = targetDone;
+        });
+        currentLogs[dateStr] = dayLog;
+        updateActiveRoutine({ dailyLogs: currentLogs });
+
+        return {
+            success: true,
+            bundleName: bundle.name,
+            completed: targetDone,
+            date: dateStr,
+            message: `Habit bundle '${bundle.name}' marked ${targetDone ? 'completed' : 'incomplete'} for ${dateStr}.`
+        };
+    }, [activeRoutine, updateActiveRoutine]);
+
+    useWebMCP({
+        name: 'toggle_habit_bundle',
+        description: 'Marks all habits in a habit bundle as complete or incomplete for a date.',
+        inputSchema: toggleHabitBundleSchema,
+        execute: handleToggleHabitBundle,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 48. Read Content Dispatch
+    const handleReadDispatch = useCallback(async (inputs: any) => {
+        const data = loadDispatchData();
+        const dateStr = inputs?.date || getTodayDateStr();
+        const personas = data.personas || [];
+        const activePersona = personas.find(p => p.id === data.selectedPersonaId) || personas[0];
+        const platformsWithSlots = (activePersona?.platforms || []).map(plat => ({
+            id: plat.id,
+            platform: plat.platform,
+            label: plat.label,
+            slots: getResolvedPlatformSlots(data, dateStr, plat)
+        }));
+        const metrics = calculateDailyMetrics(data, dateStr, activePersona?.id);
+
+        return {
+            date: dateStr,
+            activePersona: activePersona ? { id: activePersona.id, name: activePersona.name, handle: activePersona.handle } : null,
+            totalPersonas: personas.length,
+            metrics,
+            platforms: platformsWithSlots
+        };
+    }, []);
+
+    useWebMCP({
+        name: 'read_dispatch',
+        description: 'Reads Content Dispatch personas, platforms, and scheduled post slots for a date.',
+        inputSchema: readDispatchSchema,
+        execute: handleReadDispatch,
+        annotations: {readOnlyHint: true, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 49. Toggle Dispatch Slot
+    const handleToggleDispatchSlot = useCallback(async (inputs: any) => {
+        if (!inputs.slotId) throw new Error("Invalid parameters: slotId is required.");
+        const data = loadDispatchData();
+        const dateStr = inputs.date || getTodayDateStr();
+
+        toggleSlotCompletion(data, dateStr, inputs.slotId);
+        window.dispatchEvent(new CustomEvent('whatchadoin_content_dispatch_updated'));
+        return { success: true, slotId: inputs.slotId, date: dateStr, message: `Toggled dispatch slot '${inputs.slotId}' for ${dateStr}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'toggle_dispatch_slot',
+        description: 'Toggles completion status for a platform post slot in Content Dispatch.',
+        inputSchema: toggleDispatchSlotSchema,
+        execute: handleToggleDispatchSlot,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
+    // 50. Add Dispatch Slot
+    const handleAddDispatchSlot = useCallback(async (inputs: any) => {
+        if (!inputs.platformId || !inputs.title) {
+            throw new Error("Invalid parameters: platformId and title are required.");
+        }
+        const data = loadDispatchData();
+        const dateStr = inputs.date || getTodayDateStr();
+
+        addAdHocSlot(data, dateStr, inputs.platformId, inputs.title);
+        window.dispatchEvent(new CustomEvent('whatchadoin_content_dispatch_updated'));
+        return { success: true, message: `Ad-hoc dispatch post '${inputs.title}' scheduled for ${dateStr}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'add_dispatch_slot',
+        description: 'Adds an ad-hoc post slot to a platform in Content Dispatch.',
+        inputSchema: addDispatchSlotSchema,
+        execute: handleAddDispatchSlot,
+        annotations: {readOnlyHint: false, untrustedContentHint: true, consequentialHint: false}
+    });
+
+    // 51. Set Currency
+    const handleSetCurrency = useCallback(async (inputs: any) => {
+        const curr = (inputs.currency || '').trim().toUpperCase();
+        if (!curr) throw new Error("Invalid parameters: currency is required.");
+        localStorage.setItem('whatchadoin_currency', curr);
+        window.dispatchEvent(new CustomEvent('whatchadoin_currency_updated', { detail: curr }));
+        return { success: true, currency: curr, message: `Currency set to ${curr}.` };
+    }, []);
+
+    useWebMCP({
+        name: 'set_currency',
+        description: 'Sets the currency code for the application (e.g. USD, INR, EUR, GBP).',
+        inputSchema: setCurrencySchema,
+        execute: handleSetCurrency,
+        annotations: {readOnlyHint: false, untrustedContentHint: false, consequentialHint: false}
+    });
+
     // Universal Tool Executor (Used by in-app AI agent via BroadcastChannel and external callers)
     const executeTool = useCallback(async (tool: string, args: any = {}) => {
         switch (tool) {
@@ -1216,18 +2506,47 @@ export function useWebMCPIntegration({
                 return await handleCreateRoutine(args);
             case 'switch_routine':
                 return await handleSwitchRoutine(args);
+            case 'edit_routine':
+            case 'update_routine':
+                return await handleEditRoutine(args);
+            case 'delete_routine':
+            case 'remove_routine':
+                return await handleDeleteRoutine(args);
             case 'add_life_goal':
                 return await handleAddLifeGoal(args);
             case 'add_routine_goal':
                 return await handleAddRoutineGoal(args);
             case 'add_money_goal':
                 return await handleAddMoneyGoal(args);
+            case 'toggle_goal':
+            case 'complete_goal':
+            case 'mark_goal_complete':
+                return await handleToggleGoal(args);
+            case 'delete_goal':
+            case 'remove_goal':
+                return await handleDeleteGoal(args);
+            case 'edit_goal':
+            case 'update_goal':
+                return await handleEditGoal(args);
             case 'add_habit':
                 return await handleAddHabit(args);
+            case 'delete_habit':
+            case 'remove_habit':
+                return await handleDeleteHabit(args);
+            case 'edit_habit':
+            case 'update_habit':
+                return await handleEditHabit(args);
+            case 'toggle_habit_log':
+            case 'log_habit':
+            case 'check_habit':
+                return await handleToggleHabitLog(args);
             case 'create_template':
                 return await handleCreateTemplate(args);
             case 'edit_template':
                 return await handleEditTemplate(args);
+            case 'delete_template':
+            case 'remove_template':
+                return await handleDeleteTemplate(args);
             case 'schedule_myday_block':
             case 'schedule_habit_on_day':
                 return await handleScheduleBlock({
@@ -1262,10 +2581,26 @@ export function useWebMCPIntegration({
                 return await handleAddQuickTask(args);
             case 'read_quick_tasks':
                 return await handleReadQuickTasks();
+            case 'toggle_quick_task':
+            case 'complete_quick_task':
+            case 'mark_task_complete':
+            case 'todo_mark_complete':
+                return await handleToggleQuickTask(args);
+            case 'delete_quick_task':
+            case 'remove_quick_task':
+                return await handleDeleteQuickTask(args);
+            case 'clear_completed_tasks':
+                return await handleClearCompletedTasks();
             case 'create_plan':
                 return await handleCreatePlan(args);
             case 'read_plans':
                 return await handleReadPlans();
+            case 'edit_plan':
+            case 'update_plan':
+                return await handleEditPlan(args);
+            case 'delete_plan':
+            case 'remove_plan':
+                return await handleDeletePlan(args);
             case 'read_app_state':
                 return await handleReadState();
             case 'read_schedule':
@@ -1274,10 +2609,61 @@ export function useWebMCPIntegration({
                 return await handleReadCoins(args);
             case 'add_coins_entry':
                 return await handleAddCoinsEntry(args);
+            case 'delete_coins_entry':
+            case 'remove_coins_entry':
+                return await handleDeleteCoinsEntry(args);
+            case 'set_coins_target':
+                return await handleSetCoinsTarget(args);
             case 'read_quotes':
                 return await handleReadQuotes();
             case 'add_quote':
                 return await handleAddQuote(args);
+            case 'delete_quote':
+            case 'remove_quote':
+                return await handleDeleteQuote(args);
+            case 'read_counters':
+                return await handleReadCounters();
+            case 'update_counter':
+            case 'increment_counter':
+            case 'decrement_counter':
+                return await handleUpdateCounter(args);
+            case 'reset_counter':
+                return await handleResetCounter(args);
+            case 'add_counter':
+            case 'create_counter':
+                return await handleAddCounter(args);
+            case 'delete_counter':
+            case 'remove_counter':
+                return await handleDeleteCounter(args);
+            case 'read_milestones':
+                return await handleReadMilestones(args);
+            case 'set_milestone':
+            case 'add_milestone':
+                return await handleSetMilestone(args);
+            case 'delete_milestone':
+            case 'remove_milestone':
+                return await handleDeleteMilestone(args);
+            case 'read_timelogs':
+                return await handleReadTimelogs(args);
+            case 'add_timelog':
+            case 'log_time':
+                return await handleAddTimelog(args);
+            case 'delete_timelog':
+                return await handleDeleteTimelog(args);
+            case 'read_habit_bundles':
+                return await handleReadHabitBundles();
+            case 'toggle_habit_bundle':
+            case 'complete_habit_bundle':
+                return await handleToggleHabitBundle(args);
+            case 'read_dispatch':
+                return await handleReadDispatch(args);
+            case 'toggle_dispatch_slot':
+            case 'complete_dispatch_slot':
+                return await handleToggleDispatchSlot(args);
+            case 'add_dispatch_slot':
+                return await handleAddDispatchSlot(args);
+            case 'set_currency':
+                return await handleSetCurrency(args);
             default:
                 throw new Error(`Unknown tool: ${tool}`);
         }
@@ -1285,26 +2671,60 @@ export function useWebMCPIntegration({
         handleNavigate,
         handleCreateRoutine,
         handleSwitchRoutine,
+        handleEditRoutine,
+        handleDeleteRoutine,
         handleAddLifeGoal,
         handleAddRoutineGoal,
         handleAddMoneyGoal,
+        handleToggleGoal,
+        handleDeleteGoal,
+        handleEditGoal,
         handleAddHabit,
+        handleDeleteHabit,
+        handleEditHabit,
+        handleToggleHabitLog,
         handleCreateTemplate,
         handleEditTemplate,
+        handleDeleteTemplate,
         handleScheduleBlock,
         handleMoveBlock,
         handleDeleteBlock,
         handleMapTemplateToDay,
         handleAddQuickTask,
         handleReadQuickTasks,
+        handleToggleQuickTask,
+        handleDeleteQuickTask,
+        handleClearCompletedTasks,
         handleCreatePlan,
         handleReadPlans,
+        handleEditPlan,
+        handleDeletePlan,
         handleReadState,
         handleReadSchedule,
         handleReadCoins,
         handleAddCoinsEntry,
+        handleDeleteCoinsEntry,
+        handleSetCoinsTarget,
         handleReadQuotes,
-        handleAddQuote
+        handleAddQuote,
+        handleDeleteQuote,
+        handleReadCounters,
+        handleUpdateCounter,
+        handleResetCounter,
+        handleAddCounter,
+        handleDeleteCounter,
+        handleReadMilestones,
+        handleSetMilestone,
+        handleDeleteMilestone,
+        handleReadTimelogs,
+        handleAddTimelog,
+        handleDeleteTimelog,
+        handleReadHabitBundles,
+        handleToggleHabitBundle,
+        handleReadDispatch,
+        handleToggleDispatchSlot,
+        handleAddDispatchSlot,
+        handleSetCurrency
     ]);
 
     return {
@@ -1313,12 +2733,21 @@ export function useWebMCPIntegration({
         handleReadSchedule,
         handleCreateRoutine,
         handleSwitchRoutine,
+        handleEditRoutine,
+        handleDeleteRoutine,
         handleAddLifeGoal,
         handleAddRoutineGoal,
         handleAddMoneyGoal,
+        handleToggleGoal,
+        handleDeleteGoal,
+        handleEditGoal,
         handleAddHabit,
+        handleDeleteHabit,
+        handleEditHabit,
+        handleToggleHabitLog,
         handleCreateTemplate,
         handleEditTemplate,
+        handleDeleteTemplate,
         handleScheduleBlock,
         handleMoveBlock,
         handleDeleteBlock,
@@ -1326,9 +2755,36 @@ export function useWebMCPIntegration({
         handleNavigate,
         handleAddQuickTask,
         handleReadQuickTasks,
+        handleToggleQuickTask,
+        handleDeleteQuickTask,
+        handleClearCompletedTasks,
         handleCreatePlan,
         handleReadPlans,
+        handleEditPlan,
+        handleDeletePlan,
         handleReadCoins,
-        handleAddCoinsEntry
+        handleAddCoinsEntry,
+        handleDeleteCoinsEntry,
+        handleSetCoinsTarget,
+        handleReadQuotes,
+        handleAddQuote,
+        handleDeleteQuote,
+        handleReadCounters,
+        handleUpdateCounter,
+        handleResetCounter,
+        handleAddCounter,
+        handleDeleteCounter,
+        handleReadMilestones,
+        handleSetMilestone,
+        handleDeleteMilestone,
+        handleReadTimelogs,
+        handleAddTimelog,
+        handleDeleteTimelog,
+        handleReadHabitBundles,
+        handleToggleHabitBundle,
+        handleReadDispatch,
+        handleToggleDispatchSlot,
+        handleAddDispatchSlot,
+        handleSetCurrency
     };
 }

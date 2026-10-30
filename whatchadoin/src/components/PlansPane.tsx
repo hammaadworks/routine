@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import getCaretCoordinates from 'textarea-caret';
 import {
     AlertTriangle,
+    BookOpen,
     Check,
     CheckCircle2,
     ChevronDown,
@@ -21,7 +22,8 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Search,
-    Trash2
+    Trash2,
+    X
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 import {getAllGoalsForMention, normalizeListNewlines, sanitizeEntities} from '../utils';
@@ -174,9 +176,15 @@ export default function PlansPane({
         return [...lFolders, ...rFolders];
     });
 
-    const [activeNoteId, setActiveNoteId] = useState<string | null>(notes.length > 0 ? notes[0]?.id || null : null);
+    const [activeNoteId, setActiveNoteId] = useState<string | null>(() => {
+        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches) {
+            return null;
+        }
+        return notes.length > 0 ? notes[0]?.id || null : null;
+    });
     const [searchQuery, setSearchQuery] = useState('');
-
+    const [planCategoryFilter, setPlanCategoryFilter] = useState<'all' | 'life' | 'routine'>('all');
+    const [showAddPlanModal, setShowAddPlanModal] = useState(false);
 
     const [showMentionMenu, setShowMentionMenu] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
@@ -278,8 +286,18 @@ export default function PlansPane({
 
     useEffect(() => {
         const handleFabAddPlan = () => {
-            // By default create a routine note, unless they are currently looking at a life folder
-            createNote(null, false);
+            if (isMobile) {
+                if (planCategoryFilter === 'life') {
+                    createNote(null, true);
+                } else if (planCategoryFilter === 'routine') {
+                    createNote(null, false);
+                } else {
+                    setShowAddPlanModal(true);
+                    return;
+                }
+            } else {
+                createNote(null, false);
+            }
             setTimeout(() => {
                 const titleInput = document.getElementById('plan-note-title-input');
                 if (titleInput) {
@@ -290,11 +308,13 @@ export default function PlansPane({
         };
         window.addEventListener('fab:add-plan', handleFabAddPlan);
         return () => window.removeEventListener('fab:add-plan', handleFabAddPlan);
-    }, [createNote]);
+    }, [createNote, isMobile, planCategoryFilter]);
 
     const isPlanPublic = (n: Note) => (n.name || '').includes('[public]') || (n.content || '').includes('[public]');
     const visibleNotes = isPublicView ? notes.filter(isPlanPublic) : notes;
-    const activeNote = visibleNotes.find(n => n.id === activeNoteId) || (visibleNotes.length > 0 ? visibleNotes[0] : null);
+    const activeNote = activeNoteId
+        ? (visibleNotes.find(n => n.id === activeNoteId) || null)
+        : (!isMobile && visibleNotes.length > 0 ? visibleNotes[0] : null);
 
     const createFolder = (parentId: string | null = null, isLife = false) => {
         if (parentId) isLife = folders.find(f => f.id === parentId)?.isLife || false;
@@ -381,7 +401,7 @@ export default function PlansPane({
                 const newNotes = notes.filter(n => n.id !== id);
                 setNotes(newNotes);
                 if (activeNoteId === id) {
-                    setActiveNoteId(newNotes.length > 0 ? newNotes[0]?.id || null : null);
+                    setActiveNoteId(isMobile ? null : (newNotes.length > 0 ? newNotes[0]?.id || null : null));
                 }
                 setConfirmConfig(null);
             },
@@ -1187,7 +1207,7 @@ export default function PlansPane({
 
         if (searchQuery) {
             if (parentId !== null) return null;
-            childNotes = filteredNotes;
+            childNotes = filteredNotes.filter(n => n.isLife === isLife);
         } else {
             childNotes = childNotes.filter(n => filteredNotes.some(fn => fn.id === n.id));
         }
@@ -1310,6 +1330,22 @@ export default function PlansPane({
                                 color: isActive ? 'rgba(0,0,0,0.6)' : 'var(--text-secondary)'
                             }}>
                                 <span style={{fontWeight: isActive ? '600' : '500'}}>{date}</span>
+                                <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: '700',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.04em',
+                                    background: isActive
+                                        ? 'rgba(0, 0, 0, 0.15)'
+                                        : n.isLife ? 'rgba(234, 179, 8, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                    color: isActive
+                                        ? '#000'
+                                        : n.isLife ? 'var(--accent)' : '#93C5FD'
+                                }}>
+                                    {n.isLife ? 'Life' : 'Routine'}
+                                </span>
                                 <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
                   {snippet}
                 </span>
@@ -1321,6 +1357,8 @@ export default function PlansPane({
 
     const showSidebar = isMobile ? !activeNote : !isDocBarCollapsed;
     const showEditor = isMobile ? !!activeNote : true;
+    const lifeNotesCount = visibleNotes.filter(n => n.isLife).length;
+    const routineNotesCount = visibleNotes.filter(n => !n.isLife).length;
 
     return (<div className="plans-pane-container"
                  style={{display: 'flex', flexDirection: 'row', width: '100%', height: '100%'}}>
@@ -1329,6 +1367,7 @@ export default function PlansPane({
         .tree-item:hover .tree-item-actions, .tree-item.active .tree-item-actions { opacity: 1; }
         .tree-item:hover:not(.active) { background: rgba(255, 255, 255, 0.05); }
       `}</style>
+
             {/* Sidebar for Plans */}
             {showSidebar && (<div className="plans-sidebar" style={{
                     borderRight: '1px solid var(--panel-border)',
@@ -1337,7 +1376,7 @@ export default function PlansPane({
                     flexShrink: 0
                 }}>
                     <div style={{
-                        padding: '16px',
+                        padding: '14px 16px',
                         borderBottom: '1px solid var(--panel-border)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -1346,64 +1385,74 @@ export default function PlansPane({
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '6px'
+                            gap: '8px'
                         }}>
-                            <button
-                                onClick={() => createNote(null, true)}
-                                style={{
-                                    flex: 1,
-                                    background: 'var(--accent)',
-                                    color: '#000',
-                                    border: 'none',
-                                    padding: '8px 6px',
-                                    borderRadius: '6px',
-                                    fontWeight: '600',
-                                    fontSize: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '4px',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap'
-                                }}
-                                title="Add Life Plan"
-                            >
-                                <FilePlus size={14}/> + Life Plan
-                            </button>
-                            {!isMobile && (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '8px',
+                                flex: 1
+                            }}>
                                 <button
-                                    className="hide-on-mobile"
-                                    onClick={() => createNote(null, false)}
+                                    onClick={() => createNote(null, true)}
                                     style={{
-                                        flex: 1,
-                                        background: 'rgba(255, 255, 255, 0.08)',
-                                        color: 'var(--text-primary)',
-                                        border: '1px solid var(--panel-border)',
-                                        padding: '8px 6px',
-                                        borderRadius: '6px',
+                                        background: 'var(--accent)',
+                                        color: '#000',
+                                        border: 'none',
+                                        padding: '8px 10px',
+                                        borderRadius: '8px',
                                         fontWeight: '600',
                                         fontSize: '12px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '4px',
+                                        gap: '6px',
                                         cursor: 'pointer',
+                                        minHeight: '40px',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    title="Add Life Plan"
+                                >
+                                    <FilePlus size={15}/> + Life Plan
+                                </button>
+                                <button
+                                    onClick={() => createNote(null, false)}
+                                    style={{
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        color: 'var(--text-primary)',
+                                        border: '1px solid var(--panel-border)',
+                                        padding: '8px 10px',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        fontSize: '12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px',
+                                        cursor: 'pointer',
+                                        minHeight: '40px',
                                         whiteSpace: 'nowrap'
                                     }}
                                     title="Add Routine Plan"
                                 >
-                                    <FilePlus size={14}/> + Routine Plan
+                                    <FilePlus size={15}/> + Routine Plan
+                                </button>
+                            </div>
+                            {!isMobile && (
+                                <button
+                                    className="icon-btn"
+                                    onClick={() => setIsDocBarCollapsed(true)}
+                                    style={{
+                                        padding: '6px',
+                                        display: 'flex',
+                                        color: 'var(--text-secondary)',
+                                        flexShrink: 0
+                                    }}
+                                    title="Close sidebar"
+                                >
+                                    <PanelLeftClose size={18}/>
                                 </button>
                             )}
-                            {!isMobile && (<button className="icon-btn" onClick={() => setIsDocBarCollapsed(true)}
-                                                   style={{
-                                                       padding: '6px',
-                                                       display: 'flex',
-                                                       color: 'var(--text-secondary)',
-                                                       flexShrink: 0
-                                                   }} title="Close sidebar">
-                                    <PanelLeftClose size={18}/>
-                                </button>)}
                         </div>
                         <div style={{position: 'relative'}}>
                             <Search size={14} style={{
@@ -1422,17 +1471,81 @@ export default function PlansPane({
                                     width: '100%',
                                     background: 'rgba(255, 255, 255, 0.05)',
                                     border: '1px solid var(--panel-border)',
-                                    borderRadius: '4px',
-                                    padding: '6px 10px 6px 30px',
+                                    borderRadius: '6px',
+                                    padding: '8px 10px 8px 30px',
                                     color: 'var(--text-primary)',
                                     fontSize: '13px',
-                                    outline: 'none'
+                                    outline: 'none',
+                                    minHeight: '38px'
                                 }}
                             />
                         </div>
+                        {/* Category Filter Pills */}
+                        <div style={{
+                            display: 'flex',
+                            gap: '4px',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: '8px',
+                            padding: '3px'
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setPlanCategoryFilter('all')}
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 4px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    background: planCategoryFilter === 'all' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                                    color: planCategoryFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                All ({visibleNotes.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPlanCategoryFilter('life')}
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 4px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    background: planCategoryFilter === 'life' ? 'rgba(234, 179, 8, 0.25)' : 'transparent',
+                                    color: planCategoryFilter === 'life' ? 'var(--accent)' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                Life ({lifeNotesCount})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPlanCategoryFilter('routine')}
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 4px',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    background: planCategoryFilter === 'routine' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                                    color: planCategoryFilter === 'routine' ? '#60A5FA' : 'var(--text-secondary)',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                Routine ({routineNotesCount})
+                            </button>
+                        </div>
                     </div>
                     <div className="plans-sidebar-content" style={{flex: 1, overflowY: 'auto', padding: '8px 0'}}>
-                        {(!searchQuery) && (<div style={{
+                        {(!searchQuery && (planCategoryFilter === 'all' || planCategoryFilter === 'life')) && (<div style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -1445,23 +1558,28 @@ export default function PlansPane({
                                     fontSize: '11px',
                                     color: 'var(--text-secondary)',
                                     textTransform: 'uppercase',
-                                    letterSpacing: '0.05em'
-                                }}>Life Plans</h3>
+                                    letterSpacing: '0.05em',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                    <span style={{ color: 'var(--accent)' }}>★</span> Life Plans ({lifeNotesCount})
+                                </h3>
                                 <div style={{display: 'flex', gap: '4px'}}>
                                     <button className="icon-btn" onClick={() => createFolder(null, true)}
-                                            style={{padding: '6px'}} title="Add Life Folder">
+                                            style={{padding: '6px', minWidth: '32px', minHeight: '32px'}} title="Add Life Folder">
                                         <FolderPlus size={16}/>
                                     </button>
                                     <button className="icon-btn" onClick={() => createNote(null, true)}
-                                            style={{padding: '6px'}} title="Add Life Plan">
+                                            style={{padding: '6px', minWidth: '32px', minHeight: '32px'}} title="Add Life Plan">
                                         <FilePlus size={16}/>
                                     </button>
                                 </div>
                             </div>)}
 
-                        {renderTree(null, 0, true)}
+                        {(planCategoryFilter === 'all' || planCategoryFilter === 'life') && renderTree(null, 0, true)}
 
-                        {(!searchQuery) && (<>
+                        {(!searchQuery && (planCategoryFilter === 'all' || planCategoryFilter === 'routine')) && (<>
                                 <div
                                     style={{margin: '16px 12px 8px 12px', borderTop: '1px solid var(--panel-border)'}}/>
                                 <div style={{
@@ -1476,38 +1594,55 @@ export default function PlansPane({
                                         fontSize: '11px',
                                         color: 'var(--text-secondary)',
                                         textTransform: 'uppercase',
-                                        letterSpacing: '0.05em'
-                                    }}>Routine Plans</h3>
+                                        letterSpacing: '0.05em',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <span style={{ color: '#60A5FA' }}>⚡</span> Routine Plans ({routineNotesCount})
+                                    </h3>
                                     <div style={{display: 'flex', gap: '4px'}}>
                                         <button className="icon-btn" onClick={() => createFolder(null, false)}
-                                                style={{padding: '6px'}} title="Add Routine Folder">
+                                                style={{padding: '6px', minWidth: '32px', minHeight: '32px'}} title="Add Routine Folder">
                                             <FolderPlus size={16}/>
                                         </button>
                                         <button className="icon-btn" onClick={() => createNote(null, false)}
-                                                style={{padding: '6px'}} title="Add Routine Plan">
+                                                style={{padding: '6px', minWidth: '32px', minHeight: '32px'}} title="Add Routine Plan">
                                             <FilePlus size={16}/>
                                         </button>
                                     </div>
                                 </div>
                             </>)}
 
-                        {renderTree(null, 0, false)}
+                        {(planCategoryFilter === 'all' || planCategoryFilter === 'routine') && renderTree(null, 0, false)}
 
                         {visibleNotes.length === 0 && folders.length === 0 && !searchQuery && (<div style={{
-                                padding: '20px',
+                                padding: '30px 20px',
                                 textAlign: 'center',
                                 color: 'var(--text-secondary)',
-                                fontSize: '11px'
+                                fontSize: '12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '10px'
                             }}>
-                                {isPublicView ? 'No public plans yet. Mark a plan name with [public] to display it here.' : 'No plans yet. Click + to create one.'}
+                                <div style={{ padding: '10px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: 'var(--accent)' }}>
+                                    <BookOpen size={24} />
+                                </div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    {isPublicView ? 'No public plans found' : 'No plans yet'}
+                                </div>
+                                <div>
+                                    {isPublicView ? 'Mark a plan name with [public] to display it here.' : 'Use + Life Plan or + Routine Plan above to create your first note.'}
+                                </div>
                             </div>)}
                         {searchQuery && filteredNotes.length === 0 && (<div style={{
                                 padding: '20px',
                                 textAlign: 'center',
                                 color: 'var(--text-secondary)',
-                                fontSize: '11px'
+                                fontSize: '12px'
                             }}>
-                                No matches found.
+                                No matches found for "{searchQuery}".
                             </div>)}
                     </div>
                 </div>)}
@@ -1522,59 +1657,150 @@ export default function PlansPane({
                 }}>
 
                     {activeNote ? (<>
+                            {/* Editor Top Navigation Bar: Clean, Minimal & Distraction-Free */}
                             <div style={{
-                                padding: '16px 24px',
+                                padding: isMobile ? '8px 12px' : '10px 24px',
                                 borderBottom: '1px solid var(--panel-border)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '16px'
+                                justifyContent: 'space-between',
+                                minHeight: isMobile ? '46px' : '50px',
+                                background: 'var(--panel-bg)'
                             }}>
-                                {isMobile ? (<div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        cursor: 'pointer',
-                                        color: 'var(--accent)',
-                                        marginRight: '4px'
-                                    }} onClick={() => setActiveNoteId(null)}>
-                                        <ChevronLeft size={24} style={{marginLeft: '-8px'}}/>
-                                        <span style={{fontSize: '16px', fontWeight: '500'}}>Plans</span>
-                                    </div>) : isDocBarCollapsed && (
-                                    <button className="icon-btn" onClick={() => setIsDocBarCollapsed(false)}
-                                            style={{padding: '4px', display: 'flex', color: 'var(--text-secondary)'}}
-                                            title="Expand sidebar">
-                                        <PanelLeftOpen size={18}/>
-                                    </button>)}
-                                <input
-                                    id="plan-note-title-input"
-                                    type="text"
-                                    value={activeNote.name || ''}
-                                    onChange={e => updateActiveNote({name: e.target.value})}
-                                    onBlur={e => updateActiveNote({name: e.target.value.trim()})}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: '#fff',
-                                        fontSize: '20px',
-                                        fontWeight: 'bold',
-                                        width: '100%',
-                                        padding: 0,
-                                        outline: 'none',
-                                        boxShadow: 'none'
-                                    }}
-                                    placeholder="Plan Name"
-                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {isMobile ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveNoteId(null)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '2px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'var(--accent)',
+                                                padding: '6px 8px',
+                                                minHeight: '40px',
+                                                borderRadius: '6px'
+                                            }}
+                                            aria-label="Back to plans list"
+                                        >
+                                            <ChevronLeft size={22} style={{marginLeft: '-4px'}}/>
+                                            <span style={{fontSize: '15px', fontWeight: 600}}>Plans</span>
+                                        </button>
+                                    ) : isDocBarCollapsed && (
+                                        <button className="icon-btn" onClick={() => setIsDocBarCollapsed(false)}
+                                                style={{padding: '6px', display: 'flex', color: 'var(--text-secondary)'}}
+                                                title="Expand sidebar">
+                                            <PanelLeftOpen size={18}/>
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <button
+                                        className="icon-btn"
+                                        onClick={() => duplicateNote(activeNote.id)}
+                                        style={{ padding: '6px', minWidth: '34px', minHeight: '34px' }}
+                                        title="Duplicate Plan"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                    <button
+                                        className="icon-btn"
+                                        onClick={() => deleteNote(activeNote.id)}
+                                        style={{ padding: '6px', minWidth: '34px', minHeight: '34px', color: 'var(--danger)' }}
+                                        title="Delete Plan"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
+
                             <div className="plans-editor-scroll" style={{
                                 flex: 1,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 position: 'relative',
-                                padding: '24px',
+                                padding: isMobile ? '16px 14px' : '24px',
                                 overflowY: 'auto'
                             }}>
 
                                 {/* Single Pane Obsidian-style Blocks */}
                                 <div style={{maxWidth: '800px', margin: '0 auto', width: '100%', position: 'relative'}}>
+                                    
+                                    {/* Note Metadata Header: Scope Switcher + Timestamp */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '12px',
+                                        marginBottom: '10px'
+                                    }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextIsLife = !activeNote.isLife;
+                                                updateActiveNote({ isLife: nextIsLife });
+                                            }}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '4px 10px',
+                                                borderRadius: '16px',
+                                                fontSize: '11px',
+                                                fontWeight: 700,
+                                                cursor: 'pointer',
+                                                border: '1px solid',
+                                                borderColor: activeNote.isLife ? 'rgba(234, 179, 8, 0.4)' : 'rgba(59, 130, 246, 0.4)',
+                                                background: activeNote.isLife ? 'rgba(234, 179, 8, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                                                color: activeNote.isLife ? 'var(--accent)' : '#93C5FD',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.04em',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                            title={`Currently a ${activeNote.isLife ? 'Life' : 'Routine'} Plan. Click to switch to ${activeNote.isLife ? 'Routine' : 'Life'} Plan.`}
+                                        >
+                                            <span>{activeNote.isLife ? '★' : '⚡'}</span>
+                                            <span>{activeNote.isLife ? 'Life Plan' : 'Routine Plan'}</span>
+                                            <span style={{ fontSize: '10px', opacity: 0.65, marginLeft: '2px' }}>⇄ Switch</span>
+                                        </button>
+
+                                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                            {new Date(activeNote.createdAt).toLocaleDateString(undefined, {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric'
+                                            })}
+                                        </span>
+                                    </div>
+
+                                    {/* Big, Uncluttered, Full-Width Document Title */}
+                                    <input
+                                        id="plan-note-title-input"
+                                        type="text"
+                                        value={activeNote.name || ''}
+                                        onChange={e => updateActiveNote({name: e.target.value})}
+                                        onBlur={e => updateActiveNote({name: e.target.value.trim()})}
+                                        placeholder="Untitled Plan"
+                                        style={{
+                                            width: '100%',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                                            color: '#fff',
+                                            fontSize: isMobile ? '24px' : '28px',
+                                            fontWeight: 700,
+                                            lineHeight: 1.25,
+                                            padding: '0 0 12px 0',
+                                            marginBottom: '20px',
+                                            outline: 'none',
+                                            boxShadow: 'none',
+                                            fontFamily: 'inherit'
+                                        }}
+                                    />
                                     {(activeNote.content || '').split('\n\n').map((block, idx) => {
                                         const isActive = activeBlockIdx === idx;
 
@@ -1716,5 +1942,108 @@ export default function PlansPane({
                     onConfirm={confirmConfig.onConfirm}
                     onCancel={confirmConfig.onCancel}
                 />)}
+
+            {/* Add Plan Modal for Mobile */}
+            {showAddPlanModal && (
+                <div
+                    className="plans-modal-overlay"
+                    onClick={() => setShowAddPlanModal(false)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0, 0, 0, 0.65)',
+                        backdropFilter: 'blur(6px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1100,
+                        padding: '16px'
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: 'var(--panel-bg, #1a1f26)',
+                            border: '1px solid var(--panel-border, rgba(255, 255, 255, 0.1))',
+                            borderRadius: '16px',
+                            padding: '24px',
+                            width: '100%',
+                            maxWidth: '360px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '16px',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#fff' }}>Create New Plan</h3>
+                            <button
+                                className="icon-btn"
+                                onClick={() => setShowAddPlanModal(false)}
+                                style={{ padding: '6px', minWidth: '32px', minHeight: '32px' }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            Choose where this plan belongs:
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <button
+                                onClick={() => {
+                                    setShowAddPlanModal(false);
+                                    createNote(null, false);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '14px 16px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid var(--panel-border)',
+                                    borderRadius: '10px',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.2)', color: '#60A5FA' }}>
+                                    <BookOpen size={20} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>Routine Plan</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Attached to current active routine</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowAddPlanModal(false);
+                                    createNote(null, true);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '12px',
+                                    padding: '14px 16px',
+                                    background: 'rgba(234, 179, 8, 0.1)',
+                                    border: '1px solid rgba(234, 179, 8, 0.3)',
+                                    borderRadius: '10px',
+                                    color: '#fff',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                }}
+                            >
+                                <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(234, 179, 8, 0.25)', color: 'var(--accent)' }}>
+                                    <FilePlus size={20} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--accent)' }}>Life Plan</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Global long-term vision & goals</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>);
 }

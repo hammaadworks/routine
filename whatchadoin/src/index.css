@@ -1617,9 +1617,26 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
     background: rgba(234, 179, 8, 0.2) !important;
 }
 
+#plan-note-title-input {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 0 0 12px 0 !important;
+}
+
 @media (max-width: 768px) {
+    #plan-note-title-input {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+    }
+
     .plans-pane-container {
         flex-direction: column !important;
+        position: relative;
     }
 
     .plans-sidebar {
@@ -1629,6 +1646,13 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
         height: 100% !important;
         max-height: none !important;
         flex: 1 !important;
+    }
+
+    .tree-item-actions {
+        opacity: 0.85 !important;
+    }
+    .tree-item-actions:hover {
+        opacity: 1 !important;
     }
 }
 

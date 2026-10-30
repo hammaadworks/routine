@@ -20,8 +20,8 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
             parameters: {
                 type: "object",
                 properties: {
-                    centerTab: { type: "string", enum: ["tasks", "myday", "calendar", "plans", "coins"], description: "Main center view: tasks, myday, calendar, plans, coins" },
-                    leftTab: { type: "string", enum: ["life", "money", "routine"], description: "Left sidebar view: life, money, routine" }
+                    centerTab: { type: "string", enum: ["tasks", "myday", "calendar", "plans", "coins", "counters", "dispatch"], description: "Main center view: tasks, myday, calendar, plans, coins, counters, dispatch" },
+                    leftTab: { type: "string", enum: ["life", "money", "routine", "habits"], description: "Left sidebar view: life, money, routine, habits" }
                 }
             }
         }
@@ -368,6 +368,523 @@ export const AI_TOOL_DEFINITIONS: ToolDefinition[] = [
                     notes: { type: "string", description: "Optional notes" }
                 },
                 required: ["year", "month", "amount", "source"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_quick_task",
+            description: "Marks a quick task/todo complete or incomplete (toggles if completed not specified).",
+            parameters: {
+                type: "object",
+                properties: {
+                    taskId: { type: "string", description: "ID of the task to toggle" },
+                    name: { type: "string", description: "Name of the task to toggle if taskId not known" },
+                    completed: { type: "boolean", description: "Explicit completion status (true for done, false for active). Inverts current state if omitted." }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_quick_task",
+            description: "Deletes a task from the quick tasks inbox.",
+            parameters: {
+                type: "object",
+                properties: {
+                    taskId: { type: "string", description: "ID of the task to delete" },
+                    name: { type: "string", description: "Name of the task to delete if taskId not known" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "clear_completed_tasks",
+            description: "Deletes all completed quick tasks from the inbox.",
+            parameters: {
+                type: "object",
+                properties: {}
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_goal",
+            description: "Marks a goal complete or incomplete across routine, life, or money goals.",
+            parameters: {
+                type: "object",
+                properties: {
+                    goalId: { type: "string", description: "ID of the goal to toggle" },
+                    name: { type: "string", description: "Name of the goal if goalId not known" },
+                    type: { type: "string", enum: ["routine", "life", "money", "any"], description: "Goal category to look in (default 'any')" },
+                    completed: { type: "boolean", description: "Explicit completion status (true/false). Inverts current state if omitted." }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_goal",
+            description: "Deletes a goal from routine goals, life goals, or money goals.",
+            parameters: {
+                type: "object",
+                properties: {
+                    goalId: { type: "string", description: "ID of the goal to delete" },
+                    name: { type: "string", description: "Name of the goal to delete if goalId not known" },
+                    type: { type: "string", enum: ["routine", "life", "money", "any"], description: "Goal category (default 'any')" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "edit_goal",
+            description: "Edits an existing goal's name, cost, description, or color.",
+            parameters: {
+                type: "object",
+                properties: {
+                    goalId: { type: "string", description: "ID of the goal to edit" },
+                    name: { type: "string", description: "Current name of the goal to find" },
+                    newName: { type: "string", description: "New name for the goal" },
+                    cost: { type: "number", description: "New cost/target amount" },
+                    desc: { type: "string", description: "New description" },
+                    color: { type: "string", description: "New hex color code" },
+                    type: { type: "string", enum: ["routine", "life", "money", "any"], description: "Goal category (default 'any')" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_habit",
+            description: "Deletes a habit from the Habits bank in the active routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    habitId: { type: "string", description: "ID of the habit to delete" },
+                    name: { type: "string", description: "Name of the habit to delete" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "edit_habit",
+            description: "Edits an existing habit's name, duration, description, color, or type in the active routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    habitId: { type: "string", description: "ID of the habit to edit" },
+                    name: { type: "string", description: "Current name of the habit" },
+                    newName: { type: "string", description: "New name for the habit" },
+                    duration: { type: "string", description: "New duration (e.g. '30m', '1h', 45)" },
+                    time: { type: "string", description: "New time display string" },
+                    desc: { type: "string", description: "New description" },
+                    color: { type: "string", description: "New hex color code" },
+                    type: { type: "string", enum: ["daily", "weekly"], description: "Whether daily or weekly habit" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_habit_log",
+            description: "Checks or unchecks a habit for a given date in the daily log (defaults to today).",
+            parameters: {
+                type: "object",
+                properties: {
+                    habitId: { type: "string", description: "ID of the habit" },
+                    name: { type: "string", description: "Name of the habit" },
+                    date: { type: "string", description: "Date string in YYYY-MM-DD format (defaults to today)" },
+                    completed: { type: "boolean", description: "Explicit completion status (true/false). Inverts current state if omitted." }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_template",
+            description: "Deletes a daily template from the active routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    templateId: { type: "string", description: "ID of the template to delete" },
+                    name: { type: "string", description: "Name of the template to delete" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "edit_routine",
+            description: "Edits routine metadata (name, description, start date, end date). Defaults to active routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    routineId: { type: "string", description: "Optional routine ID (defaults to active routine)" },
+                    name: { type: "string", description: "New name for the routine" },
+                    desc: { type: "string", description: "New description for the routine" },
+                    start: { type: "string", description: "New start date (YYYY-MM-DD)" },
+                    end: { type: "string", description: "New end date (YYYY-MM-DD)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_routine",
+            description: "Deletes a routine by routineId or name. Cannot delete if it is the only routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    routineId: { type: "string", description: "ID of the routine to delete" },
+                    name: { type: "string", description: "Name of the routine to delete" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "edit_plan",
+            description: "Edits the name or markdown content of an existing plan document.",
+            parameters: {
+                type: "object",
+                properties: {
+                    planId: { type: "string", description: "ID of the plan to edit" },
+                    name: { type: "string", description: "Current name of the plan to find" },
+                    newName: { type: "string", description: "New name for the plan" },
+                    content: { type: "string", description: "New markdown content for the plan body" },
+                    isLife: { type: "boolean", description: "Whether to look in Life plans (true) or Routine plans (false)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_plan",
+            description: "Deletes a plan document by ID or name.",
+            parameters: {
+                type: "object",
+                properties: {
+                    planId: { type: "string", description: "ID of the plan to delete" },
+                    name: { type: "string", description: "Name of the plan to delete" },
+                    isLife: { type: "boolean", description: "Whether the plan is in Life plans (true) or Routine plans (false)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_quote",
+            description: "Deletes a motivational quote by ID or quote text.",
+            parameters: {
+                type: "object",
+                properties: {
+                    quoteId: { type: "string", description: "ID of the quote to delete" },
+                    text: { type: "string", description: "Quote text to find and delete" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_coins_entry",
+            description: "Deletes an earnings record from the Coins earnings ledger.",
+            parameters: {
+                type: "object",
+                properties: {
+                    entryId: { type: "string", description: "ID of the entry to delete" },
+                    year: { type: "number", description: "Year of the entry" },
+                    month: { type: "number", description: "Month (1-12) of the entry" },
+                    source: { type: "string", description: "Income source of the entry" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "set_coins_target",
+            description: "Sets the annual financial target amount for a given year in Coins.",
+            parameters: {
+                type: "object",
+                properties: {
+                    year: { type: "number", description: "Target year (e.g. 2026)" },
+                    target: { type: "number", description: "Annual target earnings amount" }
+                },
+                required: ["year", "target"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "read_counters",
+            description: "Reads all counters with their cadence, today count, target, and backlog.",
+            parameters: {
+                type: "object",
+                properties: {}
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "update_counter",
+            description: "Records an increment or decrement (delta) on a counter by ID or name.",
+            parameters: {
+                type: "object",
+                properties: {
+                    counterId: { type: "string", description: "ID of the counter" },
+                    name: { type: "string", description: "Name of the counter" },
+                    delta: { type: "number", description: "Amount to add or subtract (e.g. 1, -1, 5, 25)" },
+                    why: { type: "string", description: "Optional note or reason for the log event" }
+                },
+                required: ["delta"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "reset_counter",
+            description: "Resets today's count for a counter to zero.",
+            parameters: {
+                type: "object",
+                properties: {
+                    counterId: { type: "string", description: "ID of the counter" },
+                    name: { type: "string", description: "Name of the counter" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "add_counter",
+            description: "Creates a new counter (daily, weekly, or total) with target and step.",
+            parameters: {
+                type: "object",
+                properties: {
+                    name: { type: "string", description: "Name of the counter" },
+                    cadence: { type: "string", enum: ["daily", "weekly", "total"], description: "Counter cadence (default 'daily')" },
+                    targetCount: { type: "number", description: "Target count (default 100)" },
+                    unit: { type: "string", description: "Measurement unit (e.g. 'reps', 'pages', 'km', default 'reps')" },
+                    step: { type: "number", description: "Default increment step size (default 1)" },
+                    color: { type: "string", description: "Optional hex color code" },
+                    notes: { type: "string", description: "Optional notes" }
+                },
+                required: ["name"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_counter",
+            description: "Deletes a counter by ID or name.",
+            parameters: {
+                type: "object",
+                properties: {
+                    counterId: { type: "string", description: "ID of the counter to delete" },
+                    name: { type: "string", description: "Name of the counter to delete" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "read_milestones",
+            description: "Reads calendar milestones and events across all dates or for a specific date.",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Optional specific date (YYYY-MM-DD)" },
+                    filter: { type: "string", description: "Optional text search query" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "set_milestone",
+            description: "Adds or sets a milestone for a specific date (YYYY-MM-DD).",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Target date in YYYY-MM-DD format" },
+                    name: { type: "string", description: "Milestone title or content" },
+                    tag: { type: "string", description: "Optional routine or goal tag (e.g. '100DREAM')" },
+                    desc: { type: "string", description: "Optional description or notes" }
+                },
+                required: ["date", "name"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_milestone",
+            description: "Deletes a milestone on a specific calendar date (YYYY-MM-DD).",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Target date in YYYY-MM-DD format" },
+                    name: { type: "string", description: "Specific milestone name to remove (if omitted, clears date)" }
+                },
+                required: ["date"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "read_timelogs",
+            description: "Reads time log entries for a specific date (defaults to today).",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Date string in YYYY-MM-DD format (defaults to today)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "add_timelog",
+            description: "Adds a time tracking log entry to the active routine.",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Date string in YYYY-MM-DD format (defaults to today)" },
+                    startTime: { type: "string", description: "Start time (e.g. '09:00', '9:30 AM')" },
+                    endTime: { type: "string", description: "End time (e.g. '10:15', '10:30 AM')" },
+                    desc: { type: "string", description: "Description or note of what was done" },
+                    tagGoalId: { type: "string", description: "Optional linked goal or habit name/ID" }
+                },
+                required: ["startTime", "endTime"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "delete_timelog",
+            description: "Deletes a time log entry by ID or date/time.",
+            parameters: {
+                type: "object",
+                properties: {
+                    logId: { type: "string", description: "ID of the timelog to delete" },
+                    date: { type: "string", description: "Date string (YYYY-MM-DD, defaults to today)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "read_habit_bundles",
+            description: "Reads all habit bundles configured in the active routine.",
+            parameters: {
+                type: "object",
+                properties: {}
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_habit_bundle",
+            description: "Marks all habits in a habit bundle as complete or incomplete for a date.",
+            parameters: {
+                type: "object",
+                properties: {
+                    bundleId: { type: "string", description: "ID of the bundle" },
+                    name: { type: "string", description: "Name of the bundle" },
+                    date: { type: "string", description: "Date string (YYYY-MM-DD, defaults to today)" },
+                    completed: { type: "boolean", description: "Explicit completion status (inverts if omitted)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "read_dispatch",
+            description: "Reads Content Dispatch personas, platforms, and scheduled post slots for a date.",
+            parameters: {
+                type: "object",
+                properties: {
+                    date: { type: "string", description: "Date string (YYYY-MM-DD, defaults to today)" }
+                }
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "toggle_dispatch_slot",
+            description: "Toggles completion status for a platform post slot in Content Dispatch.",
+            parameters: {
+                type: "object",
+                properties: {
+                    slotId: { type: "string", description: "ID of the slot to toggle" },
+                    personaId: { type: "string", description: "Optional persona ID" },
+                    date: { type: "string", description: "Date string (YYYY-MM-DD, defaults to today)" }
+                },
+                required: ["slotId"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "add_dispatch_slot",
+            description: "Adds an ad-hoc post slot to a platform in Content Dispatch.",
+            parameters: {
+                type: "object",
+                properties: {
+                    platformId: { type: "string", description: "ID of the platform" },
+                    title: { type: "string", description: "Post/content title" },
+                    notes: { type: "string", description: "Optional notes" },
+                    personaId: { type: "string", description: "Optional persona ID" },
+                    date: { type: "string", description: "Date string (YYYY-MM-DD, defaults to today)" }
+                },
+                required: ["platformId", "title"]
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "set_currency",
+            description: "Sets the currency code for the application (e.g. 'USD', 'INR', 'EUR', 'GBP').",
+            parameters: {
+                type: "object",
+                properties: {
+                    currency: { type: "string", description: "3-letter currency code (e.g. USD, INR, EUR)" }
+                },
+                required: ["currency"]
             }
         }
     }

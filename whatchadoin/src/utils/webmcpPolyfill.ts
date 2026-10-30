@@ -117,13 +117,50 @@ export class WebModelContext {
 
   *list(): Generator<any> {
     for (const { tool } of this.tools.values()) {
-      const { execute, ...info } = tool;
+      const { execute: _execute, ...info } = tool;
       yield info;
     }
   }
 
+  private resolveCanonicalToolName(toolName: string): string {
+    const ALIAS_MAP: Record<string, string> = {
+      todo_mark_complete: 'toggle_quick_task',
+      complete_quick_task: 'toggle_quick_task',
+      mark_task_complete: 'toggle_quick_task',
+      complete_todo: 'toggle_quick_task',
+      mark_todo_complete: 'toggle_quick_task',
+      complete_goal: 'toggle_goal',
+      mark_goal_complete: 'toggle_goal',
+      check_habit: 'toggle_habit_log',
+      log_habit: 'toggle_habit_log',
+      complete_habit_bundle: 'toggle_habit_bundle',
+      complete_dispatch_slot: 'toggle_dispatch_slot',
+      remove_quick_task: 'delete_quick_task',
+      remove_goal: 'delete_goal',
+      update_goal: 'edit_goal',
+      remove_habit: 'delete_habit',
+      update_habit: 'edit_habit',
+      remove_template: 'delete_template',
+      update_routine: 'edit_routine',
+      remove_routine: 'delete_routine',
+      update_plan: 'edit_plan',
+      remove_plan: 'delete_plan',
+      remove_quote: 'delete_quote',
+      remove_coins_entry: 'delete_coins_entry',
+      increment_counter: 'update_counter',
+      decrement_counter: 'update_counter',
+      create_counter: 'add_counter',
+      remove_counter: 'delete_counter',
+      add_milestone: 'set_milestone',
+      remove_milestone: 'delete_milestone',
+      log_time: 'add_timelog'
+    };
+    return ALIAS_MAP[toolName] || toolName;
+  }
+
   async executeTool(toolName: string, args: any): Promise<any> {
-    const record = this.tools.get(toolName);
+    const canonicalName = this.resolveCanonicalToolName(toolName);
+    const record = this.tools.get(toolName) || this.tools.get(canonicalName);
     if (!record) {
       return {
         content: [{ type: 'text', text: `Tool not found: ${toolName}` }],
