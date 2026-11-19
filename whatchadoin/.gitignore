@@ -28,3 +28,8 @@ dist-ssr
 shots
 
 .vercel
+
+# Whatchadoin Local Canonical State & Sync
+data/
+.sync_config.json
+

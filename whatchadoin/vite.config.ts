@@ -1,5 +1,116 @@
-import {defineConfig} from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const DATA_DIR = path.resolve(__dirname, 'data')
+const STATE_FILE = path.resolve(DATA_DIR, 'routine.json')
+const SYNC_CONFIG_FILE = path.resolve(__dirname, '.sync_config.json')
+
+function localDevBridgePlugin() {
+    return {
+        name: 'local-dev-bridge',
+        configureServer(server: any) {
+            server.middlewares.use(async (req: any, res: any, next: any) => {
+                const url = req.url?.split('?')[0]
+
+                if (url === '/api/health' && req.method === 'GET') {
+                    res.setHeader('Content-Type', 'application/json')
+                    res.statusCode = 200
+                    res.end(JSON.stringify({ status: 'ok', file: STATE_FILE, exists: fs.existsSync(STATE_FILE) }))
+                    return
+                }
+
+                if (url === '/api/sync-config') {
+                    res.setHeader('Content-Type', 'application/json')
+                    if (req.method === 'GET') {
+                        if (fs.existsSync(SYNC_CONFIG_FILE)) {
+                            res.statusCode = 200
+                            res.end(fs.readFileSync(SYNC_CONFIG_FILE, 'utf-8'))
+                        } else {
+                            res.statusCode = 404
+                            res.end(JSON.stringify({ error: 'No sync config found' }))
+                        }
+                        return
+                    }
+                    if (req.method === 'POST') {
+                        let body = ''
+                        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+                        req.on('end', () => {
+                            try {
+                                const parsed = JSON.parse(body)
+                                fs.writeFileSync(SYNC_CONFIG_FILE, JSON.stringify(parsed, null, 2), 'utf-8')
+                                res.statusCode = 200
+                                res.end(JSON.stringify({ success: true }))
+                            } catch (err: any) {
+                                res.statusCode = 400
+                                res.end(JSON.stringify({ error: err?.message || 'Invalid JSON' }))
+                            }
+                        })
+                        return
+                    }
+                }
+
+                if (url === '/api/state') {
+                    res.setHeader('Content-Type', 'application/json')
+
+                    if (req.method === 'GET') {
+                        try {
+                            if (fs.existsSync(STATE_FILE)) {
+                                const content = fs.readFileSync(STATE_FILE, 'utf-8')
+                                res.statusCode = 200
+                                res.end(content)
+                            } else {
+                                res.statusCode = 404
+                                res.end(JSON.stringify({ error: 'State file not found' }))
+                            }
+                        } catch (err: any) {
+                            res.statusCode = 500
+                            res.end(JSON.stringify({ error: err?.message || 'Failed to read state' }))
+                        }
+                        return
+                    }
+
+                    if (req.method === 'POST') {
+                        try {
+                            let body = ''
+                            req.on('data', (chunk: Buffer) => {
+                                body += chunk.toString()
+                            })
+                            req.on('end', () => {
+                                try {
+                                    if (!fs.existsSync(DATA_DIR)) {
+                                        fs.mkdirSync(DATA_DIR, { recursive: true })
+                                    }
+                                    const parsed = JSON.parse(body)
+                                    const formatted = JSON.stringify(parsed, null, 2)
+                                    const tmpFile = `${STATE_FILE}.tmp`
+                                    fs.writeFileSync(tmpFile, formatted, 'utf-8')
+                                    fs.renameSync(tmpFile, STATE_FILE)
+
+                                    res.statusCode = 200
+                                    res.end(JSON.stringify({ success: true, updatedAt: parsed.updatedAt }))
+                                } catch (parseErr: any) {
+                                    res.statusCode = 400
+                                    res.end(JSON.stringify({ error: 'Invalid JSON payload', details: parseErr?.message }))
+                                }
+                            })
+                        } catch (writeErr: any) {
+                            res.statusCode = 500
+                            res.end(JSON.stringify({ error: writeErr?.message || 'Failed to write state' }))
+                        }
+                        return
+                    }
+                }
+
+                next()
+            })
+        }
+    }
+}
 
 function chromeLauncherPlugin() {
     return {
@@ -33,7 +144,7 @@ function chromeLauncherPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-    plugins: [react(), chromeLauncherPlugin()],
+    plugins: [react(), localDevBridgePlugin(), chromeLauncherPlugin()],
     resolve: {
         tsconfigPaths: true
     },
